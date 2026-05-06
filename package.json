@@ -1,0 +1,27 @@
+{
+  "name": "jsog-member-management-system",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "vite": "^8.0.10"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.6",
+    "mkdirp": "^3.0.1",
+    "vite-plugin-singlefile": "^2.3.3",
+    "vite-plugin-static-copy": "^3.4.0",
+    "vue": "^3.5.33"
+  }
+}
