@@ -9,6 +9,7 @@
         name="fade" 
         mode="out-in"
       >
+        <!-- Use the global currentView to decide what to show -->
         <component :is="activeComponent" />
       </transition>
     </main>
@@ -49,10 +50,9 @@ import WorkoutRecords from './views/WorkoutView.vue';
 import Rewards from './views/RewardView.vue';
 import Logs from './views/LogView.vue';
 
-const { members, activeMembers, rewards, dashboardSummary, isLoading, loadingText, LOADING_PHRASES } = useStore();
+const { members, activeMembers, rewards, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
 const { call } = useGas();
 
-const currentView = ref('Dashboard');
 const phraseInterval = ref(null);
 
 const components = {
@@ -158,6 +158,13 @@ onUnmounted(() => {
 </script>
 
 <style>
+/* Global Styles for GAS compatibility */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;

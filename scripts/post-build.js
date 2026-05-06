@@ -53,7 +53,7 @@ async function run() {
 
   // 3. Extract Templates (Existing Vue SFCs)
   const components = [
-    'DashboardView', 'MemberView', 'WorkoutView', 'RewardView', 'LogView', 'LayoutHeader'
+    'DashboardView', 'MemberView', 'WorkoutView', 'RewardView', 'LogView', 'LayoutHeader', 'ModalMember'
   ];
 
   components.forEach(name => {

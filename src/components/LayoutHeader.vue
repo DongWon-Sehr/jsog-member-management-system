@@ -13,9 +13,9 @@
             <button 
               v-for="item in navigation" 
               :key="item.name"
-              @click="$emit('navigate', item.id)"
-              class="px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              :class="currentView === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
+              @click="currentView = item.id"
+              class="px-3 py-2 rounded-md text-sm font-black transition-colors uppercase tracking-tight"
+              :class="currentView === item.id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50'"
             >
               {{ item.name }}
             </button>
@@ -23,21 +23,21 @@
         </div>
         <div class="flex items-center gap-4">
           <span class="text-xs text-gray-400 font-mono hidden sm:inline-block">V1.0.0</span>
-          <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-            <i class="ph-bold ph-user text-gray-500"></i>
+          <div class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200 shadow-inner">
+            <i class="ph-bold ph-user text-gray-400"></i>
           </div>
         </div>
       </div>
     </div>
     
     <!-- Mobile Navigation -->
-    <div class="md:hidden border-t border-gray-100 px-2 py-3 flex overflow-x-auto space-x-2 scrollbar-hide">
+    <div class="md:hidden border-t border-gray-100 px-2 py-3 flex overflow-x-auto space-x-2 scrollbar-hide bg-white/80 backdrop-blur-md">
       <button 
         v-for="item in navigation" 
         :key="item.name"
-        @click="$emit('navigate', item.id)"
-        class="flex-none px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap"
-        :class="currentView === item.id ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-600'"
+        @click="currentView = item.id"
+        class="flex-none px-4 py-2 rounded-full text-xs font-black whitespace-nowrap uppercase tracking-widest shadow-sm transition-all"
+        :class="currentView === item.id ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'"
       >
         {{ item.name }}
       </button>
@@ -46,11 +46,9 @@
 </template>
 
 <script setup>
-defineProps({
-  currentView: String
-});
+import { useStore } from '../composables/useStore';
 
-defineEmits(['navigate']);
+const { currentView } = useStore();
 
 const navigation = [
   { name: '대시보드', id: 'Dashboard' },

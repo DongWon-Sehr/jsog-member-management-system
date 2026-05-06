@@ -11,9 +11,9 @@ const dashboardSummary = reactive({
 });
 const isLoading = ref(false);
 const loadingText = ref('데이터를 불러오는 중입니다... 🚀');
+const currentView = ref('Dashboard'); // Moved from App.vue for global control
 
 // --- Caching / Computed State for Performance ---
-// ID-based Map for instant member lookup
 const memberMap = computed(() => {
   const map = {};
   members.value.forEach(m => {
@@ -44,6 +44,7 @@ export function useStore() {
     dashboardSummary,
     isLoading,
     loadingText,
+    currentView,
     
     // Computed / Cache
     memberMap,
