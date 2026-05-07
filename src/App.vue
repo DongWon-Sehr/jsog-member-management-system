@@ -127,11 +127,21 @@ const loadData = async () => {
       .apiGetDashboardSummary();
   });
 
+  const weeksPromise = new Promise((resolve) => {
+    google.script.run
+      .withSuccessHandler((res) => {
+        if (res && res.success) weeks.value = res.data;
+        resolve();
+      })
+      .apiGetAllWeeks();
+  });
+
   await Promise.all([
     allMembersPromise,
     activeMembersPromise,
     rewardsPromise,
-    summaryPromise
+    summaryPromise,
+    weeksPromise
   ]);
 
   stopLoadingAnimation();
@@ -181,21 +191,6 @@ html, body {
 }
 
 .slide-up-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.slide-up-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
-/* Hide scrollbar for mobile nav */
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-</style>
--up-enter-from {
   opacity: 0;
   transform: translateY(10px);
 }

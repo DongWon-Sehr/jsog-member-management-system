@@ -4,7 +4,6 @@
  */
 
 function run_setupDatabase() {
-  return; // Backup mode: disabled to prevent accidental duplicates
   console.log("=== run_setupDatabase Start ===");
   MigrationService.setup();
   console.log("Database tables and columns setup complete.");

@@ -67,8 +67,8 @@ const MigrationService = {
       { name: 'year', type: 'DOUBLE' },
       { name: 'month', type: 'DOUBLE' },
       { name: 'week_number', type: 'DOUBLE' },
-      { name: 'start_date', type: 'TEXT' },
-      { name: 'end_date', type: 'TEXT' },
+      { name: 'start_date', type: 'DATE' },
+      { name: 'end_date', type: 'DATE' },
       { name: 'created_at', type: 'DATE_TIME' }
     ]);
   },

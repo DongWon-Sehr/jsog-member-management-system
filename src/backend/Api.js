@@ -164,6 +164,10 @@ function apiUpdateWorkoutCount(memberId, year, month, weekNumber, count, superPa
   return _executeApi('apiUpdateWorkoutCount', () => WorkoutService.updateWorkoutCount(memberId, year, month, weekNumber, count, superPass, note), { memberId, year, month, weekNumber, count, superPass, note });
 }
 
+function apiBatchUpdateWorkoutCounts(recordsArray) {
+  return _executeApi('apiBatchUpdateWorkoutCounts', () => WorkoutService.batchUpdateWorkoutCounts(recordsArray), { count: recordsArray ? recordsArray.length : 0 });
+}
+
 // ==========================================
 // Workout Logs API (Detailed)
 // ==========================================

@@ -42,6 +42,7 @@ export function useStore() {
     members,
     activeMembers,
     rewards,
+    weeks,
     dashboardSummary,
     isLoading,
     loadingText,

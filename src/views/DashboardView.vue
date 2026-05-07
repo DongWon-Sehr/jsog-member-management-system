@@ -23,8 +23,12 @@
         </div>
       </div>
 
-      <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-        <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600">
+      <!-- Weekly Workout Card - Clickable to navigate to Workout tab -->
+      <div 
+        @click="currentView = 'WorkoutRecords'"
+        class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all active:scale-95 group"
+      >
+        <div class="p-3 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
           <i class="ph-duotone ph-play-circle text-3xl"></i>
         </div>
         <div>
