@@ -4,25 +4,40 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
       <div class="flex flex-col">
         <h2 class="text-2xl font-bold text-gray-800">운동 기록</h2>
-        <p v-if="currentWeekData" class="text-sm font-bold text-indigo-600 mt-1">
-          현재 설정된 주차: {{ currentWeekData.year }}년 {{ currentWeekData.month }}월 {{ currentWeekData.week_number === 0 ? '휴식 주간' : currentWeekData.week_number + '주차' }}
-        </p>
-        <p v-else class="text-sm font-bold text-orange-500 mt-1">
-          이번 주 데이터가 설정되지 않았습니다. 주차를 관리해주세요.
-        </p>
       </div>
       
       <div class="flex items-center gap-3">
-        <!-- Week Selector Dropdown -->
-        <select 
-          v-model="selectedStartDate"
-          class="bg-white border border-gray-200 text-gray-700 font-bold rounded-xl px-4 py-2.5 outline-none focus:border-indigo-500 shadow-sm cursor-pointer transition-all min-w-[200px]"
-        >
-          <option value="">-- 주차 선택 --</option>
-          <option v-for="week in sortedWeeks" :key="week.start_date" :value="week.start_date">
-            {{ week.year }}년 {{ week.month }}월 {{ week.week_number === 0 ? '휴식 주간' : week.week_number + '주차' }}
-          </option>
-        </select>
+        <!-- Year Selector -->
+        <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
+          <button @click="navigateYear(-1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 연도">
+            <i class="ph-bold ph-caret-left"></i>
+          </button>
+          <select v-model="selectedYear" class="bg-transparent text-gray-700 font-bold outline-none cursor-pointer text-center appearance-none px-2 text-sm">
+            <option v-for="y in availableYears" :key="y" :value="y">{{ y }}년</option>
+          </select>
+          <button @click="navigateYear(1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 연도">
+            <i class="ph-bold ph-caret-right"></i>
+          </button>
+        </div>
+
+        <!-- Week Selector (Filtered by Year & Non-Rest Weeks) -->
+        <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
+          <button @click="navigateWeek(-1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 주차">
+            <i class="ph-bold ph-caret-left"></i>
+          </button>
+          <select 
+            v-model="selectedStartDate"
+            class="bg-transparent text-gray-700 font-bold outline-none cursor-pointer text-center appearance-none px-4 text-sm min-w-[120px]"
+          >
+            <option value="">-- 주차 선택 --</option>
+            <option v-for="week in filteredWeeks" :key="week.start_date" :value="week.start_date">
+              {{ week.month }}월 {{ week.week_number }}주차
+            </option>
+          </select>
+          <button @click="navigateWeek(1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 주차">
+            <i class="ph-bold ph-caret-right"></i>
+          </button>
+        </div>
 
         <button @click="isPlannerOpen = true" class="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all active:scale-95" title="연간 주차 셋업">
           <i class="ph-bold ph-gear text-xl"></i>
@@ -38,18 +53,9 @@
       <p class="text-gray-500 font-bold">주차를 먼저 선택하거나 생성해주세요.</p>
     </div>
 
-    <div v-else-if="currentWeekData.week_number === 0" class="bg-white p-12 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-      <div class="inline-flex p-5 rounded-full bg-gray-50 mb-4">
-        <i class="ph-fill ph-coffee text-gray-400 text-5xl"></i>
-      </div>
-      <h3 class="text-xl font-black text-gray-800 mb-2">보너스 휴식 주간입니다</h3>
-      <p class="text-gray-500 font-medium">이번 주는 운동 기록을 입력하지 않습니다. 푹 쉬세요!</p>
-    </div>
-
     <div v-else class="space-y-4">
-      
       <!-- Desktop Header Row (Hidden on mobile) -->
-      <div class="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 bg-white rounded-2xl border border-gray-100 shadow-sm text-xs font-black text-gray-400 uppercase tracking-widest">
+      <div class="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 bg-white rounded-2xl border border-gray-100 shadow-md text-xs font-black text-gray-400 uppercase tracking-widest sticky top-[64px] z-20">
         <div class="col-span-2">이름</div>
         <div class="col-span-3 text-center">운동 횟수</div>
         <div class="col-span-2 text-center">슈퍼패스</div>
@@ -68,9 +74,6 @@
           
           <!-- Name -->
           <div class="col-span-2 flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-sm shadow-inner shrink-0">
-              {{ record.name.charAt(0) }}
-            </div>
             <span class="font-bold text-gray-900 text-lg">{{ record.name }}</span>
           </div>
 
@@ -128,11 +131,10 @@
 
         </div>
       </div>
-
     </div>
 
     <!-- Fixed Bottom Save Action -->
-    <div v-if="currentWeekData && currentWeekData.week_number !== 0" class="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 sm:p-6 z-40 flex justify-center sm:justify-end shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+    <div v-if="currentWeekData" class="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 sm:p-6 z-40 flex justify-center sm:justify-end shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
       <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex justify-end">
         <button 
           @click="saveBatchRecords" 
@@ -162,27 +164,67 @@ import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 const { weeks, activeMembers } = useStore();
 const isPlannerOpen = ref(false);
 
+const selectedYear = ref(new Date().getFullYear());
 const selectedStartDate = ref('');
 const memberRecords = ref([]);
 const isLoadingRecords = ref(false);
 const isSaving = ref(false);
 
-// Sort weeks descending by start_date for the dropdown
-const sortedWeeks = computed(() => {
-  return [...weeks.value].sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+// Filter non-rest weeks and sort
+const validWeeks = computed(() => {
+  return weeks.value
+    .filter(w => Number(w.week_number) !== 0)
+    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
 });
+
+// Year Navigation Logic
+const availableYears = computed(() => {
+  const years = [...new Set(validWeeks.value.map(w => Number(w.year)))];
+  if (years.length === 0) years.push(new Date().getFullYear());
+  return years.sort((a, b) => b - a);
+});
+
+const navigateYear = (direction) => {
+  const years = availableYears.value;
+  const currentIndex = years.indexOf(selectedYear.value);
+  let nextIndex = currentIndex - direction; 
+  if (nextIndex >= 0 && nextIndex < years.length) {
+    selectedYear.value = years[nextIndex];
+  }
+};
+
+// Filtered Weeks based on Selected Year
+const filteredWeeks = computed(() => {
+  return validWeeks.value.filter(w => Number(w.year) === selectedYear.value);
+});
+
+// Week Navigation Logic (Supports Year Crossing)
+const navigateWeek = (direction) => {
+  const list = validWeeks.value; // Use the global valid list for seamless transition
+  const currentIndex = list.findIndex(w => w.start_date === selectedStartDate.value);
+  
+  // list is desc sorted (newest to oldest), so direction 1 (next/newer) means currentIndex - 1
+  let nextIndex = currentIndex - direction; 
+  
+  if (nextIndex >= 0 && nextIndex < list.length) {
+    const targetWeek = list[nextIndex];
+    selectedYear.value = Number(targetWeek.year); // Sync Year Selector
+    selectedStartDate.value = targetWeek.start_date;
+  }
+};
 
 const currentWeekData = computed(() => {
   if (!selectedStartDate.value) return null;
   return weeks.value.find(w => w.start_date === selectedStartDate.value) || null;
 });
 
-// Auto-select current week based on today's date
+// Initial Selection
 onMounted(() => {
   const today = new Date();
   today.setHours(0,0,0,0);
   
-  const currentWeek = weeks.value.find(w => {
+  // Try to find current week (must not be a rest week)
+  const currentWeek = validWeeks.value.find(w => {
     const start = new Date(w.start_date);
     start.setHours(0,0,0,0);
     const end = new Date(w.end_date);
@@ -191,16 +233,28 @@ onMounted(() => {
   });
 
   if (currentWeek) {
+    selectedYear.value = Number(currentWeek.year);
     selectedStartDate.value = currentWeek.start_date;
-  } else if (sortedWeeks.value.length > 0) {
-    selectedStartDate.value = sortedWeeks.value[0].start_date;
+  } else if (validWeeks.value.length > 0) {
+    selectedYear.value = Number(validWeeks.value[0].year);
+    selectedStartDate.value = validWeeks.value[0].start_date;
   }
 });
 
-// Fetch records when the selected week changes
+// Auto-select first week when year changes if current selection is invalid
+watch(() => selectedYear.value, (newYear) => {
+  if (selectedStartDate.value) {
+    const exists = filteredWeeks.value.find(w => w.start_date === selectedStartDate.value);
+    if (!exists && filteredWeeks.value.length > 0) {
+      selectedStartDate.value = filteredWeeks.value[0].start_date;
+    }
+  }
+});
+
+// Fetch records logic
 watch(() => selectedStartDate.value, (newStartStr) => {
   const weekData = currentWeekData.value;
-  if (!weekData || weekData.week_number === 0) {
+  if (!weekData) {
     memberRecords.value = [];
     return;
   }
@@ -211,7 +265,6 @@ watch(() => selectedStartDate.value, (newStartStr) => {
       isLoadingRecords.value = false;
       const dbRecords = res && res.success ? res.data : [];
       
-      // Merge active members with DB records
       memberRecords.value = activeMembers.value.map(member => {
         const existing = dbRecords.find(r => r.member_id === member.id);
         return {
@@ -230,23 +283,13 @@ watch(() => selectedStartDate.value, (newStartStr) => {
     .apiGetRecordsByWeek(weekData.year, weekData.month, weekData.week_number);
 }, { immediate: true });
 
-// Refund Status Logic based on Rules
 const getRefundStatus = (record) => {
   if (record.count >= 3 || (record.count >= 1 && record.superPass)) {
-    return {
-      text: '환급 대상',
-      icon: 'ph-fill ph-check-circle',
-      class: 'bg-blue-50 text-blue-600 border border-blue-100'
-    };
+    return { text: '환급 대상', icon: 'ph-fill ph-check-circle', class: 'bg-blue-50 text-blue-600 border border-blue-100' };
   }
-  return {
-    text: '환급 불가',
-    icon: 'ph-fill ph-x-circle',
-    class: 'bg-red-50 text-red-500 border border-red-100'
-  };
+  return { text: '환급 불가', icon: 'ph-fill ph-x-circle', class: 'bg-red-50 text-red-500 border border-red-100' };
 };
 
-// Batch Save Action
 const saveBatchRecords = () => {
   if (!currentWeekData.value) return;
   isSaving.value = true;
@@ -264,15 +307,11 @@ const saveBatchRecords = () => {
   google.script.run
     .withSuccessHandler((res) => {
       isSaving.value = false;
-      if (res && res.success) {
-        alert('성공적으로 일괄 저장되었습니다.');
-      } else {
-        alert('저장 중 오류가 발생했습니다.');
-      }
+      if (res && res.success) alert('성공적으로 일괄 저장되었습니다.');
+      else alert('저장 중 오류가 발생했습니다.');
     })
     .withFailureHandler((err) => {
       isSaving.value = false;
-      console.error(err);
       alert('서버 오류가 발생했습니다.');
     })
     .apiBatchUpdateWorkoutCounts(payload);

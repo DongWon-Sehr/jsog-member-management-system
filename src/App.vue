@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col w-full overflow-x-hidden">
+  <div class="min-h-screen flex flex-col w-full">
     <!-- Common Header (Responsive) -->
     <LayoutHeader :currentView="currentView" @navigate="currentView = $event" />
 
@@ -30,8 +30,8 @@
       </div>
     </div>
 
-    <!-- Responsive Footer -->
-    <footer class="p-4 bg-gray-50 text-gray-400 text-[10px] sm:text-xs font-bold text-center border-t border-gray-100">
+    <!-- Persistent Footer -->
+    <footer class="p-6 bg-gray-50 text-gray-400 text-[10px] sm:text-xs font-bold text-center border-t border-gray-100">
       Made with ♥︎ By 🐟 | © 2026 주삼오공
     </footer>
   </div>

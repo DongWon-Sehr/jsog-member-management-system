@@ -77,9 +77,6 @@
           class="p-5 flex items-center justify-between hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer"
         >
           <div class="flex items-center gap-4">
-            <div class="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-black text-lg shadow-inner">
-              {{ member.name.charAt(0) }}
-            </div>
             <div>
               <div class="font-bold text-gray-900 text-base">{{ member.name }}</div>
               <div class="text-xs text-gray-400">{{ member.email || '이메일 없음' }}</div>
