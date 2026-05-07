@@ -2,6 +2,16 @@
  * Service for managing quarterly/half-yearly rewards
  */
 const RewardService = {
+  tableName: 'rewards_log',
+  
+  get sheet() {
+    if (!this._sheet) {
+      this._sheet = Util.getSheet(this.tableName);
+      if (!this._sheet) throw new Error(`${this.tableName} sheet not found`);
+    }
+    return this._sheet;
+  },
+
   /**
    * Adds a new reward record
    * 
@@ -11,9 +21,6 @@ const RewardService = {
    * @param {string} description - Additional details (e.g., 'Q1 Max Workouts', 'Half-year 1st place')
    */
   addReward(memberId, rewardDate, amount, description = '') {
-    const sheet = Util.getSheet('rewards_log');
-    if (!sheet) throw new Error('rewards_log sheet not found');
-
     const newReward = {
       id: Util.generateUUID(),
       member_id: memberId,
@@ -23,10 +30,10 @@ const RewardService = {
       created_at: Util.getCurrentTimestamp()
     };
 
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headers = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
     const rowData = headers.map(header => newReward[header] !== undefined ? newReward[header] : '');
     
-    sheet.appendRow(rowData);
+    this.sheet.appendRow(rowData);
     return newReward;
   },
 
@@ -34,10 +41,7 @@ const RewardService = {
    * Retrieves all rewards for a specific member
    */
   getRewardsByMember(memberId) {
-    const sheet = Util.getSheet('rewards_log');
-    if (!sheet) throw new Error('rewards_log sheet not found');
-
-    const rewards = Util.sheetToObjects(sheet);
+    const rewards = Util.sheetToObjects(this.sheet, this.tableName);
     const filtered = rewards.filter(reward => reward.member_id === memberId);
     return Util.sanitizeData(filtered);
   },
@@ -46,9 +50,6 @@ const RewardService = {
    * Retrieves all rewards
    */
   getAllRewards() {
-    const sheet = Util.getSheet('rewards_log');
-    if (!sheet) throw new Error('rewards_log sheet not found');
-
-    return Util.sanitizeData(Util.sheetToObjects(sheet));
+    return Util.sanitizeData(Util.sheetToObjects(this.sheet, this.tableName));
   }
 };

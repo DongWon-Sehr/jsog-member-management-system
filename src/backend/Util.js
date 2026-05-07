@@ -22,16 +22,36 @@ const Util = {
 
   /**
    * Converts sheet data into an array of objects.
+   * If tableName is provided, it uses MigrationService.SCHEMA to format dates exactly as typed.
    */
-  sheetToObjects(sheet) {
+  sheetToObjects(sheet, tableName) {
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return [];
 
     const headers = data[0];
+    const schema = tableName && typeof MigrationService !== 'undefined' ? MigrationService.SCHEMA[tableName] : null;
+
     return data.slice(1).map(row => {
       const obj = {};
       headers.forEach((header, index) => {
-        obj[header] = row[index];
+        let value = row[index];
+        
+        // Strict Type Formatting based on Schema
+        if (value instanceof Date && schema) {
+          const colDef = schema.find(c => c.name === header);
+          if (colDef) {
+            const pad = (n) => (n < 10 ? '0' + n : n);
+            const dateStr = `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+            
+            if (colDef.type === 'DATE') {
+              value = dateStr;
+            } else if (colDef.type === 'DATE_TIME') {
+              value = `${dateStr} ${pad(value.getHours())}:${pad(value.getMinutes())}:${pad(value.getSeconds())}`;
+            }
+          }
+        }
+        
+        obj[header] = value;
       });
       return obj;
     });
@@ -39,7 +59,8 @@ const Util = {
 
   /**
    * Recursively sanitizes data for frontend transfer.
-   * Converts Date objects to formatted strings.
+   * Date logic is now mostly handled by sheetToObjects + SCHEMA, 
+   * but kept here as an ultimate safety net for unmapped data.
    */
   sanitizeData(data) {
     if (data === null || data === undefined) return data;
@@ -49,7 +70,7 @@ const Util = {
       return data.map(item => Util.sanitizeData(item));
     }
 
-    // Handle Dates
+    // Handle Dates (Fallback for non-sheet data)
     if (data instanceof Date) {
       const pad = (n) => (n < 10 ? '0' + n : n);
       return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())} ` +

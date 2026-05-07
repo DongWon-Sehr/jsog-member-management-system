@@ -2,13 +2,21 @@
  * Service for managing operational weeks
  */
 const WorkoutWeekService = {
+  tableName: 'workout_weeks',
+  
+  get sheet() {
+    if (!this._sheet) {
+      this._sheet = Util.getSheet(this.tableName);
+      if (!this._sheet) throw new Error(`${this.tableName} sheet not found`);
+    }
+    return this._sheet;
+  },
+
   /**
    * Retrieves all weeks
    */
   getAllWeeks() {
-    const sheet = Util.getSheet('workout_weeks');
-    if (!sheet) throw new Error('workout_weeks sheet not found');
-    return Util.sanitizeData(Util.sheetToObjects(sheet));
+    return Util.sanitizeData(Util.sheetToObjects(this.sheet, this.tableName));
   },
 
   /**
@@ -36,10 +44,7 @@ const WorkoutWeekService = {
    * @param {Array} weeksArray - Array of week objects
    */
   batchSaveWeeks(weeksArray) {
-    const sheet = Util.getSheet('workout_weeks');
-    if (!sheet) throw new Error('workout_weeks sheet not found');
-
-    const data = sheet.getDataRange().getValues();
+    const data = this.sheet.getDataRange().getValues();
     const headers = data[0];
     
     // Create a map of existing start_dates to their row index (1-based)
@@ -60,9 +65,9 @@ const WorkoutWeekService = {
 
       if (rowIndex) {
         // Update existing row
-        sheet.getRange(rowIndex, headers.indexOf('year') + 1).setValue(year);
-        sheet.getRange(rowIndex, headers.indexOf('month') + 1).setValue(month);
-        sheet.getRange(rowIndex, headers.indexOf('week_number') + 1).setValue(week_number);
+        this.sheet.getRange(rowIndex, headers.indexOf('year') + 1).setValue(year);
+        this.sheet.getRange(rowIndex, headers.indexOf('month') + 1).setValue(month);
+        this.sheet.getRange(rowIndex, headers.indexOf('week_number') + 1).setValue(week_number);
         // Not updating created_at to preserve original creation time
       } else {
         // Insert new row
@@ -76,7 +81,7 @@ const WorkoutWeekService = {
           created_at: timestamp
         };
         const rowData = headers.map(header => newWeek[header] !== undefined ? newWeek[header] : '');
-        sheet.appendRow(rowData);
+        this.sheet.appendRow(rowData);
       }
     });
     

@@ -2,6 +2,16 @@
  * Service for managing detailed individual workout logs
  */
 const WorkoutLogService = {
+  tableName: 'workout_logs',
+  
+  get sheet() {
+    if (!this._sheet) {
+      this._sheet = Util.getSheet(this.tableName);
+      if (!this._sheet) throw new Error(`${this.tableName} sheet not found`);
+    }
+    return this._sheet;
+  },
+
   /**
    * Adds a new detailed workout log
    * 
@@ -11,9 +21,6 @@ const WorkoutLogService = {
    * @param {number} durationMinutes - Duration in minutes
    */
   addWorkoutLog(memberId, workoutDate, workoutType, durationMinutes) {
-    const sheet = Util.getSheet('workout_logs');
-    if (!sheet) throw new Error('workout_logs sheet not found');
-
     const newLog = {
       id: Util.generateUUID(),
       member_id: memberId,
@@ -24,10 +31,10 @@ const WorkoutLogService = {
     };
 
     // Create array matching the header order
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const headers = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
     const rowData = headers.map(header => newLog[header] !== undefined ? newLog[header] : '');
     
-    sheet.appendRow(rowData);
+    this.sheet.appendRow(rowData);
     return newLog;
   },
 
@@ -35,10 +42,7 @@ const WorkoutLogService = {
    * Retrieves all workout logs for a specific member
    */
   getLogsByMember(memberId) {
-    const sheet = Util.getSheet('workout_logs');
-    if (!sheet) throw new Error('workout_logs sheet not found');
-
-    const logs = Util.sheetToObjects(sheet);
+    const logs = Util.sheetToObjects(this.sheet, this.tableName);
     const filtered = logs.filter(log => log.member_id === memberId);
     return Util.sanitizeData(filtered);
   }

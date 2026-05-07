@@ -1,9 +1,15 @@
 <template>
   <Teleport to="body">
     <transition name="modal">
-      <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 sm:p-0" @click.self="close">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform transition-all border border-gray-100">
+      <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 sm:p-0" @click.self="!isSaving && close()">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform transition-all border border-gray-100 relative">
           
+          <!-- Saving Overlay -->
+          <div v-if="isSaving" class="absolute inset-0 z-50 bg-white/50 backdrop-blur-[2px] rounded-3xl flex flex-col items-center justify-center cursor-wait">
+            <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-5xl mb-4 shadow-sm rounded-full bg-white"></i>
+            <span class="text-indigo-800 font-black text-lg bg-white px-4 py-1 rounded-full shadow-sm border border-indigo-50">저장 중입니다...</span>
+          </div>
+
           <!-- Header -->
           <div class="px-6 py-5 border-b border-gray-50 flex items-center justify-between bg-indigo-50/30 rounded-t-3xl">
             <div class="flex items-center gap-4">
@@ -12,9 +18,17 @@
                 연간 주차 플래너
               </h3>
               <!-- Year Selector -->
-              <select v-model="selectedYear" class="bg-white border-2 border-indigo-100 text-indigo-700 font-bold rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500 shadow-sm cursor-pointer transition-all">
-                <option v-for="y in availableYears" :key="y" :value="y">{{ y }}년</option>
-              </select>
+              <div class="flex items-center gap-1 bg-white border-2 border-indigo-100 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
+                <button @click="selectedYear > availableYears[0] ? selectedYear-- : null" class="p-1 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed" :disabled="selectedYear <= availableYears[0]">
+                  <i class="ph-bold ph-caret-left"></i>
+                </button>
+                <select v-model="selectedYear" class="bg-transparent text-indigo-700 font-bold outline-none cursor-pointer text-center appearance-none px-2">
+                  <option v-for="y in availableYears" :key="y" :value="y">{{ y }}년</option>
+                </select>
+                <button @click="selectedYear < availableYears[availableYears.length - 1] ? selectedYear++ : null" class="p-1 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed" :disabled="selectedYear >= availableYears[availableYears.length - 1]">
+                  <i class="ph-bold ph-caret-right"></i>
+                </button>
+              </div>
             </div>
             <button @click="close" class="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600 shadow-sm">
               <i class="ph-bold ph-x text-lg"></i>
@@ -40,10 +54,7 @@
                 
                 <div class="flex flex-col sm:grid sm:grid-cols-12 sm:items-center gap-4 sm:gap-4">
                   <!-- Date Range -->
-                  <div class="col-span-4 flex items-center gap-3">
-                    <div class="h-8 w-8 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-xs shadow-inner shrink-0">
-                      {{ index + 1 }}
-                    </div>
+                  <div class="col-span-4 flex items-center">
                     <span class="font-mono text-sm font-bold text-gray-700 tracking-tight">
                       {{ formatDateShort(row.start_date) }} ~ {{ formatDateShort(row.end_date) }}
                     </span>
@@ -52,14 +63,14 @@
                   <!-- Rest Week Checkbox -->
                   <div class="col-span-2 flex items-center sm:justify-center">
                     <label class="flex items-center gap-2 cursor-pointer group">
-                      <div class="relative flex items-center">
+                      <div class="relative flex items-center justify-center w-5 h-5">
                         <input 
                           v-model="row.isRestWeek"
                           @change="handleRestWeekChange(row)"
                           type="checkbox" 
-                          class="peer h-5 w-5 cursor-pointer appearance-none rounded border-2 border-gray-300 checked:bg-indigo-600 checked:border-indigo-600 transition-all"
+                          class="peer w-full h-full m-0 cursor-pointer appearance-none rounded border-2 border-gray-300 checked:bg-indigo-600 checked:border-indigo-600 transition-all"
                         />
-                        <i class="ph-bold ph-check absolute text-white opacity-0 peer-checked:opacity-100 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs pointer-events-none"></i>
+                        <i class="ph-bold ph-check absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-[10px]"></i>
                       </div>
                       <span class="text-sm font-bold text-gray-500 sm:hidden">휴식 주간</span>
                     </label>
@@ -80,14 +91,18 @@
                       <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 월</div>
                       <div class="relative">
                         <input v-model.number="row.month" type="number" min="1" max="12" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all pr-4" />
-                        <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-bold pointer-events-none">월</span>
+                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                          <span class="text-xs text-gray-400 font-bold">월</span>
+                        </div>
                       </div>
                     </div>
                     <div class="col-span-2">
                       <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 주차</div>
                       <div class="relative">
                         <input v-model.number="row.week_number" type="number" min="1" max="6" class="w-full text-center py-2 bg-indigo-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-black text-indigo-700 transition-all pr-6 shadow-inner" />
-                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-indigo-400 font-black pointer-events-none">주차</span>
+                        <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                          <span class="text-[10px] text-indigo-400 font-black">주차</span>
+                        </div>
                       </div>
                     </div>
                   </template>
@@ -270,7 +285,7 @@ const saveBatch = () => {
         google.script.run.withSuccessHandler(r => {
           if (r.success) {
             weeks.value = r.data;
-            close();
+            // Modal remains open after saving
           }
         }).apiGetAllWeeks();
       } else {

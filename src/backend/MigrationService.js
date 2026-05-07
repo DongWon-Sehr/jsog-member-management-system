@@ -3,24 +3,16 @@
  * Utilizes Google Sheets Advanced API to create structured "Tables" with column types.
  */
 const MigrationService = {
-  /**
-   * Sets up sheets and required columns as Native Tables.
-   */
-  setup() {
-    const ss = Util.getSpreadsheet();
-
-    // 1. Initialize member table
-    this._ensureTable(ss, 'member', [
+  SCHEMA: {
+    member: [
       { name: 'id', type: 'TEXT' },
       { name: 'name', type: 'TEXT' },
       { name: 'email', type: 'TEXT' },
       { name: 'created_at', type: 'DATE_TIME' },
       { name: 'updated_at', type: 'DATE_TIME' },
       { name: 'enabled', type: 'BOOLEAN' }
-    ]);
-
-    // 2. Initialize workout_records table
-    this._ensureTable(ss, 'workout_records', [
+    ],
+    workout_records: [
       { name: 'id', type: 'TEXT' },
       { name: 'member_id', type: 'TEXT' },
       { name: 'year', type: 'DOUBLE' },
@@ -31,38 +23,30 @@ const MigrationService = {
       { name: 'note', type: 'TEXT' },
       { name: 'created_at', type: 'DATE_TIME' },
       { name: 'updated_at', type: 'DATE_TIME' }
-    ]);
-
-    // 3. Initialize workout_logs table
-    this._ensureTable(ss, 'workout_logs', [
+    ],
+    workout_logs: [
       { name: 'id', type: 'TEXT' },
       { name: 'member_id', type: 'TEXT' },
       { name: 'workout_date', type: 'DATE_TIME' },
       { name: 'workout_type', type: 'TEXT' },
       { name: 'duration_minutes', type: 'DOUBLE' },
       { name: 'created_at', type: 'DATE_TIME' }
-    ]);
-
-    // 4. Initialize rewards_log table
-    this._ensureTable(ss, 'rewards_log', [
+    ],
+    rewards_log: [
       { name: 'id', type: 'TEXT' },
       { name: 'member_id', type: 'TEXT' },
       { name: 'reward_date', type: 'TEXT' },
       { name: 'amount', type: 'DOUBLE' },
       { name: 'description', type: 'TEXT' },
       { name: 'created_at', type: 'DATE_TIME' }
-    ]);
-
-    // 5. Initialize logs table
-    this._ensureTable(ss, 'logs', [
+    ],
+    logs: [
       { name: 'id', type: 'TEXT' },
       { name: 'timestamp', type: 'DATE_TIME' },
       { name: 'action', type: 'TEXT' },
       { name: 'details', type: 'TEXT' }
-    ]);
-
-    // 6. Initialize workout_weeks table
-    this._ensureTable(ss, 'workout_weeks', [
+    ],
+    workout_weeks: [
       { name: 'id', type: 'TEXT' },
       { name: 'year', type: 'DOUBLE' },
       { name: 'month', type: 'DOUBLE' },
@@ -70,7 +54,32 @@ const MigrationService = {
       { name: 'start_date', type: 'DATE' },
       { name: 'end_date', type: 'DATE' },
       { name: 'created_at', type: 'DATE_TIME' }
-    ]);
+    ]
+  },
+
+  /**
+   * Sets up sheets and required columns as Native Tables.
+   */
+  setup() {
+    const ss = Util.getSpreadsheet();
+
+    // 1. Initialize member table
+    this._ensureTable(ss, 'member', this.SCHEMA.member);
+
+    // 2. Initialize workout_records table
+    this._ensureTable(ss, 'workout_records', this.SCHEMA.workout_records);
+
+    // 3. Initialize workout_logs table
+    this._ensureTable(ss, 'workout_logs', this.SCHEMA.workout_logs);
+
+    // 4. Initialize rewards_log table
+    this._ensureTable(ss, 'rewards_log', this.SCHEMA.rewards_log);
+
+    // 5. Initialize logs table
+    this._ensureTable(ss, 'logs', this.SCHEMA.logs);
+
+    // 6. Initialize workout_weeks table
+    this._ensureTable(ss, 'workout_weeks', this.SCHEMA.workout_weeks);
   },
 
   /**

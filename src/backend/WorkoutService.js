@@ -2,14 +2,21 @@
  * Service for managing weekly workout counts
  */
 const WorkoutService = {
+  tableName: 'workout_records',
+  
+  get sheet() {
+    if (!this._sheet) {
+      this._sheet = Util.getSheet(this.tableName);
+      if (!this._sheet) throw new Error(`${this.tableName} sheet not found`);
+    }
+    return this._sheet;
+  },
+
   /**
    * Retrieves workout records for a specific year/month/week
    */
   getRecordsByWeek(year, month, weekNumber) {
-    const sheet = Util.getSheet('workout_records');
-    if (!sheet) throw new Error('workout_records sheet not found');
-
-    const records = Util.sheetToObjects(sheet);
+    const records = Util.sheetToObjects(this.sheet, this.tableName);
     const filtered = records.filter(record => 
       String(record.year) === String(year) && 
       String(record.month) === String(month) && 
@@ -23,10 +30,7 @@ const WorkoutService = {
    * @param {Array} recordsArray - Array of record objects
    */
   batchUpdateWorkoutCounts(recordsArray) {
-    const sheet = Util.getSheet('workout_records');
-    if (!sheet) throw new Error('workout_records sheet not found');
-
-    const data = sheet.getDataRange().getValues();
+    const data = this.sheet.getDataRange().getValues();
     const headers = data[0];
 
     // Mapping indices
@@ -58,12 +62,12 @@ const WorkoutService = {
 
       if (rowIndex) {
         // Update existing record
-        sheet.getRange(rowIndex, idx.count + 1).setValue(record.count);
-        sheet.getRange(rowIndex, idx.super_pass + 1).setValue(record.superPass);
+        this.sheet.getRange(rowIndex, idx.count + 1).setValue(record.count);
+        this.sheet.getRange(rowIndex, idx.super_pass + 1).setValue(record.superPass);
         if (idx.note !== -1) {
-          sheet.getRange(rowIndex, idx.note + 1).setValue(record.note);
+          this.sheet.getRange(rowIndex, idx.note + 1).setValue(record.note);
         }
-        sheet.getRange(rowIndex, idx.updated_at + 1).setValue(timestamp);
+        this.sheet.getRange(rowIndex, idx.updated_at + 1).setValue(timestamp);
       } else {
         // Insert new record
         const newRecord = {
@@ -79,7 +83,7 @@ const WorkoutService = {
           updated_at: timestamp
         };
         const rowData = headers.map(header => newRecord[header] !== undefined ? newRecord[header] : '');
-        sheet.appendRow(rowData);
+        this.sheet.appendRow(rowData);
       }
     });
 
@@ -90,10 +94,7 @@ const WorkoutService = {
    * Updates workout count (Upsert approach)
    */
   updateWorkoutCount(memberId, year, month, weekNumber, count, superPass = false, note = '') {
-    const sheet = Util.getSheet('workout_records');
-    if (!sheet) throw new Error('workout_records sheet not found');
-
-    const data = sheet.getDataRange().getValues();
+    const data = this.sheet.getDataRange().getValues();
     const headers = data[0];
 
     // Mapping indices
@@ -128,12 +129,12 @@ const WorkoutService = {
 
     if (foundRowIndex > -1) {
       // Update existing record
-      sheet.getRange(foundRowIndex, idx.count + 1).setValue(count);
-      sheet.getRange(foundRowIndex, idx.super_pass + 1).setValue(superPass);
+      this.sheet.getRange(foundRowIndex, idx.count + 1).setValue(count);
+      this.sheet.getRange(foundRowIndex, idx.super_pass + 1).setValue(superPass);
       if (idx.note !== -1) {
-        sheet.getRange(foundRowIndex, idx.note + 1).setValue(note);
+        this.sheet.getRange(foundRowIndex, idx.note + 1).setValue(note);
       }
-      sheet.getRange(foundRowIndex, idx.updated_at + 1).setValue(timestamp);
+      this.sheet.getRange(foundRowIndex, idx.updated_at + 1).setValue(timestamp);
     } else {
       // Insert new record
       const newRecord = {
@@ -149,7 +150,7 @@ const WorkoutService = {
         updated_at: timestamp
       };
       const rowData = headers.map(header => newRecord[header] !== undefined ? newRecord[header] : '');
-      sheet.appendRow(rowData);
+      this.sheet.appendRow(rowData);
     }
   }
 };
