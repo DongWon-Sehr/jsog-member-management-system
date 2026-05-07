@@ -141,6 +141,18 @@ function apiReactivateMember(memberId) {
 }
 
 // ==========================================
+// Week API
+// ==========================================
+
+function apiGetAllWeeks() {
+  return _executeApi('apiGetAllWeeks', () => WorkoutWeekService.getAllWeeks());
+}
+
+function apiBatchSaveWeeks(weeksArray) {
+  return _executeApi('apiBatchSaveWeeks', () => WorkoutWeekService.batchSaveWeeks(weeksArray), { weeksCount: weeksArray ? weeksArray.length : 0 });
+}
+
+// ==========================================
 // Workout API (Weekly Records)
 // ==========================================
 

@@ -4,6 +4,7 @@ import { ref, reactive, computed } from 'vue';
 const members = ref([]);
 const activeMembers = ref([]);
 const rewards = ref([]);
+const weeks = ref([]);
 const dashboardSummary = reactive({
   activeMemberCount: 0,
   weeklyWorkoutCount: 0,

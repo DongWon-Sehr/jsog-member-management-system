@@ -50,7 +50,7 @@ import WorkoutRecords from './views/WorkoutView.vue';
 import Rewards from './views/RewardView.vue';
 import Logs from './views/LogView.vue';
 
-const { members, activeMembers, rewards, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
+const { members, activeMembers, rewards, weeks, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
 const { call } = useGas();
 
 const phraseInterval = ref(null);
@@ -181,6 +181,21 @@ html, body {
 }
 
 .slide-up-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Hide scrollbar for mobile nav */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+</style>
+-up-enter-from {
   opacity: 0;
   transform: translateY(10px);
 }

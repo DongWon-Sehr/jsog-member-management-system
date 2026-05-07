@@ -60,6 +60,17 @@ const MigrationService = {
       { name: 'action', type: 'TEXT' },
       { name: 'details', type: 'TEXT' }
     ]);
+
+    // 6. Initialize workout_weeks table
+    this._ensureTable(ss, 'workout_weeks', [
+      { name: 'id', type: 'TEXT' },
+      { name: 'year', type: 'DOUBLE' },
+      { name: 'month', type: 'DOUBLE' },
+      { name: 'week_number', type: 'DOUBLE' },
+      { name: 'start_date', type: 'TEXT' },
+      { name: 'end_date', type: 'TEXT' },
+      { name: 'created_at', type: 'DATE_TIME' }
+    ]);
   },
 
   /**
