@@ -13,6 +13,61 @@ const WorkoutLogService = {
   },
 
   /**
+   * Batch adds and deletes workout logs, then syncs the weekly count.
+   * 
+   * @param {string} memberId 
+   * @param {number} year 
+   * @param {number} month 
+   * @param {number} weekNumber 
+   * @param {Array} logsToAdd - Array of log objects { workout_date, workout_type, duration_minutes }
+   * @param {Array} logIdsToDelete - Array of log UUIDs
+   */
+  batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logIdsToDelete) {
+    // 1. Delete logs
+    if (logIdsToDelete && logIdsToDelete.length > 0) {
+      const data = this.sheet.getDataRange().getValues();
+      const headers = data[0];
+      const idIndex = headers.indexOf('id');
+      
+      // Iterate backwards to avoid row index shifting
+      for (let i = data.length - 1; i >= 1; i--) {
+        if (logIdsToDelete.includes(data[i][idIndex])) {
+          this.sheet.deleteRow(i + 1);
+        }
+      }
+    }
+
+    // 2. Add logs
+    const createdLogs = [];
+    if (logsToAdd && logsToAdd.length > 0) {
+      const headers = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
+      const timestamp = Util.getCurrentTimestamp();
+      
+      logsToAdd.forEach(log => {
+        const newLog = {
+          id: Util.generateUUID(),
+          member_id: memberId,
+          workout_date: log.workout_date,
+          workout_type: log.workout_type,
+          duration_minutes: log.duration_minutes,
+          created_at: timestamp
+        };
+        const rowData = headers.map(header => newLog[header] !== undefined ? newLog[header] : '');
+        this.sheet.appendRow(rowData);
+        createdLogs.push(newLog);
+      });
+    }
+
+    // 3. Sync count
+    const netChange = (logsToAdd ? logsToAdd.length : 0) - (logIdsToDelete ? logIdsToDelete.length : 0);
+    if (netChange !== 0 && year && month && weekNumber) {
+      WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, netChange);
+    }
+
+    return { added: createdLogs, deletedCount: logIdsToDelete ? logIdsToDelete.length : 0 };
+  },
+
+  /**
    * Adds a new detailed workout log and syncs the weekly count
    * 
    * @param {string} memberId - The UUID of the member

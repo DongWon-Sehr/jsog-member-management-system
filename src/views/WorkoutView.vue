@@ -287,7 +287,7 @@ const toggleSuperPass = async (record) => {
     title: '슈퍼패스 상태 변경',
     message: record.superPass ? '슈퍼패스 사용을 취소하시겠습니까?' : '슈퍼패스를 사용 처리하시겠습니까?',
     confirmText: '변경',
-    cancelText: '취소'
+    cancelText: '닫기'
   });
   if (!confirmResult) return;
 

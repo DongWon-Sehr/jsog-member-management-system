@@ -192,6 +192,10 @@ function apiDeleteWorkoutLog(logId, memberId, year, month, weekNumber) {
   return _executeApi('apiDeleteWorkoutLog', () => WorkoutLogService.deleteWorkoutLog(logId, memberId, year, month, weekNumber), { logId, memberId, year, month, weekNumber });
 }
 
+function apiBatchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logIdsToDelete) {
+  return _executeApi('apiBatchSaveWorkoutLogs', () => WorkoutLogService.batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logIdsToDelete), { memberId, year, month, weekNumber, addCount: logsToAdd.length, deleteCount: logIdsToDelete.length });
+}
+
 // ==========================================
 // Reward API
 // ==========================================

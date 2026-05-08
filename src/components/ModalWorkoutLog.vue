@@ -8,10 +8,10 @@
         <!-- Modal Content -->
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
           
-          <!-- Processing Overlay (Dimming during save/delete) -->
+          <!-- Processing Overlay -->
           <div v-if="isProcessing" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-3xl">
             <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-5xl mb-4"></i>
-            <span class="text-indigo-800 font-bold">처리 중...</span>
+            <span class="text-indigo-800 font-bold">저장 중...</span>
           </div>
 
           <!-- Header -->
@@ -38,7 +38,7 @@
                 <i class="ph-bold ph-plus-circle text-indigo-500"></i>
                 새 운동 기록 추가
               </h4>
-              <form @submit.prevent="addLog" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <form @submit.prevent="addLogLocal" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div class="flex flex-col">
                   <label class="text-xs font-bold text-gray-500 mb-1">날짜</label>
                   <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
@@ -55,7 +55,7 @@
                   <label class="text-xs font-bold text-gray-500 mb-1">시간(분)</label>
                   <div class="flex items-center gap-2">
                     <input v-model="newDuration" type="number" min="1" required class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-                    <button type="submit" :disabled="isProcessing" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex-shrink-0">
+                    <button type="submit" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all flex-shrink-0">
                       <i class="ph-bold ph-plus"></i>
                     </button>
                   </div>
@@ -83,12 +83,17 @@
 
                 <!-- List Content -->
                 <div class="px-4 pb-4 space-y-2">
-                  <div v-if="filteredLogs.length === 0" class="py-12 flex flex-col items-center justify-center text-center">
+                  <div v-if="localLogs.length === 0" class="py-12 flex flex-col items-center justify-center text-center">
                     <i class="ph-fill ph-empty text-gray-200 text-4xl mb-2"></i>
                     <p class="text-sm font-bold text-gray-400">이번 주 기록이 없습니다.</p>
                   </div>
 
-                  <div v-else v-for="log in filteredLogs" :key="log.id" class="grid grid-cols-12 gap-2 px-4 py-3 bg-white rounded-xl border border-gray-50 shadow-sm items-center hover:border-indigo-200 transition-colors group">
+                  <div v-else v-for="log in localLogs" :key="log.id" class="grid grid-cols-12 gap-2 px-4 py-3 bg-white rounded-xl border border-gray-50 shadow-sm items-center hover:border-indigo-200 transition-colors group relative">
+                    <!-- New Badge -->
+                    <div v-if="log.isNew" class="absolute -left-1 -top-1 z-10">
+                      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-sm ring-2 ring-white">N</span>
+                    </div>
+
                     <div class="col-span-5 flex flex-col">
                       <span class="text-sm font-bold text-gray-900">{{ log.workout_date.split(' ')[0] }}</span>
                       <span class="text-[10px] font-mono text-gray-400 font-bold">{{ log.workout_date.split(' ')[1] }}</span>
@@ -106,7 +111,7 @@
                       <span class="text-xs font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{{ log.duration_minutes }}분</span>
                     </div>
                     <div class="col-span-1 text-right">
-                      <button @click="deleteLog(log.id)" :disabled="isProcessing" class="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50">
+                      <button @click="deleteLogLocal(log.id)" class="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all">
                         <i class="ph-bold ph-trash"></i>
                       </button>
                     </div>
@@ -117,9 +122,12 @@
           </div>
 
           <!-- Footer -->
-          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
             <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
               닫기
+            </button>
+            <button @click="saveBatch" :disabled="isProcessing || !hasChanges" class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50 text-sm">
+              저장하기
             </button>
           </div>
 
@@ -146,6 +154,8 @@ const { memberMap, workoutRecords, workoutLogs } = useStore();
 const { alert, confirm } = useDialog();
 
 const isProcessing = ref(false);
+const localLogs = ref([]);
+const deletedIds = ref([]);
 
 // Form states
 const newDate = ref('');
@@ -155,6 +165,10 @@ const newDuration = ref(30);
 
 const memberName = computed(() => memberMap.value[props.memberId]?.name || '회원');
 
+const hasChanges = computed(() => {
+  return localLogs.value.some(l => l.isNew) || deletedIds.value.length > 0;
+});
+
 const handleEsc = (e) => {
   if (e.key === 'Escape' && props.isOpen && !isProcessing.value) close();
 };
@@ -162,25 +176,30 @@ const handleEsc = (e) => {
 onMounted(() => window.addEventListener('keydown', handleEsc));
 onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
-// Filter logs by member AND the selected week's date range in memory
-const filteredLogs = computed(() => {
-  if (!props.weekData || !props.memberId) return [];
+// Filter logs from global store to local state when opening
+const syncLocalLogs = () => {
+  if (!props.weekData || !props.memberId) {
+    localLogs.value = [];
+    return;
+  }
   
   const start = new Date(props.weekData.start_date);
   start.setHours(0,0,0,0);
   const end = new Date(props.weekData.end_date);
   end.setHours(23,59,59,999);
 
-  return workoutLogs.value
+  localLogs.value = workoutLogs.value
     .filter(log => {
       if (log.member_id !== props.memberId) return false;
-      // workout_date is typically "YYYY-MM-DD HH:mm"
       const logDateStr = log.workout_date.split(' ')[0];
       const logDate = new Date(logDateStr);
       return logDate >= start && logDate <= end;
     })
-    .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date)); // Descending
-});
+    .map(log => ({ ...log, isNew: false }))
+    .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date));
+  
+  deletedIds.value = [];
+};
 
 const setDefaultValues = () => {
   if (props.isOpen && props.weekData) {
@@ -199,9 +218,16 @@ const setDefaultValues = () => {
   }
 };
 
-onMounted(setDefaultValues);
+onMounted(() => {
+  syncLocalLogs();
+  setDefaultValues();
+});
+
 watch(() => props.isOpen, (newVal) => {
-  if (newVal) setDefaultValues();
+  if (newVal) {
+    syncLocalLogs();
+    setDefaultValues();
+  }
 });
 
 const close = () => {
@@ -209,131 +235,97 @@ const close = () => {
   emit('close');
 };
 
-const getTargetRecordIndex = () => {
-  return workoutRecords.value.findIndex(r => 
-    r.member_id === props.memberId &&
-    String(r.year) === String(props.weekData.year) &&
-    String(r.month) === String(props.weekData.month) &&
-    String(r.week_number) === String(props.weekData.week_number)
-  );
-};
-
-const addLog = () => {
+const addLogLocal = () => {
   if (!newDate.value || !newTime.value) return;
 
   const workoutDate = `${newDate.value} ${newTime.value}`;
-  const workoutType = newType.value;
-  const duration = newDuration.value;
+  const tempId = 'new-' + Date.now();
   
-  // 1. Optimistic Update
-  const tempId = 'temp-' + Date.now();
-  const newLogObj = {
+  localLogs.value.unshift({
     id: tempId,
     member_id: props.memberId,
     workout_date: workoutDate,
-    workout_type: workoutType,
-    duration_minutes: duration,
-    created_at: new Date().toISOString()
-  };
+    workout_type: newType.value,
+    duration_minutes: newDuration.value,
+    isNew: true
+  });
 
-  // Backup state
-  const previousLogs = [...workoutLogs.value];
-  const previousRecords = JSON.parse(JSON.stringify(workoutRecords.value));
+  // Reset time but keep date
+  const today = new Date();
+  const pad = n => n < 10 ? '0'+n : n;
+  newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
+};
 
-  // Apply to Global Store instantly
-  workoutLogs.value.unshift(newLogObj);
-  
-  const recordIndex = getTargetRecordIndex();
-  if (recordIndex > -1) {
-    workoutRecords.value[recordIndex].count = (Number(workoutRecords.value[recordIndex].count) || 0) + 1;
-  } else {
-    workoutRecords.value.push({
-      member_id: props.memberId,
-      year: props.weekData.year,
-      month: props.weekData.month,
-      week_number: props.weekData.week_number,
-      count: 1,
-      super_pass: false,
-      note: ''
-    });
+const deleteLogLocal = (id) => {
+  const log = localLogs.value.find(l => l.id === id);
+  if (!log) return;
+
+  if (!log.isNew) {
+    deletedIds.value.push(id);
+  }
+  localLogs.value = localLogs.value.filter(l => l.id !== id);
+};
+
+const saveBatch = () => {
+  const logsToAdd = localLogs.value.filter(l => l.isNew).map(l => ({
+    workout_date: l.workout_date,
+    workout_type: l.workout_type,
+    duration_minutes: l.duration_minutes
+  }));
+  const idsToDelete = deletedIds.value;
+
+  if (logsToAdd.length === 0 && idsToDelete.length === 0) {
+    close();
+    return;
   }
 
   isProcessing.value = true;
 
-  // 2. Background API Call
   google.script.run
     .withSuccessHandler((res) => {
       isProcessing.value = false;
       if (res && res.success) {
-        // Replace temp ID with real ID in global store
-        const addedLogIndex = workoutLogs.value.findIndex(l => l.id === tempId);
-        if (addedLogIndex > -1) {
-          workoutLogs.value[addedLogIndex] = res.data;
+        // Update global store
+        // 1. Remove deleted logs
+        workoutLogs.value = workoutLogs.value.filter(l => !idsToDelete.includes(l.id));
+        // 2. Add newly created logs (from response data which has real IDs)
+        if (res.data.added) {
+          workoutLogs.value.push(...res.data.added);
         }
-        // Reset form times but keep date
-        const today = new Date();
-        const pad = n => n < 10 ? '0'+n : n;
-        newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
+        
+        // 3. Update workout record count in global store
+        const recordIndex = workoutRecords.value.findIndex(r => 
+          r.member_id === props.memberId &&
+          String(r.year) === String(props.weekData.year) &&
+          String(r.month) === String(props.weekData.month) &&
+          String(r.week_number) === String(props.weekData.week_number)
+        );
+
+        const netChange = logsToAdd.length - idsToDelete.length;
+        if (recordIndex > -1) {
+          workoutRecords.value[recordIndex].count = Math.max(0, (Number(workoutRecords.value[recordIndex].count) || 0) + netChange);
+        } else if (netChange > 0) {
+          workoutRecords.value.push({
+            member_id: props.memberId,
+            year: props.weekData.year,
+            month: props.weekData.month,
+            week_number: props.weekData.week_number,
+            count: netChange,
+            super_pass: false,
+            note: ''
+          });
+        }
+
+        close();
       } else {
-        // Rollback
-        workoutLogs.value = previousLogs;
-        workoutRecords.value = previousRecords;
         alert({ title: '오류', message: '저장에 실패했습니다: ' + (res?.message || '알 수 없는 오류'), isDanger: true });
       }
     })
     .withFailureHandler((err) => {
       isProcessing.value = false;
-      // Rollback
-      workoutLogs.value = previousLogs;
-      workoutRecords.value = previousRecords;
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
-    .apiAddWorkoutLog(props.memberId, workoutDate, workoutType, duration, props.weekData.year, props.weekData.month, props.weekData.week_number);
-};
-
-const deleteLog = async (logId) => {
-  const confirmResult = await confirm({
-    title: '기록 삭제',
-    message: '이 기록을 삭제하시겠습니까?',
-    confirmText: '삭제',
-    cancelText: '닫기',
-    isDanger: true
-  });
-  if (!confirmResult) return;
-
-  // Backup state
-  const previousLogs = [...workoutLogs.value];
-  const previousRecords = JSON.parse(JSON.stringify(workoutRecords.value));
-
-  // 1. Optimistic Update in Global Store
-  workoutLogs.value = workoutLogs.value.filter(l => l.id !== logId);
-  
-  const recordIndex = getTargetRecordIndex();
-  if (recordIndex > -1) {
-    workoutRecords.value[recordIndex].count = Math.max(0, (Number(workoutRecords.value[recordIndex].count) || 0) - 1);
-  }
-
-  isProcessing.value = true;
-
-  // 2. Background API Call
-  google.script.run
-    .withSuccessHandler((res) => {
-      isProcessing.value = false;
-      if (!res || !res.success) {
-        // Rollback
-        workoutLogs.value = previousLogs;
-        workoutRecords.value = previousRecords;
-        alert({ title: '오류', message: '삭제에 실패했습니다: ' + (res?.message || '알 수 없는 오류'), isDanger: true });
-      }
-    })
-    .withFailureHandler((err) => {
-      isProcessing.value = false;
-      // Rollback
-      workoutLogs.value = previousLogs;
-      workoutRecords.value = previousRecords;
-      alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
-    })
-    .apiDeleteWorkoutLog(logId, props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number);
+    .apiBatchSaveWorkoutLogs(props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number, logsToAdd, idsToDelete);
 };
 </script>
 
@@ -341,7 +333,7 @@ const deleteLog = async (logId) => {
 .modal-fade-enter-active, .modal-fade-leave-active {
   transition: all 0.3s ease;
 }
-.modal-fade-enter-from, .modal-fade-leave-to {
+.modal-fade-enter-from, .modal-leave-to {
   opacity: 0;
   transform: scale(0.95);
 }
