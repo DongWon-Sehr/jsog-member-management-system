@@ -5,7 +5,7 @@ const dialogType = ref('alert'); // 'alert' or 'confirm'
 const title = ref('');
 const message = ref('');
 const confirmText = ref('확인');
-const cancelText = ref('취소');
+const cancelText = ref('닫기');
 const isDanger = ref(false);
 
 let resolvePromise = null;
@@ -16,7 +16,7 @@ export function useDialog() {
     message.value = options.message || '';
     dialogType.value = options.type || 'alert';
     confirmText.value = options.confirmText || '확인';
-    cancelText.value = options.cancelText || '취소';
+    cancelText.value = options.cancelText || '닫기';
     isDanger.value = options.isDanger || false;
     isOpen.value = true;
 

@@ -10,9 +10,6 @@
             <i :class="isEditMode ? 'ph-bold ph-pencil-simple' : 'ph-bold ph-user-plus'" class="text-indigo-600"></i>
             {{ isEditMode ? '회원 정보 수정' : '신규 회원 등록' }}
           </h3>
-          <button @click="close" class="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600 shadow-sm">
-            <i class="ph-bold ph-x text-lg"></i>
-          </button>
         </div>
 
         <!-- Body -->
@@ -69,7 +66,7 @@
 
         <!-- Footer -->
         <div class="px-6 py-6 bg-gray-50/50 flex gap-3">
-          <button @click="close" class="flex-1 py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black shadow-sm hover:bg-gray-100 transition-all active:scale-95 text-sm sm:text-base">취소</button>
+          <button @click="close" class="flex-1 py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black shadow-sm hover:bg-gray-100 transition-all active:scale-95 text-sm sm:text-base">닫기</button>
           <button @click="save" class="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 text-sm sm:text-base">저장하기</button>
         </div>
       </div>

@@ -25,9 +25,6 @@
             </p>
           </div>
         </div>
-        <button @click="close" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
-          <i class="ph-bold ph-x text-xl"></i>
-        </button>
       </div>
 
       <!-- Main Body -->
@@ -105,7 +102,7 @@
 
       <!-- Footer -->
       <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-        <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-all disabled:opacity-50 text-sm">
+        <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
           닫기
         </button>
       </div>

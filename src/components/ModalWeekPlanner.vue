@@ -30,9 +30,6 @@
                 </button>
               </div>
             </div>
-            <button @click="close" class="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600 shadow-sm">
-              <i class="ph-bold ph-x text-lg"></i>
-            </button>
           </div>
 
           <!-- Body / Matrix -->
@@ -116,10 +113,9 @@
 
           <!-- Footer -->
           <div class="px-6 py-5 border-t border-gray-50 bg-white rounded-b-3xl flex justify-end gap-3 shrink-0">
-            <button @click="close" class="px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-black shadow-sm hover:bg-gray-50 transition-all active:scale-95">취소</button>
+            <button @click="close" class="px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-black shadow-sm hover:bg-gray-50 transition-all active:scale-95">닫기</button>
             <button @click="saveBatch" :disabled="isSaving" class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               <i v-if="isSaving" class="ph-bold ph-spinner animate-spin"></i>
-              <i v-else class="ph-bold ph-floppy-disk"></i>
               {{ isSaving ? '저장 중...' : '일괄 저장하기' }}
             </button>
           </div>

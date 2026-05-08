@@ -22,7 +22,7 @@
             <button 
               v-if="dialogType === 'confirm'" 
               @click="handleCancel" 
-              class="flex-1 py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold rounded-xl transition-all active:scale-95"
+              class="flex-1 py-3 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold rounded-xl transition-all active:scale-95"
             >
               {{ cancelText }}
             </button>
