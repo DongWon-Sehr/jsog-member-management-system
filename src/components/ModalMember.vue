@@ -2,7 +2,7 @@
   <Teleport to="body">
     <transition name="modal">
       <!-- backdrop z-index increased and explicit inset-0 to avoid gap -->
-      <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-y-auto flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 sm:p-0" @click.self="close">
+      <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-y-auto flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 sm:p-0">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md transform transition-all overflow-hidden border border-gray-100">
           <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between bg-indigo-50/30">
@@ -75,7 +75,7 @@
     </Teleport>
     </template>
 <script setup>
-import { ref, reactive, watch } from 'vue';
+import { ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import { useDialog } from '../composables/useDialog';
 
 const props = defineProps({
@@ -93,6 +93,13 @@ const form = reactive({
   email: '',
   enabled: true
 });
+
+const handleEsc = (e) => {
+  if (e.key === 'Escape' && props.isOpen) close();
+};
+
+onMounted(() => window.addEventListener('keydown', handleEsc));
+onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
 watch(() => props.memberData, (newVal) => {
   if (newVal) {

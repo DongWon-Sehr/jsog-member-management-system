@@ -1,118 +1,122 @@
 <template>
-  <div v-if="isOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm transition-all duration-300">
-    <!-- Dim Overlay -->
-    <div class="absolute inset-0 bg-gray-900/60 transition-opacity duration-300" @click="close"></div>
+  <Teleport to="body">
+    <transition name="modal-fade">
+      <div v-if="isOpen" class="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6 backdrop-blur-sm transition-all duration-300">
+        <!-- Dim Overlay -->
+        <div class="absolute inset-0 bg-gray-900/60 transition-opacity duration-300"></div>
 
-    <!-- Modal Content -->
-    <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
-      
-      <!-- Processing Overlay (Dimming during save/delete) -->
-      <div v-if="isProcessing" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-3xl">
-        <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-5xl mb-4"></i>
-        <span class="text-indigo-800 font-bold">처리 중...</span>
-      </div>
-
-      <!-- Header -->
-      <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
-        <div class="flex items-center gap-3">
-          <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
-            <i class="ph-fill ph-notebook text-xl"></i>
+        <!-- Modal Content -->
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
+          
+          <!-- Processing Overlay (Dimming during save/delete) -->
+          <div v-if="isProcessing" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-3xl">
+            <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-5xl mb-4"></i>
+            <span class="text-indigo-800 font-bold">처리 중...</span>
           </div>
-          <div>
-            <h3 class="text-xl font-bold text-gray-900">{{ memberName }} 님의 운동 기록</h3>
-            <p class="text-sm font-medium text-gray-500">
-              {{ weekData?.month }}월 {{ weekData?.week_number }}주차 ({{ weekData?.start_date }} ~ {{ weekData?.end_date }})
-            </p>
-          </div>
-        </div>
-      </div>
 
-      <!-- Main Body -->
-      <div class="flex-1 overflow-y-auto p-6 bg-white space-y-6">
-        
-        <!-- Add New Log Form -->
-        <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-          <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <i class="ph-bold ph-plus-circle text-indigo-500"></i>
-            새 운동 기록 추가
-          </h4>
-          <form @submit.prevent="addLog" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div class="flex flex-col">
-              <label class="text-xs font-bold text-gray-500 mb-1">날짜</label>
-              <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-            </div>
-            <div class="flex flex-col">
-              <label class="text-xs font-bold text-gray-500 mb-1">시간</label>
-              <input v-model="newTime" type="time" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-            </div>
-            <div class="flex flex-col">
-              <label class="text-xs font-bold text-gray-500 mb-1">운동 종류</label>
-              <input v-model="newType" type="text" required placeholder="예: 런닝, 필라테스" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-            </div>
-            <div class="flex flex-col">
-              <label class="text-xs font-bold text-gray-500 mb-1">시간(분)</label>
-              <div class="flex items-center gap-2">
-                <input v-model="newDuration" type="number" min="1" required class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-                <button type="submit" :disabled="isProcessing" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex-shrink-0">
-                  <i class="ph-bold ph-plus"></i>
-                </button>
+          <!-- Header -->
+          <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
+                <i class="ph-fill ph-notebook text-xl"></i>
+              </div>
+              <div>
+                <h3 class="text-xl font-bold text-gray-900">{{ memberName }} 님의 운동 기록</h3>
+                <p class="text-sm font-medium text-gray-500">
+                  {{ weekData?.month }}월 {{ weekData?.week_number }}주차 ({{ weekData?.start_date }} ~ {{ weekData?.end_date }})
+                </p>
               </div>
             </div>
-          </form>
-        </div>
-
-        <!-- Existing Logs List -->
-        <div>
-          <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-            <i class="ph-bold ph-list-dashes text-gray-400"></i>
-            등록된 기록
-          </h4>
-          
-          <div v-if="filteredLogs.length === 0" class="py-8 flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-2xl border border-gray-100 border-dashed">
-            <i class="ph-fill ph-empty text-gray-300 text-4xl mb-2"></i>
-            <p class="text-sm font-bold text-gray-500">이번 주 기록이 없습니다.</p>
           </div>
 
-          <div v-else class="space-y-2">
-            <div v-for="log in filteredLogs" :key="log.id" class="flex items-center justify-between p-3 sm:px-4 bg-white border border-gray-100 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all group">
-              <div class="flex items-center gap-4">
-                <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                  <i v-if="log.workout_type === '런닝'" class="ph-fill ph-person-simple-run text-xl"></i>
-                  <i v-else-if="log.workout_type === '걷기'" class="ph-fill ph-person-simple-walk text-xl"></i>
-                  <i v-else-if="log.workout_type === '수영'" class="ph-fill ph-swimmer text-xl"></i>
-                  <i v-else class="ph-fill ph-barbell text-xl"></i>
+          <!-- Main Body -->
+          <div class="flex-1 overflow-y-auto p-6 bg-white space-y-6">
+            
+            <!-- Add New Log Form -->
+            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <i class="ph-bold ph-plus-circle text-indigo-500"></i>
+                새 운동 기록 추가
+              </h4>
+              <form @submit.prevent="addLog" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div class="flex flex-col">
+                  <label class="text-xs font-bold text-gray-500 mb-1">날짜</label>
+                  <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
                 </div>
                 <div class="flex flex-col">
-                  <span class="text-sm font-bold text-gray-900">{{ log.workout_date }}</span>
-                  <div class="flex items-center gap-2 text-xs font-medium text-gray-500">
-                    <span>{{ log.workout_type }}</span>
-                    <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-                    <span>{{ log.duration_minutes }}분</span>
+                  <label class="text-xs font-bold text-gray-500 mb-1">시간</label>
+                  <input v-model="newTime" type="time" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                </div>
+                <div class="flex flex-col">
+                  <label class="text-xs font-bold text-gray-500 mb-1">운동 종류</label>
+                  <input v-model="newType" type="text" required placeholder="예: 런닝, 필라테스" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                </div>
+                <div class="flex flex-col">
+                  <label class="text-xs font-bold text-gray-500 mb-1">시간(분)</label>
+                  <div class="flex items-center gap-2">
+                    <input v-model="newDuration" type="number" min="1" required class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                    <button type="submit" :disabled="isProcessing" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all disabled:opacity-50 flex-shrink-0">
+                      <i class="ph-bold ph-plus"></i>
+                    </button>
                   </div>
                 </div>
-              </div>
-              <button @click="deleteLog(log.id)" :disabled="isProcessing" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50">
-                <i class="ph-bold ph-trash"></i>
-              </button>
+              </form>
             </div>
+
+            <!-- Existing Logs List -->
+            <div>
+              <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                <i class="ph-bold ph-list-dashes text-gray-400"></i>
+                등록된 기록
+              </h4>
+              
+              <div v-if="filteredLogs.length === 0" class="py-8 flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-2xl border border-gray-100 border-dashed">
+                <i class="ph-fill ph-empty text-gray-300 text-4xl mb-2"></i>
+                <p class="text-sm font-bold text-gray-500">이번 주 기록이 없습니다.</p>
+              </div>
+
+              <div v-else class="space-y-2">
+                <div v-for="log in filteredLogs" :key="log.id" class="flex items-center justify-between p-3 sm:px-4 bg-white border border-gray-100 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all group">
+                  <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                      <i v-if="log.workout_type === '런닝'" class="ph-fill ph-person-simple-run text-xl"></i>
+                      <i v-else-if="log.workout_type === '걷기'" class="ph-fill ph-person-simple-walk text-xl"></i>
+                      <i v-else-if="log.workout_type === '수영'" class="ph-fill ph-swimmer text-xl"></i>
+                      <i v-else class="ph-fill ph-barbell text-xl"></i>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-sm font-bold text-gray-900">{{ log.workout_date }}</span>
+                      <div class="flex items-center gap-2 text-xs font-medium text-gray-500">
+                        <span>{{ log.workout_type }}</span>
+                        <span class="w-1 h-1 rounded-full bg-gray-300"></span>
+                        <span>{{ log.duration_minutes }}분</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button @click="deleteLog(log.id)" :disabled="isProcessing" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50">
+                    <i class="ph-bold ph-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
           </div>
+
+          <!-- Footer -->
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+            <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
+              닫기
+            </button>
+          </div>
+
         </div>
-
       </div>
-
-      <!-- Footer -->
-      <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end">
-        <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
-          닫기
-        </button>
-      </div>
-
-    </div>
-  </div>
+    </transition>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
 
@@ -137,6 +141,13 @@ const newDuration = ref(30);
 
 const memberName = computed(() => memberMap.value[props.memberId]?.name || '회원');
 
+const handleEsc = (e) => {
+  if (e.key === 'Escape' && props.isOpen && !isProcessing.value) close();
+};
+
+onMounted(() => window.addEventListener('keydown', handleEsc));
+onUnmounted(() => window.removeEventListener('keydown', handleEsc));
+
 // Filter logs by member AND the selected week's date range in memory
 const filteredLogs = computed(() => {
   if (!props.weekData || !props.memberId) return [];
@@ -157,9 +168,8 @@ const filteredLogs = computed(() => {
     .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date)); // Descending
 });
 
-onMounted(() => {
-  if (props.isOpen) {
-    // Set default date to today, or start_date if today is outside the week
+const setDefaultValues = () => {
+  if (props.isOpen && props.weekData) {
     const today = new Date();
     const start = new Date(props.weekData.start_date);
     const end = new Date(props.weekData.end_date);
@@ -173,6 +183,11 @@ onMounted(() => {
     newDate.value = `${targetDate.getFullYear()}-${pad(targetDate.getMonth()+1)}-${pad(targetDate.getDate())}`;
     newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
   }
+};
+
+onMounted(setDefaultValues);
+watch(() => props.isOpen, (newVal) => {
+  if (newVal) setDefaultValues();
 });
 
 const close = () => {
@@ -242,7 +257,9 @@ const addLog = () => {
           workoutLogs.value[addedLogIndex] = res.data;
         }
         // Reset form times but keep date
-        newTime.value = '';
+        const today = new Date();
+        const pad = n => n < 10 ? '0'+n : n;
+        newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
       } else {
         // Rollback
         workoutLogs.value = previousLogs;
@@ -265,7 +282,7 @@ const deleteLog = async (logId) => {
     title: '기록 삭제',
     message: '이 기록을 삭제하시겠습니까?',
     confirmText: '삭제',
-    cancelText: '취소',
+    cancelText: '닫기',
     isDanger: true
   });
   if (!confirmResult) return;
@@ -305,3 +322,13 @@ const deleteLog = async (logId) => {
     .apiDeleteWorkoutLog(logId, props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number);
 };
 </script>
+
+<style scoped>
+.modal-fade-enter-active, .modal-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.modal-fade-enter-from, .modal-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+</style>

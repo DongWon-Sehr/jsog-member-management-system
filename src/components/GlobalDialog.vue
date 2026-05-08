@@ -3,7 +3,7 @@
     <transition name="dialog-fade">
       <div v-if="isOpen" class="fixed inset-0 z-[200] flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-200">
         <!-- Dim overlay -->
-        <div class="absolute inset-0 bg-gray-900/40" @click="dialogType === 'alert' ? handleConfirm() : handleCancel()"></div>
+        <div class="absolute inset-0 bg-gray-900/40"></div>
         
         <!-- Dialog box -->
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all duration-200 scale-100 opacity-100 flex flex-col">
@@ -41,8 +41,22 @@
 </template>
 
 <script setup>
+import { onMounted, onUnmounted } from 'vue';
 import { useDialog } from '../composables/useDialog';
 const { isOpen, dialogType, title, message, confirmText, cancelText, isDanger, handleConfirm, handleCancel } = useDialog();
+
+const handleEsc = (e) => {
+  if (e.key === 'Escape' && isOpen.value) {
+    if (dialogType.value === 'alert') {
+      handleConfirm();
+    } else {
+      handleCancel();
+    }
+  }
+};
+
+onMounted(() => window.addEventListener('keydown', handleEsc));
+onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 </script>
 
 <style scoped>

@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <transition name="modal">
-      <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 sm:p-0" @click.self="!isSaving && close()">
+      <div v-if="isOpen" class="fixed inset-0 z-[100] overflow-hidden flex items-center justify-center backdrop-blur-sm bg-black/40 p-4 sm:p-0">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col transform transition-all border border-gray-100 relative">
           
           <!-- Saving Overlay -->
@@ -127,7 +127,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
 
@@ -140,6 +140,13 @@ const { weeks } = useStore();
 const { alert } = useDialog();
 
 const isSaving = ref(false);
+
+const handleEsc = (e) => {
+  if (e.key === 'Escape' && props.isOpen && !isSaving.value) close();
+};
+
+onMounted(() => window.addEventListener('keydown', handleEsc));
+onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
 // Year Selection setup
 const currentYear = new Date().getFullYear();
