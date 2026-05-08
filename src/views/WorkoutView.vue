@@ -1,9 +1,15 @@
 <template>
-  <div class="space-y-6 pb-20">
+  <div class="space-y-6 pb-6">
     <!-- Header Section -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
       <div class="flex flex-col">
         <h2 class="text-2xl font-bold text-gray-800">운동 기록</h2>
+        <div v-if="currentWeekData" class="mt-1">
+          <p class="text-lg font-bold text-indigo-600 leading-tight">{{ currentWeekData.year }}</p>
+          <p class="text-sm font-medium text-gray-500">
+            {{ formatMdDate(currentWeekData.start_date) }} ~ {{ formatMdDate(currentWeekData.end_date) }}
+          </p>
+        </div>
       </div>
       
       <div class="flex items-center gap-3">
@@ -22,19 +28,19 @@
 
         <!-- Week Selector (Filtered by Year & Non-Rest Weeks) -->
         <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
-          <button @click="navigateWeek(-1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 주차">
+          <button @click="navigateWeek('prev')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 주차 (과거)">
             <i class="ph-bold ph-caret-left"></i>
           </button>
           <select 
-            v-model="selectedStartDate"
+            v-model="selectedWeekId"
             class="bg-transparent text-gray-700 font-bold outline-none cursor-pointer text-center appearance-none px-4 text-sm min-w-[120px]"
           >
             <option value="">-- 주차 선택 --</option>
-            <option v-for="week in filteredWeeks" :key="week.start_date" :value="week.start_date">
+            <option v-for="week in filteredWeeks" :key="week.id" :value="week.id">
               {{ week.month }}월 {{ week.week_number }}주차
             </option>
           </select>
-          <button @click="navigateWeek(1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 주차">
+          <button @click="navigateWeek('next')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 주차 (미래)">
             <i class="ph-bold ph-caret-right"></i>
           </button>
         </div>
@@ -60,34 +66,25 @@
         <div class="col-span-3 text-center">운동 횟수</div>
         <div class="col-span-2 text-center">슈퍼패스</div>
         <div class="col-span-2 text-center">환급 여부</div>
-        <div class="col-span-3">비고 (사유)</div>
+        <div class="col-span-3">메모</div>
       </div>
 
       <!-- Member List -->
-      <div v-if="isLoadingRecords" class="flex justify-center p-12">
-        <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-4xl"></i>
-      </div>
-      
-      <div v-else class="space-y-3">
+      <div class="space-y-3">
         <div v-for="record in memberRecords" :key="record.memberId" 
-             class="bg-white p-4 sm:px-6 sm:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all flex flex-col lg:grid lg:grid-cols-12 lg:items-center gap-4">
+             @click="openLogModal(record.memberId)"
+             class="bg-white p-4 sm:px-6 sm:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all flex flex-col lg:grid lg:grid-cols-12 lg:items-center gap-4 cursor-pointer hover:shadow-md">
           
           <!-- Name -->
           <div class="col-span-2 flex items-center gap-3">
             <span class="font-bold text-gray-900 text-lg">{{ record.name }}</span>
           </div>
 
-          <!-- Counter -->
+          <!-- Counter (Read-only) -->
           <div class="col-span-3 flex items-center lg:justify-center gap-1">
             <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20">운동 횟수</span>
-            <div class="flex items-center bg-gray-50 rounded-xl p-1 shadow-inner border border-gray-100">
-              <button @click="record.count > 0 ? record.count-- : null" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-gray-500 hover:text-indigo-600 shadow-sm active:scale-95 transition-all">
-                <i class="ph-bold ph-minus"></i>
-              </button>
-              <div class="w-12 text-center font-black text-lg text-gray-800">{{ record.count }}</div>
-              <button @click="record.count++" class="w-8 h-8 flex items-center justify-center rounded-lg bg-white text-gray-500 hover:text-indigo-600 shadow-sm active:scale-95 transition-all">
-                <i class="ph-bold ph-plus"></i>
-              </button>
+            <div class="flex items-center bg-gray-50 rounded-xl p-2 px-4 shadow-inner border border-gray-100">
+              <div class="text-center font-black text-lg text-gray-800">{{ record.count }}회</div>
             </div>
           </div>
 
@@ -95,7 +92,7 @@
           <div class="col-span-2 flex items-center lg:justify-center gap-4">
             <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20">슈퍼패스</span>
             <button 
-              @click="record.superPass = !record.superPass"
+              @click.stop="toggleSuperPass(record)"
               class="relative block h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none shadow-inner"
               :class="record.superPass ? 'bg-indigo-600' : 'bg-gray-200'"
             >
@@ -118,33 +115,13 @@
             </span>
           </div>
 
-          <!-- Note -->
+          <!-- Note (Read-only preview) -->
           <div class="col-span-3 flex items-center gap-4">
-            <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20 shrink-0">비고 (사유)</span>
-            <input 
-              v-model="record.note" 
-              type="text" 
-              placeholder="부상, 기타 사유 등" 
-              class="w-full bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl px-4 py-2 outline-none text-sm font-medium text-gray-700 transition-all"
-            />
+            <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20 shrink-0">메모</span>
+            <span class="text-sm font-medium text-gray-600 truncate">{{ record.note || '-' }}</span>
           </div>
 
         </div>
-      </div>
-    </div>
-
-    <!-- Fixed Bottom Save Action -->
-    <div v-if="currentWeekData" class="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-md border-t border-gray-100 p-4 sm:p-6 z-40 flex justify-center sm:justify-end shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
-      <div class="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 flex justify-end">
-        <button 
-          @click="saveBatchRecords" 
-          :disabled="isSaving" 
-          class="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black shadow-xl shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-lg"
-        >
-          <i v-if="isSaving" class="ph-bold ph-spinner animate-spin"></i>
-          <i v-else class="ph-bold ph-check-circle"></i>
-          {{ isSaving ? '저장 중...' : '기록 일괄 저장하기' }}
-        </button>
       </div>
     </div>
 
@@ -153,28 +130,60 @@
       :is-open="isPlannerOpen" 
       @close="isPlannerOpen = false" 
     />
+
+    <!-- Workout Log Modal -->
+    <ModalWorkoutLog 
+      v-if="isLogModalOpen"
+      :is-open="isLogModalOpen"
+      :member-id="selectedMemberId"
+      :week-data="currentWeekData"
+      @close="isLogModalOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
+import { useDialog } from '../composables/useDialog';
 import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
+import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
 
-const { weeks, activeMembers } = useStore();
+const { weeks, activeMembers, workoutRecords } = useStore();
+const { confirm, alert } = useDialog();
 const isPlannerOpen = ref(false);
 
 const selectedYear = ref(new Date().getFullYear());
-const selectedStartDate = ref('');
-const memberRecords = ref([]);
-const isLoadingRecords = ref(false);
-const isSaving = ref(false);
+const selectedWeekId = ref('');
+let isNavigating = false; // Flag to prevent watcher interference
+
+// Log Modal state
+const isLogModalOpen = ref(false);
+const selectedMemberId = ref(null);
 
 // Filter non-rest weeks and sort
 const validWeeks = computed(() => {
   return weeks.value
     .filter(w => Number(w.week_number) !== 0)
-    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+    .sort((a, b) => {
+      if (Number(b.year) !== Number(a.year)) return Number(b.year) - Number(a.year);
+      if (Number(b.month) !== Number(a.month)) return Number(b.month) - Number(a.month);
+      return Number(b.week_number) - Number(a.week_number);
+    });
+});
+
+const isPrevWeekDisabled = computed(() => {
+  if (!selectedWeekId.value) return true;
+  const list = validWeeks.value;
+  const currentIndex = list.findIndex(w => w.id === selectedWeekId.value);
+  return currentIndex === -1 || currentIndex === list.length - 1;
+});
+
+const isNextWeekDisabled = computed(() => {
+  if (!selectedWeekId.value) return true;
+  const list = validWeeks.value;
+  const currentIndex = list.findIndex(w => w.id === selectedWeekId.value);
+  return currentIndex <= 0;
 });
 
 // Year Navigation Logic
@@ -199,24 +208,137 @@ const filteredWeeks = computed(() => {
 });
 
 // Week Navigation Logic (Supports Year Crossing)
-const navigateWeek = (direction) => {
+const navigateWeek = async (directionStr) => {
   const list = validWeeks.value; // Use the global valid list for seamless transition
-  const currentIndex = list.findIndex(w => w.start_date === selectedStartDate.value);
+  const currentIndex = list.findIndex(w => w.id === selectedWeekId.value);
   
-  // list is desc sorted (newest to oldest), so direction 1 (next/newer) means currentIndex - 1
-  let nextIndex = currentIndex - direction; 
+  if (currentIndex === -1) {
+    if (list.length > 0) {
+      selectedYear.value = Number(list[0].year);
+      await nextTick();
+      selectedWeekId.value = list[0].id;
+    }
+    return;
+  }
+  
+  // list is desc sorted (newest to oldest)
+  // 'prev' (Left/Past): go to older (higher index)
+  // 'next' (Right/Future): go to newer (lower index)
+  let nextIndex = currentIndex;
+  if (directionStr === 'prev') {
+    nextIndex = currentIndex + 1;
+  } else if (directionStr === 'next') {
+    nextIndex = currentIndex - 1;
+  }
   
   if (nextIndex >= 0 && nextIndex < list.length) {
+    isNavigating = true;
     const targetWeek = list[nextIndex];
-    selectedYear.value = Number(targetWeek.year); // Sync Year Selector
-    selectedStartDate.value = targetWeek.start_date;
+    
+    if (selectedYear.value !== Number(targetWeek.year)) {
+      selectedYear.value = Number(targetWeek.year); // Sync Year Selector
+      await nextTick(); // Wait for filteredWeeks and DOM to update options
+    }
+    
+    selectedWeekId.value = targetWeek.id;
+    await nextTick();
+    isNavigating = false;
   }
 };
 
 const currentWeekData = computed(() => {
-  if (!selectedStartDate.value) return null;
-  return weeks.value.find(w => w.start_date === selectedStartDate.value) || null;
+  if (!selectedWeekId.value) return null;
+  return weeks.value.find(w => w.id === selectedWeekId.value) || null;
 });
+
+// Calculate Member Records on the fly using store data
+const memberRecords = computed(() => {
+  const weekData = currentWeekData.value;
+  if (!weekData) return [];
+
+  // Filter records for the selected week
+  const dbRecords = workoutRecords.value.filter(r => 
+    String(r.year) === String(weekData.year) &&
+    String(r.month) === String(weekData.month) &&
+    String(r.week_number) === String(weekData.week_number)
+  );
+  
+  return activeMembers.value.map(member => {
+    const existing = dbRecords.find(r => r.member_id === member.id);
+    return {
+      memberId: member.id,
+      name: member.name,
+      count: existing ? Number(existing.count) : 0,
+      superPass: existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false,
+      note: existing ? existing.note : ''
+    };
+  });
+});
+
+const toggleSuperPass = async (record) => {
+  const confirmResult = await confirm({
+    title: '슈퍼패스 상태 변경',
+    message: record.superPass ? '슈퍼패스 사용을 취소하시겠습니까?' : '슈퍼패스를 사용 처리하시겠습니까?',
+    confirmText: '변경',
+    cancelText: '취소'
+  });
+  if (!confirmResult) return;
+
+  const newValue = !record.superPass;
+  const weekData = currentWeekData.value;
+  
+  // Optimistic update in global store
+  const dbRecordIndex = workoutRecords.value.findIndex(r => 
+    r.member_id === record.memberId &&
+    String(r.year) === String(weekData.year) &&
+    String(r.month) === String(weekData.month) &&
+    String(r.week_number) === String(weekData.week_number)
+  );
+
+  const prevRecords = JSON.parse(JSON.stringify(workoutRecords.value));
+
+  if (dbRecordIndex > -1) {
+    workoutRecords.value[dbRecordIndex].super_pass = newValue;
+  } else {
+    workoutRecords.value.push({
+      member_id: record.memberId,
+      year: weekData.year,
+      month: weekData.month,
+      week_number: weekData.week_number,
+      count: 0,
+      super_pass: newValue,
+      note: ''
+    });
+  }
+
+  const actualDbRecord = workoutRecords.value.find(r => 
+    r.member_id === record.memberId &&
+    String(r.year) === String(weekData.year) &&
+    String(r.month) === String(weekData.month) &&
+    String(r.week_number) === String(weekData.week_number)
+  );
+
+  google.script.run
+    .withSuccessHandler((res) => {
+      if (!res || !res.success) {
+        workoutRecords.value = prevRecords;
+        alert({ title: '오류', message: '저장에 실패했습니다.', isDanger: true });
+      }
+    })
+    .withFailureHandler(() => {
+      workoutRecords.value = prevRecords;
+      alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
+    })
+    .apiUpdateWorkoutCount(
+      record.memberId, 
+      weekData.year, 
+      weekData.month, 
+      weekData.week_number, 
+      actualDbRecord.count, 
+      newValue, 
+      actualDbRecord.note
+    );
+};
 
 // Initial Selection
 onMounted(() => {
@@ -234,54 +356,23 @@ onMounted(() => {
 
   if (currentWeek) {
     selectedYear.value = Number(currentWeek.year);
-    selectedStartDate.value = currentWeek.start_date;
+    selectedWeekId.value = currentWeek.id;
   } else if (validWeeks.value.length > 0) {
     selectedYear.value = Number(validWeeks.value[0].year);
-    selectedStartDate.value = validWeeks.value[0].start_date;
+    selectedWeekId.value = validWeeks.value[0].id;
   }
 });
 
 // Auto-select first week when year changes if current selection is invalid
 watch(() => selectedYear.value, (newYear) => {
-  if (selectedStartDate.value) {
-    const exists = filteredWeeks.value.find(w => w.start_date === selectedStartDate.value);
+  if (isNavigating) return; // Skip auto-selection if we are navigating via arrows
+  if (selectedWeekId.value) {
+    const exists = filteredWeeks.value.find(w => w.id === selectedWeekId.value);
     if (!exists && filteredWeeks.value.length > 0) {
-      selectedStartDate.value = filteredWeeks.value[0].start_date;
+      selectedWeekId.value = filteredWeeks.value[0].id;
     }
   }
 });
-
-// Fetch records logic
-watch(() => selectedStartDate.value, (newStartStr) => {
-  const weekData = currentWeekData.value;
-  if (!weekData) {
-    memberRecords.value = [];
-    return;
-  }
-
-  isLoadingRecords.value = true;
-  google.script.run
-    .withSuccessHandler((res) => {
-      isLoadingRecords.value = false;
-      const dbRecords = res && res.success ? res.data : [];
-      
-      memberRecords.value = activeMembers.value.map(member => {
-        const existing = dbRecords.find(r => r.member_id === member.id);
-        return {
-          memberId: member.id,
-          name: member.name,
-          count: existing ? Number(existing.count) : 0,
-          superPass: existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false,
-          note: existing ? existing.note : ''
-        };
-      });
-    })
-    .withFailureHandler(() => {
-      isLoadingRecords.value = false;
-      alert('기록을 불러오는데 실패했습니다.');
-    })
-    .apiGetRecordsByWeek(weekData.year, weekData.month, weekData.week_number);
-}, { immediate: true });
 
 const getRefundStatus = (record) => {
   if (record.count >= 3 || (record.count >= 1 && record.superPass)) {
@@ -290,30 +381,15 @@ const getRefundStatus = (record) => {
   return { text: '환급 불가', icon: 'ph-fill ph-x-circle', class: 'bg-red-50 text-red-500 border border-red-100' };
 };
 
-const saveBatchRecords = () => {
-  if (!currentWeekData.value) return;
-  isSaving.value = true;
+const openLogModal = (memberId) => {
+  selectedMemberId.value = memberId;
+  isLogModalOpen.value = true;
+};
 
-  const payload = memberRecords.value.map(record => ({
-    memberId: record.memberId,
-    year: currentWeekData.value.year,
-    month: currentWeekData.value.month,
-    weekNumber: currentWeekData.value.week_number,
-    count: record.count,
-    superPass: record.superPass,
-    note: record.note
-  }));
-
-  google.script.run
-    .withSuccessHandler((res) => {
-      isSaving.value = false;
-      if (res && res.success) alert('성공적으로 일괄 저장되었습니다.');
-      else alert('저장 중 오류가 발생했습니다.');
-    })
-    .withFailureHandler((err) => {
-      isSaving.value = false;
-      alert('서버 오류가 발생했습니다.');
-    })
-    .apiBatchUpdateWorkoutCounts(payload);
+const formatMdDate = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 };
 </script>

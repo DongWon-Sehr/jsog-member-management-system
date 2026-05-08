@@ -156,6 +156,10 @@ function apiBatchSaveWeeks(weeksArray) {
 // Workout API (Weekly Records)
 // ==========================================
 
+function apiGetAllWorkoutRecords() {
+  return _executeApi('apiGetAllWorkoutRecords', () => WorkoutService.getAllRecords());
+}
+
 function apiGetRecordsByWeek(year, month, weekNumber) {
   return _executeApi('apiGetRecordsByWeek', () => WorkoutService.getRecordsByWeek(year, month, weekNumber), { year, month, weekNumber });
 }
@@ -176,8 +180,12 @@ function apiGetLogsByMember(memberId) {
   return _executeApi('apiGetLogsByMember', () => WorkoutLogService.getLogsByMember(memberId), { memberId });
 }
 
-function apiAddWorkoutLog(memberId, workoutDate, workoutType, durationMinutes) {
-  return _executeApi('apiAddWorkoutLog', () => WorkoutLogService.addWorkoutLog(memberId, workoutDate, workoutType, durationMinutes), { memberId, workoutDate, workoutType, durationMinutes });
+function apiAddWorkoutLog(memberId, workoutDate, workoutType, durationMinutes, year, month, weekNumber) {
+  return _executeApi('apiAddWorkoutLog', () => WorkoutLogService.addWorkoutLog(memberId, workoutDate, workoutType, durationMinutes, year, month, weekNumber), { memberId, workoutDate, workoutType, durationMinutes, year, month, weekNumber });
+}
+
+function apiDeleteWorkoutLog(logId, memberId, year, month, weekNumber) {
+  return _executeApi('apiDeleteWorkoutLog', () => WorkoutLogService.deleteWorkoutLog(logId, memberId, year, month, weekNumber), { logId, memberId, year, month, weekNumber });
 }
 
 // ==========================================

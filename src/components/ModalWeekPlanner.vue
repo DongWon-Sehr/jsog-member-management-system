@@ -36,20 +36,22 @@
           </div>
 
           <!-- Body / Matrix -->
-          <div class="flex-1 overflow-y-auto p-6 bg-gray-50/50">
-            <!-- Table Header -->
-            <div class="hidden sm:grid grid-cols-12 gap-4 px-4 py-3 bg-gray-100 rounded-xl mb-3 text-xs font-black text-gray-500 uppercase tracking-widest shadow-inner">
-              <div class="col-span-4">기간 (월 ~ 일)</div>
-              <div class="col-span-2 text-center">휴식 여부</div>
-              <div class="col-span-2 text-center">기준 연도</div>
-              <div class="col-span-2 text-center">지정 월</div>
-              <div class="col-span-2 text-center">지정 주차</div>
+          <div class="flex-1 overflow-y-auto bg-gray-50/50 relative">
+            <!-- Table Header (Sticky Wrapper) -->
+            <div class="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3">
+              <div class="hidden sm:grid grid-cols-12 gap-4 px-4 py-3 bg-gray-100 rounded-xl text-xs font-black text-gray-500 uppercase tracking-widest shadow-sm border border-gray-200">
+                <div class="col-span-4">기간 (월 ~ 일)</div>
+                <div class="col-span-2 text-center">휴식 여부</div>
+                <div class="col-span-2 text-center">기준 연도</div>
+                <div class="col-span-2 text-center">지정 월</div>
+                <div class="col-span-2 text-center">지정 주차</div>
+              </div>
             </div>
 
             <!-- Matrix Rows -->
-            <div class="space-y-3">
+            <div class="px-6 pb-6 space-y-3">
               <div v-for="(row, index) in plannerMatrix" :key="row.start_date" 
-                   class="bg-white p-4 sm:px-4 sm:py-3 rounded-2xl border border-gray-100 shadow-sm transition-all hover:border-indigo-200"
+                   class="bg-white p-4 sm:px-4 sm:py-3 rounded-2xl border border-gray-100 shadow-sm transition-all hover:border-indigo-200 relative z-0"
                    :class="{ 'opacity-70 bg-gray-50': row.isRestWeek }">
                 
                 <div class="flex flex-col sm:grid sm:grid-cols-12 sm:items-center gap-4 sm:gap-4">
@@ -131,6 +133,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { useStore } from '../composables/useStore';
+import { useDialog } from '../composables/useDialog';
 
 const props = defineProps({
   isOpen: Boolean
@@ -138,6 +141,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 const { weeks } = useStore();
+const { alert } = useDialog();
 
 const isSaving = ref(false);
 
@@ -289,13 +293,13 @@ const saveBatch = () => {
           }
         }).apiGetAllWeeks();
       } else {
-        alert('저장 중 오류가 발생했습니다.');
+        alert({ title: '오류', message: '저장 중 오류가 발생했습니다.', isDanger: true });
       }
     })
     .withFailureHandler((err) => {
       isSaving.value = false;
       console.error(err);
-      alert('서버 오류가 발생했습니다.');
+      alert({ title: '오류', message: '서버 오류가 발생했습니다.', isDanger: true });
     })
     .apiBatchSaveWeeks(payload);
 };

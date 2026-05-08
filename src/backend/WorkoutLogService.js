@@ -13,14 +13,17 @@ const WorkoutLogService = {
   },
 
   /**
-   * Adds a new detailed workout log
+   * Adds a new detailed workout log and syncs the weekly count
    * 
    * @param {string} memberId - The UUID of the member
-   * @param {string} workoutDate - Date and time of the workout (e.g., 'YYYY-MM-DD HH:mm')
-   * @param {string} workoutType - Type of workout (e.g., 'Running', 'Walking')
+   * @param {string} workoutDate - Date and time of the workout
+   * @param {string} workoutType - Type of workout
    * @param {number} durationMinutes - Duration in minutes
+   * @param {number} year - Year for syncing count
+   * @param {number} month - Month for syncing count
+   * @param {number} weekNumber - Week number for syncing count
    */
-  addWorkoutLog(memberId, workoutDate, workoutType, durationMinutes) {
+  addWorkoutLog(memberId, workoutDate, workoutType, durationMinutes, year, month, weekNumber) {
     const newLog = {
       id: Util.generateUUID(),
       member_id: memberId,
@@ -35,7 +38,44 @@ const WorkoutLogService = {
     const rowData = headers.map(header => newLog[header] !== undefined ? newLog[header] : '');
     
     this.sheet.appendRow(rowData);
+
+    // Sync count (+1)
+    if (year && month && weekNumber) {
+      WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, 1);
+    }
+
     return newLog;
+  },
+
+  /**
+   * Deletes a workout log and syncs the weekly count
+   * 
+   * @param {string} logId - The UUID of the log to delete
+   * @param {string} memberId - The UUID of the member
+   * @param {number} year - Year for syncing count
+   * @param {number} month - Month for syncing count
+   * @param {number} weekNumber - Week number for syncing count
+   */
+  deleteWorkoutLog(logId, memberId, year, month, weekNumber) {
+    const data = this.sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('id');
+
+    if (idIndex === -1) throw new Error('ID column not found in workout_logs');
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idIndex] === logId) {
+        this.sheet.deleteRow(i + 1);
+        
+        // Sync count (-1)
+        if (memberId && year && month && weekNumber) {
+          WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, -1);
+        }
+        
+        return true;
+      }
+    }
+    return false;
   },
 
   /**

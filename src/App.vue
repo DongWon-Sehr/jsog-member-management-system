@@ -34,12 +34,16 @@
     <footer class="p-6 bg-gray-50 text-gray-400 text-[10px] sm:text-xs font-bold text-center border-t border-gray-100">
       Made with ♥︎ By 🐟 | © 2026 주삼오공
     </footer>
+
+    <!-- Global Dialog -->
+    <GlobalDialog />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import LayoutHeader from './components/LayoutHeader.vue';
+import GlobalDialog from './components/GlobalDialog.vue';
 import { useStore } from './composables/useStore';
 import { useGas } from './composables/useGas';
 
@@ -50,7 +54,8 @@ import WorkoutRecords from './views/WorkoutView.vue';
 import Rewards from './views/RewardView.vue';
 import Logs from './views/LogView.vue';
 
-const { members, activeMembers, rewards, weeks, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
+
+const { members, activeMembers, rewards, weeks, workoutRecords, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
 const { call } = useGas();
 
 const phraseInterval = ref(null);
@@ -136,12 +141,22 @@ const loadData = async () => {
       .apiGetAllWeeks();
   });
 
+  const recordsPromise = new Promise((resolve) => {
+    google.script.run
+      .withSuccessHandler((res) => {
+        if (res && res.success) workoutRecords.value = res.data;
+        resolve();
+      })
+      .apiGetAllWorkoutRecords();
+  });
+
   await Promise.all([
     allMembersPromise,
     activeMembersPromise,
     rewardsPromise,
     summaryPromise,
-    weeksPromise
+    weeksPromise,
+    recordsPromise
   ]);
 
   stopLoadingAnimation();

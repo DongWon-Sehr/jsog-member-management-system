@@ -13,6 +13,14 @@ const WorkoutService = {
   },
 
   /**
+   * Retrieves all workout records
+   */
+  getAllRecords() {
+    const records = Util.sheetToObjects(this.sheet, this.tableName);
+    return Util.sanitizeData(records);
+  },
+
+  /**
    * Retrieves workout records for a specific year/month/week
    */
   getRecordsByWeek(year, month, weekNumber) {
@@ -152,5 +160,51 @@ const WorkoutService = {
       const rowData = headers.map(header => newRecord[header] !== undefined ? newRecord[header] : '');
       this.sheet.appendRow(rowData);
     }
+  },
+
+  /**
+   * Increments or decrements the workout count for a member
+   */
+  incrementWorkoutCount(memberId, year, month, weekNumber, amount) {
+    const data = this.sheet.getDataRange().getValues();
+    const headers = data[0];
+
+    const idx = {
+      member_id: headers.indexOf('member_id'),
+      year: headers.indexOf('year'),
+      month: headers.indexOf('month'),
+      week_number: headers.indexOf('week_number'),
+      count: headers.indexOf('count'),
+      updated_at: headers.indexOf('updated_at')
+    };
+
+    let foundRowIndex = -1;
+    let currentCount = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      if (
+        data[i][idx.member_id] === memberId &&
+        String(data[i][idx.year]) === String(year) &&
+        String(data[i][idx.month]) === String(month) &&
+        String(data[i][idx.week_number]) === String(weekNumber)
+      ) {
+        foundRowIndex = i + 1;
+        currentCount = Number(data[i][idx.count]) || 0;
+        break;
+      }
+    }
+
+    const timestamp = Util.getCurrentTimestamp();
+    const newCount = Math.max(0, currentCount + amount);
+
+    if (foundRowIndex > -1) {
+      this.sheet.getRange(foundRowIndex, idx.count + 1).setValue(newCount);
+      this.sheet.getRange(foundRowIndex, idx.updated_at + 1).setValue(timestamp);
+    } else {
+      // Insert new record with newCount
+      this.updateWorkoutCount(memberId, year, month, weekNumber, newCount);
+    }
+    
+    return newCount;
   }
 };

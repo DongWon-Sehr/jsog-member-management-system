@@ -40,34 +40,39 @@ const WorkoutWeekService = {
   },
 
   /**
-   * Batch upserts weeks based on start_date
+   * Batch upserts weeks based on composite key (year-month-week_number)
    * @param {Array} weeksArray - Array of week objects
    */
   batchSaveWeeks(weeksArray) {
     const data = this.sheet.getDataRange().getValues();
     const headers = data[0];
     
-    // Create a map of existing start_dates to their row index (1-based)
-    const startDateIndex = headers.indexOf('start_date');
+    // Create a map of existing composite keys to their row index (1-based)
+    const yearIndex = headers.indexOf('year');
+    const monthIndex = headers.indexOf('month');
+    const weekNumberIndex = headers.indexOf('week_number');
+    
     const existingMap = {};
     
     for (let i = 1; i < data.length; i++) {
-      // Ensure we treat the stored date as a string for matching
-      const storedDate = String(data[i][startDateIndex]);
-      existingMap[storedDate] = i + 1;
+      const year = String(data[i][yearIndex]);
+      const month = String(data[i][monthIndex]);
+      const weekNumber = String(data[i][weekNumberIndex]);
+      const compositeKey = `${year}-${month}-${weekNumber}`;
+      existingMap[compositeKey] = i + 1;
     }
 
     const timestamp = Util.getCurrentTimestamp();
 
     weeksArray.forEach(weekData => {
       const { year, month, week_number, start_date, end_date } = weekData;
-      const rowIndex = existingMap[start_date];
+      const compositeKey = `${String(year)}-${String(month)}-${String(week_number)}`;
+      const rowIndex = existingMap[compositeKey];
 
       if (rowIndex) {
         // Update existing row
-        this.sheet.getRange(rowIndex, headers.indexOf('year') + 1).setValue(year);
-        this.sheet.getRange(rowIndex, headers.indexOf('month') + 1).setValue(month);
-        this.sheet.getRange(rowIndex, headers.indexOf('week_number') + 1).setValue(week_number);
+        this.sheet.getRange(rowIndex, headers.indexOf('start_date') + 1).setValue(start_date);
+        this.sheet.getRange(rowIndex, headers.indexOf('end_date') + 1).setValue(end_date);
         // Not updating created_at to preserve original creation time
       } else {
         // Insert new row

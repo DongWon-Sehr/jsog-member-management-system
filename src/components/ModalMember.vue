@@ -79,6 +79,7 @@
     </template>
 <script setup>
 import { ref, reactive, watch } from 'vue';
+import { useDialog } from '../composables/useDialog';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -86,6 +87,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'save']);
+const { alert } = useDialog();
 
 const isEditMode = ref(false);
 const form = reactive({
@@ -117,7 +119,7 @@ const close = () => {
 
 const save = () => {
   if (!form.name.trim()) {
-    alert('이름을 입력해주세요.');
+    alert({ message: '이름을 입력해주세요.', isDanger: true });
     return;
   }
   emit('save', { ...form });

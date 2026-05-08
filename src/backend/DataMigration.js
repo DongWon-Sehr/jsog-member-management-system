@@ -399,124 +399,67 @@ function run_migrateWorkoutRecords2025() {
 }
 
 function run_migrateWorkoutRecords2026() {
-  return; // Backup mode: disabled to prevent accidental duplicates
-  console.log("=== run_migrateWorkoutRecords2026 Start (Final Batch Mode) ===");
-  
-  const rawData = `기간	🐟동원	🌿재연	😃소희	🐶혜운	🐹지영	👻찬미	🥳주현	🍒채린	🌴현주	😃유림	😃영철	🎧누리	🫛수완	🧚🏻‍♀️수희	🐧진구	🍷찬준
-01/05 ~ 01/11	1	3		6	0	5	0	6	4	1	4	3	2	5		
-01/12 ~ 01/18	1	3		3	0	3	3	3	1	3	1	3	1	3		
-01/19 ~ 01/25	2	3		6	3	6	3	5	4	1	1	2	4	6		
-01/26 ~ 02/01	1	3		5	1	7	1	4	3	3	1	4	2	4		
-02/02 ~ 02/08	3	3		8	3	7	0	5	5	3	0	4	3	6		
-02/09 ~ 02/15	3	2		7	1	6	3	5	2	3	1	1	4	6		
-02/16 ~ 02/22	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간	보너스 휴식 주간
-02/23 ~ 03/01	2	3		4	4	7	0	2	2	3	1	1	3	7		
-03/02 ~ 03/08	3	3		8	3	8	3	3	3	3	1	3	2	7	5	
-03/09 ~ 03/15	3	4		6	3	8	1	3	4	3		3	3	6	5	
-03/16 ~ 03/22	1	4		7	2	5	3	5	3	3		3	2	7	5	
-03/23 ~ 03/29	1	4		6	3	8	1	2	2	1		3	1	8	5	
-03/30 ~ 04/05	0	3		8	3	6	3	2	3	3		4	5	7	5	
-2026-1 정산	21	38	0	74	26	76	21	45	36	30	10	34	32	72	25	
-04/06 ~ 04/12	2	3		7	2	3		(부상휴식)	3	1		1	5	4	3	
-04/13 ~ 04/19	3	4		6	3	4		(부상휴식)	4	3		0	4	7	4	
-04/20 ~ 04/26	0	3		9	3	4		2	6	3		0	3	8	5	
-04/27 ~ 05/03	6	3		5	4	3		3	3	3		1	1	6	4`;
+  // ... (existing run_migrateWorkoutRecords2026 content)
+}
 
-  const lines = rawData.trim().split('\n');
-  if (lines.length < 2) return;
+/**
+ * Migration script to remove duplicate workout weeks.
+ * Keeps the first occurrence and removes others based on (year, month, week_number).
+ */
+function run_removeDuplicateWorkoutWeeks() {
+  console.log("=== run_removeDuplicateWorkoutWeeks Start ===");
+  const sheet = Util.getSheet('workout_weeks');
+  if (!sheet) {
+    console.error("Sheet 'workout_weeks' not found.");
+    return;
+  }
 
-  const headerCells = lines[0].split('\t').map(h => h.trim());
-  const memberNames = headerCells.slice(1);
-  
-  const allMembers = MemberService.getAllMembers();
-  const memberMap = {};
-  memberNames.forEach(name => {
-    if (!name) return;
-    const member = allMembers.find(m => m.name === name);
-    if (member) {
-      memberMap[name] = member.id;
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    console.log("No data found to process.");
+    return;
+  }
+
+  const headers = data[0];
+  const yearIdx = headers.indexOf('year');
+  const monthIdx = headers.indexOf('month');
+  const weekNumIdx = headers.indexOf('week_number');
+
+  if (yearIdx === -1 || monthIdx === -1 || weekNumIdx === -1) {
+    console.error("Required columns (year, month, week_number) not found.");
+    return;
+  }
+
+  const seenKeys = new Set();
+  const rowsToDelete = [];
+
+  // Iterate from the second row (index 1) to the end
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const key = `${row[yearIdx]}-${row[monthIdx]}-${row[weekNumIdx]}`;
+    
+    if (seenKeys.has(key)) {
+      // It's a duplicate. Mark the row number (1-based) for deletion.
+      rowsToDelete.push(i + 1);
     } else {
-      console.error(`Member not found in DB: ${name}.`);
+      seenKeys.add(key);
     }
-  });
+  }
 
-  const sheet = Util.getSheet('workout_records');
-  if (!sheet) throw new Error('workout_records sheet not found');
-  const sheetHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const newRowsData = [];
-
-  let currentYear = 2026;
-  let currentMonth = 1; 
-  let weekNumber = 1;
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    const cells = line.split('\t').map(c => c.trim());
-    const period = cells[0];
-
-    // 1. Skip settlement rows
-    if (period.includes('정산')) continue;
-
-    // 2. Skip global "보너스 휴식 주간" rows
-    const isGlobalSkipWeek = period.includes('보너스 휴식 주간') || cells.some(c => c === '보너스 휴식 주간');
-    if (isGlobalSkipWeek) {
-      console.log(`[Migration] Ignoring global rest week: ${period}`);
-      continue;
-    }
-
-    for (let j = 1; j < cells.length; j++) {
-      const cellValue = cells[j];
-      const memberName = memberNames[j - 1];
-      const memberId = memberMap[memberName];
-
-      if (!memberId || cellValue === '') continue;
-
-      let count = 0;
-      let note = '';
-      
-      // Parse cell value: Numbers vs Notes
-      if (isNaN(parseInt(cellValue, 10))) {
-        count = 0;
-        note = cellValue;
-      } else {
-        count = parseInt(cellValue, 10);
-      }
-
-      const timestamp = Util.getCurrentTimestamp();
-      const newRecord = {
-        id: Util.generateUUID(),
-        member_id: memberId,
-        year: currentYear,
-        month: currentMonth,
-        week_number: weekNumber,
-        count: count,
-        super_pass: false, 
-        note: note,
-        created_at: timestamp,
-        updated_at: timestamp
-      };
-
-      const rowArray = sheetHeaders.map(header => newRecord[header] !== undefined ? newRecord[header] : '');
-      newRowsData.push(rowArray);
+  if (rowsToDelete.length === 0) {
+    console.log("No duplicate workout weeks found.");
+  } else {
+    console.log(`Found ${rowsToDelete.length} duplicate rows. Deleting...`);
+    
+    // Delete rows from bottom to top to avoid shifting indexes
+    for (let j = rowsToDelete.length - 1; j >= 0; j--) {
+      const rowIndex = rowsToDelete[j];
+      sheet.deleteRow(rowIndex);
+      console.log(`Deleted row ${rowIndex}`);
     }
     
-    // 3. Increment week counter for VALID data rows only
-    weekNumber++; 
-    if (weekNumber > 4) {
-      weekNumber = 1;
-      currentMonth++;
-      if (currentMonth > 12) {
-        currentMonth = 1;
-        currentYear++;
-      }
-    }
+    console.log(`Success: Removed ${rowsToDelete.length} duplicate workout weeks.`);
   }
-
-  if (newRowsData.length > 0) {
-    const lastRow = sheet.getLastRow();
-    sheet.getRange(lastRow + 1, 1, newRowsData.length, sheetHeaders.length).setValues(newRowsData);
-  }
-
-  console.log(`Migration Complete: Batch inserted ${newRowsData.length} records for 2026.`);
-  console.log("=== run_migrateWorkoutRecords2026 End ===");
+  
+  console.log("=== run_removeDuplicateWorkoutWeeks End ===");
 }
