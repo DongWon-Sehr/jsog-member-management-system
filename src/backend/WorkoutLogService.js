@@ -85,5 +85,12 @@ const WorkoutLogService = {
     const logs = Util.sheetToObjects(this.sheet, this.tableName);
     const filtered = logs.filter(log => log.member_id === memberId);
     return Util.sanitizeData(filtered);
+  },
+
+  /**
+   * Retrieves all workout logs
+   */
+  getAllLogs() {
+    return Util.sheetToObjects(this.sheet, this.tableName);
   }
 };

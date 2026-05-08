@@ -55,7 +55,7 @@ import Rewards from './views/RewardView.vue';
 import Logs from './views/LogView.vue';
 
 
-const { members, activeMembers, rewards, weeks, workoutRecords, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
+const { members, activeMembers, rewards, weeks, workoutRecords, workoutLogs, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
 const { call } = useGas();
 
 const phraseInterval = ref(null);
@@ -150,13 +150,23 @@ const loadData = async () => {
       .apiGetAllWorkoutRecords();
   });
 
+  const logsPromise = new Promise((resolve) => {
+    google.script.run
+      .withSuccessHandler((res) => {
+        if (res && res.success) workoutLogs.value = res.data;
+        resolve();
+      })
+      .apiGetAllWorkoutLogs();
+  });
+
   await Promise.all([
     allMembersPromise,
     activeMembersPromise,
     rewardsPromise,
     summaryPromise,
     weeksPromise,
-    recordsPromise
+    recordsPromise,
+    logsPromise
   ]);
 
   stopLoadingAnimation();

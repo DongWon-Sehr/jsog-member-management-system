@@ -50,13 +50,7 @@
             </div>
             <div class="flex flex-col">
               <label class="text-xs font-bold text-gray-500 mb-1">운동 종류</label>
-              <select v-model="newType" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-                <option value="런닝">런닝</option>
-                <option value="걷기">걷기</option>
-                <option value="헬스/웨이트">헬스/웨이트</option>
-                <option value="수영">수영</option>
-                <option value="기타">기타</option>
-              </select>
+              <input v-model="newType" type="text" required placeholder="예: 런닝, 필라테스" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
             </div>
             <div class="flex flex-col">
               <label class="text-xs font-bold text-gray-500 mb-1">시간(분)</label>
@@ -77,11 +71,7 @@
             등록된 기록
           </h4>
           
-          <div v-if="isLoadingLogs" class="py-8 flex justify-center">
-            <i class="ph-bold ph-spinner animate-spin text-gray-400 text-3xl"></i>
-          </div>
-          
-          <div v-else-if="filteredLogs.length === 0" class="py-8 flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-2xl border border-gray-100 border-dashed">
+          <div v-if="filteredLogs.length === 0" class="py-8 flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-2xl border border-gray-100 border-dashed">
             <i class="ph-fill ph-empty text-gray-300 text-4xl mb-2"></i>
             <p class="text-sm font-bold text-gray-500">이번 주 기록이 없습니다.</p>
           </div>
@@ -125,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
 
@@ -137,31 +127,31 @@ const props = defineProps({
 
 const emit = defineEmits(['close']);
 
-const { memberMap, workoutRecords } = useStore();
+const { memberMap, workoutRecords, workoutLogs } = useStore();
 const { alert, confirm } = useDialog();
 
-const logs = ref([]);
-const isLoadingLogs = ref(false);
 const isProcessing = ref(false);
 
 // Form states
 const newDate = ref('');
 const newTime = ref('');
-const newType = ref('런닝');
+const newType = ref('');
 const newDuration = ref(30);
 
 const memberName = computed(() => memberMap.value[props.memberId]?.name || '회원');
 
-// Filter logs by the selected week's date range
+// Filter logs by member AND the selected week's date range in memory
 const filteredLogs = computed(() => {
-  if (!props.weekData) return [];
+  if (!props.weekData || !props.memberId) return [];
+  
   const start = new Date(props.weekData.start_date);
   start.setHours(0,0,0,0);
   const end = new Date(props.weekData.end_date);
   end.setHours(23,59,59,999);
 
-  return logs.value
+  return workoutLogs.value
     .filter(log => {
+      if (log.member_id !== props.memberId) return false;
       // workout_date is typically "YYYY-MM-DD HH:mm"
       const logDateStr = log.workout_date.split(' ')[0];
       const logDate = new Date(logDateStr);
@@ -170,24 +160,8 @@ const filteredLogs = computed(() => {
     .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date)); // Descending
 });
 
-const loadLogs = () => {
-  if (!props.memberId) return;
-  isLoadingLogs.value = true;
-  google.script.run
-    .withSuccessHandler((res) => {
-      isLoadingLogs.value = false;
-      if (res && res.success) logs.value = res.data;
-    })
-    .withFailureHandler(() => {
-      isLoadingLogs.value = false;
-    })
-    .apiGetLogsByMember(props.memberId);
-};
-
 onMounted(() => {
   if (props.isOpen) {
-    loadLogs();
-    
     // Set default date to today, or start_date if today is outside the week
     const today = new Date();
     const start = new Date(props.weekData.start_date);
@@ -237,17 +211,16 @@ const addLog = () => {
   };
 
   // Backup state
-  const previousLogs = [...logs.value];
+  const previousLogs = [...workoutLogs.value];
   const previousRecords = JSON.parse(JSON.stringify(workoutRecords.value));
 
-  // Apply to UI instantly
-  logs.value.unshift(newLogObj);
+  // Apply to Global Store instantly
+  workoutLogs.value.unshift(newLogObj);
   
   const recordIndex = getTargetRecordIndex();
   if (recordIndex > -1) {
     workoutRecords.value[recordIndex].count = (Number(workoutRecords.value[recordIndex].count) || 0) + 1;
   } else {
-    // If no record exists for this week, add a placeholder record to memory
     workoutRecords.value.push({
       member_id: props.memberId,
       year: props.weekData.year,
@@ -266,16 +239,16 @@ const addLog = () => {
     .withSuccessHandler((res) => {
       isProcessing.value = false;
       if (res && res.success) {
-        // Replace temp ID with real ID
-        const addedLogIndex = logs.value.findIndex(l => l.id === tempId);
+        // Replace temp ID with real ID in global store
+        const addedLogIndex = workoutLogs.value.findIndex(l => l.id === tempId);
         if (addedLogIndex > -1) {
-          logs.value[addedLogIndex] = res.data;
+          workoutLogs.value[addedLogIndex] = res.data;
         }
         // Reset form times but keep date
         newTime.value = '';
       } else {
         // Rollback
-        logs.value = previousLogs;
+        workoutLogs.value = previousLogs;
         workoutRecords.value = previousRecords;
         alert({ title: '오류', message: '저장에 실패했습니다: ' + (res?.message || '알 수 없는 오류'), isDanger: true });
       }
@@ -283,7 +256,7 @@ const addLog = () => {
     .withFailureHandler((err) => {
       isProcessing.value = false;
       // Rollback
-      logs.value = previousLogs;
+      workoutLogs.value = previousLogs;
       workoutRecords.value = previousRecords;
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
@@ -301,11 +274,11 @@ const deleteLog = async (logId) => {
   if (!confirmResult) return;
 
   // Backup state
-  const previousLogs = [...logs.value];
+  const previousLogs = [...workoutLogs.value];
   const previousRecords = JSON.parse(JSON.stringify(workoutRecords.value));
 
-  // 1. Optimistic Update
-  logs.value = logs.value.filter(l => l.id !== logId);
+  // 1. Optimistic Update in Global Store
+  workoutLogs.value = workoutLogs.value.filter(l => l.id !== logId);
   
   const recordIndex = getTargetRecordIndex();
   if (recordIndex > -1) {
@@ -320,7 +293,7 @@ const deleteLog = async (logId) => {
       isProcessing.value = false;
       if (!res || !res.success) {
         // Rollback
-        logs.value = previousLogs;
+        workoutLogs.value = previousLogs;
         workoutRecords.value = previousRecords;
         alert({ title: '오류', message: '삭제에 실패했습니다: ' + (res?.message || '알 수 없는 오류'), isDanger: true });
       }
@@ -328,7 +301,7 @@ const deleteLog = async (logId) => {
     .withFailureHandler((err) => {
       isProcessing.value = false;
       // Rollback
-      logs.value = previousLogs;
+      workoutLogs.value = previousLogs;
       workoutRecords.value = previousRecords;
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })

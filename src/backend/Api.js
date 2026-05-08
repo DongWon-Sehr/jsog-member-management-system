@@ -176,6 +176,10 @@ function apiBatchUpdateWorkoutCounts(recordsArray) {
 // Workout Logs API (Detailed)
 // ==========================================
 
+function apiGetAllWorkoutLogs() {
+  return _executeApi('apiGetAllWorkoutLogs', () => WorkoutLogService.getAllLogs());
+}
+
 function apiGetLogsByMember(memberId) {
   return _executeApi('apiGetLogsByMember', () => WorkoutLogService.getLogsByMember(memberId), { memberId });
 }
