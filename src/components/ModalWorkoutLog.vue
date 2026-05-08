@@ -64,42 +64,56 @@
             </div>
 
             <!-- Existing Logs List -->
-            <div>
-              <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+            <div class="space-y-3">
+              <h4 class="text-sm font-bold text-gray-700 flex items-center gap-2">
                 <i class="ph-bold ph-list-dashes text-gray-400"></i>
                 등록된 기록
               </h4>
-              
-              <div v-if="filteredLogs.length === 0" class="py-8 flex flex-col items-center justify-center text-center bg-gray-50/50 rounded-2xl border border-gray-100 border-dashed">
-                <i class="ph-fill ph-empty text-gray-300 text-4xl mb-2"></i>
-                <p class="text-sm font-bold text-gray-500">이번 주 기록이 없습니다.</p>
-              </div>
 
-              <div v-else class="space-y-2">
-                <div v-for="log in filteredLogs" :key="log.id" class="flex items-center justify-between p-3 sm:px-4 bg-white border border-gray-100 rounded-xl hover:border-gray-300 hover:shadow-sm transition-all group">
-                  <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                      <i v-if="log.workout_type === '런닝'" class="ph-fill ph-person-simple-run text-xl"></i>
-                      <i v-else-if="log.workout_type === '걷기'" class="ph-fill ph-person-simple-walk text-xl"></i>
-                      <i v-else-if="log.workout_type === '수영'" class="ph-fill ph-swimmer text-xl"></i>
-                      <i v-else class="ph-fill ph-barbell text-xl"></i>
+              <div class="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden shadow-inner">
+                <!-- Table Header (Sticky) -->
+                <div class="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm pt-4 px-4 pb-2">
+                  <div class="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-100 rounded-lg text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
+                    <div class="col-span-5">운동 일시</div>
+                    <div class="col-span-4">종류</div>
+                    <div class="col-span-2 text-center">시간</div>
+                    <div class="col-span-1"></div>
+                  </div>
+                </div>
+
+                <!-- List Content -->
+                <div class="px-4 pb-4 space-y-2">
+                  <div v-if="filteredLogs.length === 0" class="py-12 flex flex-col items-center justify-center text-center">
+                    <i class="ph-fill ph-empty text-gray-200 text-4xl mb-2"></i>
+                    <p class="text-sm font-bold text-gray-400">이번 주 기록이 없습니다.</p>
+                  </div>
+
+                  <div v-else v-for="log in filteredLogs" :key="log.id" class="grid grid-cols-12 gap-2 px-4 py-3 bg-white rounded-xl border border-gray-50 shadow-sm items-center hover:border-indigo-200 transition-colors group">
+                    <div class="col-span-5 flex flex-col">
+                      <span class="text-sm font-bold text-gray-900">{{ log.workout_date.split(' ')[0] }}</span>
+                      <span class="text-[10px] font-mono text-gray-400 font-bold">{{ log.workout_date.split(' ')[1] }}</span>
                     </div>
-                    <div class="flex flex-col">
-                      <span class="text-sm font-bold text-gray-900">{{ log.workout_date }}</span>
-                      <div class="flex items-center gap-2 text-xs font-medium text-gray-500">
-                        <span>{{ log.workout_type }}</span>
-                        <span class="w-1 h-1 rounded-full bg-gray-300"></span>
-                        <span>{{ log.duration_minutes }}분</span>
+                    <div class="col-span-4 flex items-center gap-2">
+                      <div class="w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                        <i v-if="log.workout_type === '런닝'" class="ph-fill ph-person-simple-run text-sm"></i>
+                        <i v-else-if="log.workout_type === '걷기'" class="ph-fill ph-person-simple-walk text-sm"></i>
+                        <i v-else-if="log.workout_type === '수영'" class="ph-fill ph-swimmer text-sm"></i>
+                        <i v-else class="ph-fill ph-barbell text-sm"></i>
                       </div>
+                      <span class="text-xs font-bold text-gray-700 truncate">{{ log.workout_type }}</span>
+                    </div>
+                    <div class="col-span-2 text-center">
+                      <span class="text-xs font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{{ log.duration_minutes }}분</span>
+                    </div>
+                    <div class="col-span-1 text-right">
+                      <button @click="deleteLog(log.id)" :disabled="isProcessing" class="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50">
+                        <i class="ph-bold ph-trash"></i>
+                      </button>
                     </div>
                   </div>
-                  <button @click="deleteLog(log.id)" :disabled="isProcessing" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all disabled:opacity-50">
-                    <i class="ph-bold ph-trash"></i>
-                  </button>
                 </div>
               </div>
             </div>
-
           </div>
 
           <!-- Footer -->

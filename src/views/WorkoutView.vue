@@ -1,96 +1,102 @@
 <template>
-  <div class="space-y-6 pb-6">
-    <!-- Header Section -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-1">
-      <div class="flex flex-col">
-        <h2 class="text-2xl font-bold text-gray-800">운동 기록</h2>
-        <div v-if="currentWeekData" class="mt-1">
-          <p class="text-lg font-bold text-indigo-600 leading-tight">{{ currentWeekData.year }}</p>
-          <p class="text-sm font-medium text-gray-500">
-            {{ formatMdDate(currentWeekData.start_date) }} ~ {{ formatMdDate(currentWeekData.end_date) }}
-          </p>
+  <div class="space-y-0 pb-6">
+    <!-- Unified Header Section (Sticky) -->
+    <div class="sticky top-16 z-30 bg-white">
+      <!-- Page Title & Primary Selectors (Indigo Style) -->
+      <div class="px-6 py-5 border-b border-gray-50 flex flex-col lg:flex-row lg:items-center justify-between bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100 gap-4">
+        <div class="flex items-center gap-3">
+          <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl shadow-sm">
+            <i class="ph-bold ph-person-simple-run text-xl"></i>
+          </div>
+          <div class="flex flex-col">
+            <h2 class="text-xl font-black text-gray-900 tracking-tight">운동 기록</h2>
+            <p v-if="currentWeekData" class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">
+              {{ currentWeekData.year }} · {{ formatMdDate(currentWeekData.start_date) }} ~ {{ formatMdDate(currentWeekData.end_date) }}
+            </p>
+          </div>
+        </div>
+        
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Year Selector -->
+          <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
+            <button @click="navigateYear(-1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 연도">
+              <i class="ph-bold ph-caret-left"></i>
+            </button>
+            <select v-model="selectedYear" class="bg-transparent text-gray-700 font-bold outline-none cursor-pointer text-center appearance-none px-2 text-sm">
+              <option v-for="y in availableYears" :key="y" :value="y">{{ y }}년</option>
+            </select>
+            <button @click="navigateYear(1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 연도">
+              <i class="ph-bold ph-caret-right"></i>
+            </button>
+          </div>
+
+          <!-- Week Selector -->
+          <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
+            <button @click="navigateWeek('prev')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 주차">
+              <i class="ph-bold ph-caret-left"></i>
+            </button>
+            <select 
+              v-model="selectedWeekId"
+              class="bg-transparent text-gray-700 font-bold outline-none cursor-pointer text-center appearance-none px-4 text-sm min-w-[120px]"
+            >
+              <option value="">-- 주차 선택 --</option>
+              <option v-for="week in filteredWeeks" :key="week.id" :value="week.id">
+                {{ week.month }}월 {{ week.week_number }}주차
+              </option>
+            </select>
+            <button @click="navigateWeek('next')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 주차">
+              <i class="ph-bold ph-caret-right"></i>
+            </button>
+          </div>
+
+          <button @click="isPlannerOpen = true" class="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all active:scale-95 border border-transparent hover:border-indigo-100" title="연간 주차 셋업">
+            <i class="ph-bold ph-gear text-xl"></i>
+          </button>
         </div>
       </div>
-      
-      <div class="flex items-center gap-3">
-        <!-- Year Selector -->
-        <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
-          <button @click="navigateYear(-1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 연도">
-            <i class="ph-bold ph-caret-left"></i>
-          </button>
-          <select v-model="selectedYear" class="bg-transparent text-gray-700 font-bold outline-none cursor-pointer text-center appearance-none px-2 text-sm">
-            <option v-for="y in availableYears" :key="y" :value="y">{{ y }}년</option>
-          </select>
-          <button @click="navigateYear(1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 연도">
-            <i class="ph-bold ph-caret-right"></i>
-          </button>
-        </div>
 
-        <!-- Week Selector (Filtered by Year & Non-Rest Weeks) -->
-        <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
-          <button @click="navigateWeek('prev')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 주차 (과거)">
-            <i class="ph-bold ph-caret-left"></i>
-          </button>
-          <select 
-            v-model="selectedWeekId"
-            class="bg-transparent text-gray-700 font-bold outline-none cursor-pointer text-center appearance-none px-4 text-sm min-w-[120px]"
-          >
-            <option value="">-- 주차 선택 --</option>
-            <option v-for="week in filteredWeeks" :key="week.id" :value="week.id">
-              {{ week.month }}월 {{ week.week_number }}주차
-            </option>
-          </select>
-          <button @click="navigateWeek('next')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 주차 (미래)">
-            <i class="ph-bold ph-caret-right"></i>
-          </button>
+      <!-- List Header (Sticky Bottom Part) -->
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
+        <div class="hidden lg:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
+          <div class="col-span-2">이름</div>
+          <div class="col-span-3 text-center">운동 횟수</div>
+          <div class="col-span-2 text-center">슈퍼패스</div>
+          <div class="col-span-2 text-center">환급 여부</div>
+          <div class="col-span-3">메모</div>
         </div>
-
-        <button @click="isPlannerOpen = true" class="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all active:scale-95" title="연간 주차 셋업">
-          <i class="ph-bold ph-gear text-xl"></i>
-        </button>
       </div>
     </div>
 
     <!-- Main Content Area -->
-    <div v-if="!currentWeekData" class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center">
-      <div class="inline-flex p-4 rounded-full bg-orange-50 mb-4">
-        <i class="ph-bold ph-calendar-x text-orange-400 text-4xl"></i>
+    <div v-if="!currentWeekData" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-20 flex flex-col items-center justify-center text-center">
+      <div class="inline-flex p-5 rounded-full bg-white shadow-sm border border-gray-100 mb-4">
+        <i class="ph-bold ph-calendar-x text-orange-400 text-5xl"></i>
       </div>
-      <p class="text-gray-500 font-bold">주차를 먼저 선택하거나 생성해주세요.</p>
+      <p class="text-gray-400 font-black text-lg">주차를 먼저 선택하거나 생성해주세요.</p>
     </div>
 
-    <div v-else class="space-y-4">
-      <!-- Desktop Header Row (Hidden on mobile) -->
-      <div class="hidden lg:grid grid-cols-12 gap-4 px-6 py-3 bg-white rounded-2xl border border-gray-100 shadow-md text-xs font-black text-gray-400 uppercase tracking-widest sticky top-[64px] z-20">
-        <div class="col-span-2">이름</div>
-        <div class="col-span-3 text-center">운동 횟수</div>
-        <div class="col-span-2 text-center">슈퍼패스</div>
-        <div class="col-span-2 text-center">환급 여부</div>
-        <div class="col-span-3">메모</div>
-      </div>
-
-      <!-- Member List -->
-      <div class="space-y-3">
+    <div v-else class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl overflow-hidden min-h-[400px]">
+      <div class="px-6 pb-6 space-y-3 pt-1">
         <div v-for="record in memberRecords" :key="record.memberId" 
              @click="openLogModal(record.memberId)"
-             class="bg-white p-4 sm:px-6 sm:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all flex flex-col lg:grid lg:grid-cols-12 lg:items-center gap-4 cursor-pointer hover:shadow-md">
+             class="bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col lg:grid lg:grid-cols-12 lg:items-center gap-4">
           
           <!-- Name -->
-          <div class="col-span-2 flex items-center gap-3">
-            <span class="font-bold text-gray-900 text-lg">{{ record.name }}</span>
+          <div class="lg:col-span-2 flex items-center gap-3">
+            <span class="font-bold text-gray-900 text-lg group-hover:text-indigo-600 transition-colors">{{ record.name }}</span>
           </div>
 
-          <!-- Counter (Read-only) -->
-          <div class="col-span-3 flex items-center lg:justify-center gap-1">
-            <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20">운동 횟수</span>
-            <div class="flex items-center bg-gray-50 rounded-xl p-2 px-4 shadow-inner border border-gray-100">
+          <!-- Counter -->
+          <div class="lg:col-span-3 flex items-center lg:justify-center gap-2">
+            <span class="lg:hidden text-[10px] font-black text-gray-400 uppercase w-20 shrink-0">운동 횟수</span>
+            <div class="flex items-center bg-gray-50 rounded-xl px-4 py-2 shadow-inner border border-gray-100">
               <div class="text-center font-black text-lg text-gray-800">{{ record.count }}회</div>
             </div>
           </div>
 
-          <!-- Superpass Toggle -->
-          <div class="col-span-2 flex items-center lg:justify-center gap-4">
-            <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20">슈퍼패스</span>
+          <!-- Superpass -->
+          <div class="lg:col-span-2 flex items-center lg:justify-center gap-2">
+            <span class="lg:hidden text-[10px] font-black text-gray-400 uppercase w-20 shrink-0">슈퍼패스</span>
             <button 
               @click.stop="toggleSuperPass(record)"
               class="relative block h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none shadow-inner"
@@ -103,11 +109,11 @@
             </button>
           </div>
 
-          <!-- Status Badge -->
-          <div class="col-span-2 flex items-center lg:justify-center gap-4">
-            <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20">환급 상태</span>
+          <!-- Status -->
+          <div class="lg:col-span-2 flex items-center lg:justify-center gap-2">
+            <span class="lg:hidden text-[10px] font-black text-gray-400 uppercase w-20 shrink-0">환급 상태</span>
             <span 
-              class="px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-tight flex items-center gap-1 shadow-sm"
+              class="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-tight flex items-center gap-1 shadow-sm border"
               :class="getRefundStatus(record).class"
             >
               <i :class="getRefundStatus(record).icon"></i>
@@ -115,10 +121,11 @@
             </span>
           </div>
 
-          <!-- Note (Read-only preview) -->
-          <div class="col-span-3 flex items-center gap-4">
-            <span class="lg:hidden text-xs font-black text-gray-400 uppercase w-20 shrink-0">메모</span>
+          <!-- Note -->
+          <div class="lg:col-span-3 flex items-center gap-2">
+            <span class="lg:hidden text-[10px] font-black text-gray-400 uppercase w-20 shrink-0">메모</span>
             <span class="text-sm font-medium text-gray-600 truncate">{{ record.note || '-' }}</span>
+            <i class="ph-bold ph-caret-right text-gray-300 lg:hidden ml-auto"></i>
           </div>
 
         </div>

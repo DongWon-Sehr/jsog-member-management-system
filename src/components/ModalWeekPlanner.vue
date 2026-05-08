@@ -35,8 +35,8 @@
           <!-- Body / Matrix -->
           <div class="flex-1 overflow-y-auto bg-gray-50/50 relative">
             <!-- Table Header (Sticky Wrapper) -->
-            <div class="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3">
-              <div class="hidden sm:grid grid-cols-12 gap-4 px-4 py-3 bg-gray-100 rounded-xl text-xs font-black text-gray-500 uppercase tracking-widest shadow-sm border border-gray-200">
+            <div class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3">
+              <div class="hidden sm:grid grid-cols-12 gap-4 px-4 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-500 uppercase tracking-widest shadow-sm border border-gray-200">
                 <div class="col-span-4">기간 (월 ~ 일)</div>
                 <div class="col-span-2 text-center">휴식 여부</div>
                 <div class="col-span-2 text-center">기준 연도</div>
