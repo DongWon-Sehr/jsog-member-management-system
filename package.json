@@ -16,6 +16,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@google/clasp": "^3.3.0",
     "@phosphor-icons/vue": "^2.2.1",
     "vite": "^8.0.10"
   },
