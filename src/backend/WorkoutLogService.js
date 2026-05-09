@@ -13,22 +13,27 @@ const WorkoutLogService = {
   },
 
   /**
-   * Batch adds and deletes workout logs, then syncs the weekly count.
+   * Batch adds, updates, and deletes workout logs, then syncs the weekly count and note.
    * 
    * @param {string} memberId 
    * @param {number} year 
    * @param {number} month 
    * @param {number} weekNumber 
    * @param {Array} logsToAdd - Array of log objects { workout_date, workout_type, duration_minutes }
+   * @param {Array} logsToUpdate - Array of log objects { id, workout_date, workout_type, duration_minutes }
    * @param {Array} logIdsToDelete - Array of log UUIDs
+   * @param {string} weeklyNote - Note for the specific week
    */
-  batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logIdsToDelete) {
+  batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote) {
+    const data = this.sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('id');
+    const workoutDateIndex = headers.indexOf('workout_date');
+    const workoutTypeIndex = headers.indexOf('workout_type');
+    const durationIndex = headers.indexOf('duration_minutes');
+
     // 1. Delete logs
     if (logIdsToDelete && logIdsToDelete.length > 0) {
-      const data = this.sheet.getDataRange().getValues();
-      const headers = data[0];
-      const idIndex = headers.indexOf('id');
-      
       // Iterate backwards to avoid row index shifting
       for (let i = data.length - 1; i >= 1; i--) {
         if (logIdsToDelete.includes(data[i][idIndex])) {
@@ -37,10 +42,26 @@ const WorkoutLogService = {
       }
     }
 
-    // 2. Add logs
+    // 2. Update logs
+    if (logsToUpdate && logsToUpdate.length > 0) {
+      const updateMap = {};
+      logsToUpdate.forEach(l => { updateMap[l.id] = l; });
+
+      for (let i = 1; i < data.length; i++) {
+        const logId = data[i][idIndex];
+        if (updateMap[logId]) {
+          const u = updateMap[logId];
+          const rowIndex = i + 1;
+          this.sheet.getRange(rowIndex, workoutDateIndex + 1).setValue(u.workout_date);
+          this.sheet.getRange(rowIndex, workoutTypeIndex + 1).setValue(u.workout_type);
+          this.sheet.getRange(rowIndex, durationIndex + 1).setValue(u.duration_minutes);
+        }
+      }
+    }
+
+    // 3. Add logs
     const createdLogs = [];
     if (logsToAdd && logsToAdd.length > 0) {
-      const headers = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
       const timestamp = Util.getCurrentTimestamp();
       
       logsToAdd.forEach(log => {
@@ -58,10 +79,18 @@ const WorkoutLogService = {
       });
     }
 
-    // 3. Sync count
+    // 4. Sync count and update note
     const netChange = (logsToAdd ? logsToAdd.length : 0) - (logIdsToDelete ? logIdsToDelete.length : 0);
-    if (netChange !== 0 && year && month && weekNumber) {
-      WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, netChange);
+    
+    if (year && month && weekNumber) {
+      // Get current record info (we need superPass and count)
+      const records = WorkoutService.getRecordsByWeek(year, month, weekNumber);
+      const existing = records.find(r => r.member_id === memberId);
+      
+      const newCount = Math.max(0, (existing ? Number(existing.count) : 0) + netChange);
+      const superPass = existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false;
+      
+      WorkoutService.updateWorkoutCount(memberId, year, month, weekNumber, newCount, superPass, weeklyNote);
     }
 
     return { added: createdLogs, deletedCount: logIdsToDelete ? logIdsToDelete.length : 0 };

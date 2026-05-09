@@ -153,7 +153,9 @@ const loadData = async () => {
   const logsPromise = new Promise((resolve) => {
     google.script.run
       .withSuccessHandler((res) => {
-        if (res && res.success) workoutLogs.value = res.data;
+        if (res && res.success) {
+          workoutLogs.value = res.data;
+        }
         resolve();
       })
       .apiGetAllWorkoutLogs();

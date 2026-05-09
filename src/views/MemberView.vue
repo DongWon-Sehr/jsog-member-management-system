@@ -110,13 +110,29 @@ import ModalMember from '../components/ModalMember.vue';
 const { members } = useStore();
 
 const showDisabled = ref(false);
+const searchQuery = ref('');
 const isModalOpen = ref(false);
 const selectedMember = ref(null);
 
 // Filter logic
 const filteredMembers = computed(() => {
-  if (showDisabled.value) return members.value;
-  return members.value.filter(m => m.enabled === true || m.enabled === 'TRUE' || m.enabled === 'true');
+  let list = members.value;
+  
+  // 1. Status Filter
+  if (!showDisabled.value) {
+    list = list.filter(m => m.enabled === true || m.enabled === 'TRUE' || m.enabled === 'true');
+  }
+
+  // 2. Search Filter
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter(m => 
+      (m.name || '').toLowerCase().includes(q) || 
+      (m.email || '').toLowerCase().includes(q)
+    );
+  }
+
+  return list;
 });
 
 const formatDate = (dateStr) => {
@@ -137,6 +153,34 @@ const openEditModal = (member) => {
 
 const closeModal = () => {
   isModalOpen.value = false;
+};
+
+const downloadCsv = () => {
+  const data = filteredMembers.value;
+  if (data.length === 0) return;
+
+  const headers = ['이름', '이메일', '상태', '가입일'];
+  const rows = data.map(m => [
+    m.name,
+    m.email || '',
+    m.enabled ? '활동' : '비활동',
+    formatDate(m.created_at)
+  ]);
+
+  const csvContent = [
+    headers.join(','),
+    ...rows.map(r => r.join(','))
+  ].join('\n');
+
+  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `members_${new Date().toISOString().split('T')[0]}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 const handleSaveMember = (formData) => {

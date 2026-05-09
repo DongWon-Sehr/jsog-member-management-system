@@ -17,6 +17,19 @@
         </div>
         
         <div class="flex flex-wrap items-center gap-3">
+          <!-- Search Member -->
+          <div class="relative group">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+            </div>
+            <input 
+              v-model="searchQuery"
+              type="text" 
+              placeholder="회원 이름 검색"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-40 sm:w-48"
+            />
+          </div>
+
           <!-- Year Selector -->
           <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
             <button @click="navigateYear(-1)" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="이전 연도">
@@ -391,6 +404,37 @@ const getRefundStatus = (record) => {
 const openLogModal = (memberId) => {
   selectedMemberId.value = memberId;
   isLogModalOpen.value = true;
+};
+
+const downloadCsv = () => {
+  if (!currentWeekData.value) return;
+  const data = memberRecords.value;
+  const week = currentWeekData.value;
+
+  const headers = ['이름', '운동횟수', '슈퍼패스', '환급상태', '메모'];
+  const rows = data.map(r => [
+    r.name,
+    r.count,
+    r.superPass ? '사용' : '-',
+    getRefundStatus(r).text,
+    (r.note || '').replace(/,/g, ' ') // Escape commas in notes
+  ]);
+
+  const csvContent = [
+    `주차: ${week.year}년 ${week.month}월 ${week.week_number}주차 (${week.start_date} ~ ${week.end_date})`,
+    headers.join(','),
+    ...rows.map(r => r.join(','))
+  ].join('\n');
+
+  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `workout_report_${week.year}_${week.month}_W${week.week_number}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 const formatMdDate = (dateStr) => {

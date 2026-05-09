@@ -38,6 +38,24 @@ const RewardService = {
   },
 
   /**
+   * Deletes a reward entry
+   * @param {string} rewardId 
+   */
+  deleteReward(rewardId) {
+    const data = this.sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('id');
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idIndex] === rewardId) {
+        this.sheet.deleteRow(i + 1);
+        return true;
+      }
+    }
+    return false;
+  },
+
+  /**
    * Retrieves all rewards for a specific member
    */
   getRewardsByMember(memberId) {

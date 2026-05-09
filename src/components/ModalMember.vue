@@ -53,8 +53,8 @@
             <!-- Robust Toggle: Using absolute positioning for perfect alignment -->
             <button 
               @click="form.enabled = !form.enabled"
-              class="relative block h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ring-offset-2 focus:ring-2 ring-blue-500"
-              :class="form.enabled ? 'bg-blue-600' : 'bg-gray-300'"
+              class="relative block h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ring-offset-2 focus:ring-2 ring-indigo-500"
+              :class="form.enabled ? 'bg-indigo-600' : 'bg-gray-300'"
             >
               <span 
                 class="absolute top-1 pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-all duration-200 ease-in-out"

@@ -90,20 +90,22 @@ function _executeApi(apiName, action, params = null) {
     const duration = new Date().getTime() - startTime;
     const successResponse = { success: true, data: result };
 
-    let dataSummary = 'Data';
-    if (Array.isArray(result)) {
-      dataSummary = `Array(${result.length})`;
-    } else if (typeof result === 'object' && result !== null) {
-      dataSummary = 'Object';
+    // Log state-changing actions (Exclude read-only 'get' or 'getAll' calls)
+    const lowerName = apiName.toLowerCase();
+    if (!lowerName.includes('get')) {
+      SystemLogService.addLog(apiName, { params, duration: `${duration}ms`, status: 'SUCCESS' });
     }
-    console.log(`✅ [${apiName}] Success (${duration}ms): ${dataSummary}`);
 
+    console.log(`✅ [${apiName}] Success (${duration}ms)`);
     return successResponse;
 
   } catch (err) {
     const duration = new Date().getTime() - startTime;
     console.error(`🔥 [${apiName}] Error (${duration}ms): ${err.toString()}`);
-    console.error(err.stack);
+    
+    // Always log errors
+    SystemLogService.addLog(`${apiName}_ERROR`, { params, error: err.toString(), stack: err.stack });
+
     return { success: false, data: null, message: `System Error: ${err.toString()}` };
   }
 }
@@ -192,8 +194,8 @@ function apiDeleteWorkoutLog(logId, memberId, year, month, weekNumber) {
   return _executeApi('apiDeleteWorkoutLog', () => WorkoutLogService.deleteWorkoutLog(logId, memberId, year, month, weekNumber), { logId, memberId, year, month, weekNumber });
 }
 
-function apiBatchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logIdsToDelete) {
-  return _executeApi('apiBatchSaveWorkoutLogs', () => WorkoutLogService.batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logIdsToDelete), { memberId, year, month, weekNumber, addCount: logsToAdd.length, deleteCount: logIdsToDelete.length });
+function apiBatchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote) {
+  return _executeApi('apiBatchSaveWorkoutLogs', () => WorkoutLogService.batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote), { memberId, year, month, weekNumber, addCount: logsToAdd.length, updateCount: logsToUpdate.length, deleteCount: logIdsToDelete.length, hasNote: !!weeklyNote });
 }
 
 // ==========================================
@@ -212,6 +214,10 @@ function apiAddReward(memberId, rewardDate, amount, description) {
   return _executeApi('apiAddReward', () => RewardService.addReward(memberId, rewardDate, amount, description), { memberId, rewardDate, amount, description });
 }
 
+function apiDeleteReward(rewardId) {
+  return _executeApi('apiDeleteReward', () => RewardService.deleteReward(rewardId), { rewardId });
+}
+
 // ==========================================
 // System Logs API
 // ==========================================
@@ -228,22 +234,25 @@ function apiGetDashboardSummary() {
   return _executeApi('apiGetDashboardSummary', () => {
     const activeMembers = MemberService.getActiveMembers();
     
-    // Calculate current week context (Simplified logic for now)
+    // 1. Find the current operational week
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
+    const dateStr = Utilities.formatDate(now, "GMT+9", "yyyy-MM-dd");
+    const currentWeek = WorkoutWeekService.getWeekByDate(dateStr);
     
-    // Fetch records for the last few months to find the most recent one
-    // This is a temporary way to show "something" real on the dashboard
-    const records = WorkoutService.getRecordsByWeek(year, month, 1); 
+    let weeklyCount = 0;
+    if (currentWeek) {
+      const records = WorkoutService.getRecordsByWeek(currentWeek.year, currentWeek.month, currentWeek.week_number);
+      weeklyCount = records.reduce((sum, r) => sum + (parseInt(r.count) || 0), 0);
+    }
     
     const rewards = RewardService.getAllRewards();
     const totalPrize = rewards.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
     return {
       activeMemberCount: activeMembers.length,
-      weeklyWorkoutCount: records.reduce((sum, r) => sum + (parseInt(r.count) || 0), 0),
-      totalPrizeAmount: totalPrize
+      weeklyWorkoutCount: weeklyCount,
+      totalPrizeAmount: totalPrize,
+      currentWeekLabel: currentWeek ? `${currentWeek.month}월 ${currentWeek.week_number}주차` : '미지정'
     };
   });
 }

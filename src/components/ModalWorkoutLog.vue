@@ -6,7 +6,7 @@
         <div class="absolute inset-0 bg-gray-900/60 transition-opacity duration-300"></div>
 
         <!-- Modal Content -->
-        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
+        <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
           
           <!-- Processing Overlay -->
           <div v-if="isProcessing" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-3xl">
@@ -14,8 +14,8 @@
             <span class="text-indigo-800 font-bold">저장 중...</span>
           </div>
 
-          <!-- Header -->
-          <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-gray-50/50">
+          <!-- Header (Static) -->
+          <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-indigo-50/30 shrink-0">
             <div class="flex items-center gap-3">
               <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
                 <i class="ph-fill ph-notebook text-xl"></i>
@@ -29,90 +29,152 @@
             </div>
           </div>
 
-          <!-- Main Body -->
-          <div class="flex-1 overflow-y-auto p-6 bg-white space-y-6">
-            
-            <!-- Add New Log Form -->
-            <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-              <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
-                <i class="ph-bold ph-plus-circle text-indigo-500"></i>
-                새 운동 기록 추가
-              </h4>
-              <form @submit.prevent="addLogLocal" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div class="flex flex-col">
-                  <label class="text-xs font-bold text-gray-500 mb-1">날짜</label>
-                  <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-bold text-gray-500 mb-1">시간</label>
-                  <input v-model="newTime" type="time" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-bold text-gray-500 mb-1">운동 종류</label>
-                  <input v-model="newType" type="text" required placeholder="예: 런닝, 필라테스" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-                </div>
-                <div class="flex flex-col">
-                  <label class="text-xs font-bold text-gray-500 mb-1">시간(분)</label>
+          <!-- Main Scrollable Body -->
+          <div class="flex-1 overflow-y-auto bg-white">
+            <!-- Top Sections (Note & Add) -->
+            <div class="p-6 pb-0 space-y-6">
+              <!-- Weekly Note Section -->
+              <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                <h4 class="text-sm font-bold text-indigo-700 mb-2 flex items-center gap-2">
+                  <i class="ph-bold ph-note-pencil"></i>
+                  이번 주차 메모
+                </h4>
+                <input 
+                  v-model="localWeeklyNote"
+                  type="text" 
+                  placeholder="부상, 개인사정 등 이번 주차 특이사항"
+                  class="w-full bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition-all shadow-sm"
+                />
+              </div>
+
+              <!-- Add New Log Form -->
+              <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-inner">
+                <h4 class="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <i class="ph-bold ph-plus-circle text-indigo-500"></i>
+                  새 운동 기록 추가
+                </h4>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                  <div class="flex flex-col">
+                    <label class="text-xs font-bold text-gray-500 mb-1">날짜</label>
+                    <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                  </div>
+                  <div class="flex flex-col">
+                    <label class="text-xs font-bold text-gray-500 mb-1">시간</label>
+                    <el-time-picker
+                      v-model="newTime"
+                      format="HH:mm"
+                      value-format="HH:mm"
+                      placeholder="HH:mm"
+                      :editable="true"
+                      :clearable="false"
+                      class="!w-full !rounded-xl"
+                    />
+                  </div>
+                  <div class="flex flex-col">
+                    <label class="text-xs font-bold text-gray-500 mb-1">운동 종류</label>
+                    <input v-model="newType" type="text" placeholder="런닝, 필라테스 등" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                  </div>
                   <div class="flex items-center gap-2">
-                    <input v-model="newDuration" type="number" min="1" required class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
-                    <button type="submit" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all flex-shrink-0">
+                    <div class="flex flex-col flex-1">
+                      <label class="text-xs font-bold text-gray-500 mb-1">운동 시간 (분)</label>
+                      <input v-model="newDuration" type="number" min="1" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                    </div>
+                    <button @click="addLogLocal" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all flex-shrink-0 shadow-sm mt-6 h-[38px]">
                       <i class="ph-bold ph-plus"></i>
                     </button>
                   </div>
                 </div>
-              </form>
+              </div>
             </div>
 
-            <!-- Existing Logs List -->
-            <div class="space-y-3">
-              <h4 class="text-sm font-bold text-gray-700 flex items-center gap-2">
-                <i class="ph-bold ph-list-dashes text-gray-400"></i>
-                등록된 기록
-              </h4>
+            <!-- Existing Logs List Section -->
+            <div class="p-6 space-y-3">
+              <div class="flex items-center justify-between px-1">
+                <h4 class="text-sm font-bold text-gray-700 flex items-center gap-2">
+                  <i class="ph-bold ph-list-dashes text-gray-400"></i>
+                  운동 로그 ({{ localLogs.length }})
+                </h4>
+                <p v-if="hasDuplicates" class="text-[10px] font-black text-red-500 animate-pulse flex items-center gap-1">
+                  <i class="ph-bold ph-warning-circle"></i>
+                  중복 데이터 존재
+                </p>
+              </div>
 
-              <div class="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden shadow-inner">
+              <!-- List Body -->
+              <div class="bg-gray-50/50 rounded-2xl border border-gray-100 shadow-inner overflow-visible">
                 <!-- Table Header (Sticky) -->
-                <div class="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm pt-4 px-4 pb-2">
+                <div class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm px-4 py-3 border-b border-gray-100 rounded-t-2xl">
                   <div class="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-100 rounded-lg text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
-                    <div class="col-span-5">운동 일시</div>
-                    <div class="col-span-4">종류</div>
-                    <div class="col-span-2 text-center">시간</div>
-                    <div class="col-span-1"></div>
+                    <div class="col-span-2">날짜</div>
+                    <div class="col-span-3 text-center">시간</div>
+                    <div class="col-span-3">운동 종류</div>
+                    <div class="col-span-4 text-center">운동 시간 (분)</div>
                   </div>
                 </div>
 
                 <!-- List Content -->
-                <div class="px-4 pb-4 space-y-2">
+                <div class="px-4 pb-4 space-y-2 pt-3">
                   <div v-if="localLogs.length === 0" class="py-12 flex flex-col items-center justify-center text-center">
                     <i class="ph-fill ph-empty text-gray-200 text-4xl mb-2"></i>
-                    <p class="text-sm font-bold text-gray-400">이번 주 기록이 없습니다.</p>
+                    <p class="text-sm font-bold text-gray-400">기록이 없습니다.</p>
                   </div>
 
-                  <div v-else v-for="log in localLogs" :key="log.id" class="grid grid-cols-12 gap-2 px-4 py-3 bg-white rounded-xl border border-gray-50 shadow-sm items-center hover:border-indigo-200 transition-colors group relative">
-                    <!-- New Badge -->
-                    <div v-if="log.isNew" class="absolute -left-1 -top-1 z-10">
-                      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-black text-white shadow-sm ring-2 ring-white">N</span>
+                  <div v-else v-for="log in localLogs" :key="log.id" 
+                    class="grid grid-cols-12 gap-2 px-4 py-1.5 bg-white rounded-xl border-2 shadow-sm items-center hover:border-indigo-200 transition-all group relative"
+                    :class="duplicateIds.has(log.id) ? 'border-red-400 bg-red-50/30' : 'border-gray-50'"
+                  >
+                    <!-- Badges -->
+                    <div class="absolute left-0.5 top-0.5 z-10 flex gap-0.5">
+                      <span v-if="duplicateIds.has(log.id)" class="flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[8px] font-black text-white shadow-sm ring-1 ring-white" title="중복 데이터">!</span>
+                      <span v-if="log.isNew || log.isModified" 
+                        class="flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-black text-white shadow-sm ring-1 ring-white"
+                        :class="log.isNew ? 'bg-red-500' : 'bg-orange-500'"
+                      >
+                        {{ log.isNew ? 'N' : 'M' }}
+                      </span>
                     </div>
 
-                    <div class="col-span-5 flex flex-col">
-                      <span class="text-sm font-bold text-gray-900">{{ log.workout_date.split(' ')[0] }}</span>
-                      <span class="text-[10px] font-mono text-gray-400 font-bold">{{ log.workout_date.split(' ')[1] }}</span>
+                    <!-- Inline Editable Fields -->
+                    <div class="col-span-2">
+                      <input 
+                        type="date" 
+                        v-model="log.local_date"
+                        @change="updateLogTimestamp(log)"
+                        class="w-full bg-transparent border-none text-[11px] font-bold text-gray-900 outline-none focus:ring-1 focus:ring-indigo-200 rounded p-0.5 transition-all"
+                      />
                     </div>
-                    <div class="col-span-4 flex items-center gap-2">
-                      <div class="w-6 h-6 rounded-md bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
-                        <i v-if="log.workout_type === '런닝'" class="ph-fill ph-person-simple-run text-sm"></i>
-                        <i v-else-if="log.workout_type === '걷기'" class="ph-fill ph-person-simple-walk text-sm"></i>
-                        <i v-else-if="log.workout_type === '수영'" class="ph-fill ph-swimmer text-sm"></i>
-                        <i v-else class="ph-fill ph-barbell text-sm"></i>
-                      </div>
-                      <span class="text-xs font-bold text-gray-700 truncate">{{ log.workout_type }}</span>
+                    <div class="col-span-3">
+                      <el-time-picker
+                        v-model="log.local_time"
+                        format="HH:mm"
+                        value-format="HH:mm"
+                        placeholder="HH:mm"
+                        :editable="true"
+                        :clearable="false"
+                        @change="updateLogTimestamp(log)"
+                        class="!w-full !bg-transparent"
+                      />
                     </div>
-                    <div class="col-span-2 text-center">
-                      <span class="text-xs font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-md">{{ log.duration_minutes }}분</span>
+                    <div class="col-span-3">
+                      <input 
+                        type="text" 
+                        v-model="log.workout_type"
+                        @change="markAsModified(log)"
+                        placeholder="종류"
+                        class="w-full bg-transparent border-none text-[11px] font-bold text-gray-700 outline-none focus:ring-1 focus:ring-indigo-200 rounded p-0.5 transition-all truncate"
+                      />
+                    </div>
+                    <div class="col-span-3 text-center">
+                      <input 
+                        type="number" 
+                        v-model="log.duration_minutes"
+                        @change="markAsModified(log)"
+                        class="w-full bg-gray-50 border-none text-[11px] font-black text-gray-500 text-center outline-none focus:ring-1 focus:ring-indigo-200 rounded py-0.5 transition-all"
+                      />
                     </div>
                     <div class="col-span-1 text-right">
-                      <button @click="deleteLogLocal(log.id)" class="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all">
-                        <i class="ph-bold ph-trash"></i>
+                      <button @click="deleteLogLocal(log.id)" class="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all">
+                        <i class="ph-bold ph-trash text-sm"></i>
                       </button>
                     </div>
                   </div>
@@ -121,12 +183,12 @@
             </div>
           </div>
 
-          <!-- Footer -->
-          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+          <!-- Footer (Static) -->
+          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
             <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
               닫기
             </button>
-            <button @click="saveBatch" :disabled="isProcessing || !hasChanges" class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50 text-sm">
+            <button @click="saveBatch" :disabled="isProcessing || !hasChanges || hasDuplicates" class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50 text-sm">
               저장하기
             </button>
           </div>
@@ -156,6 +218,8 @@ const { alert, confirm } = useDialog();
 const isProcessing = ref(false);
 const localLogs = ref([]);
 const deletedIds = ref([]);
+const localWeeklyNote = ref('');
+const initialWeeklyNote = ref('');
 
 // Form states
 const newDate = ref('');
@@ -166,8 +230,34 @@ const newDuration = ref(30);
 const memberName = computed(() => memberMap.value[props.memberId]?.name || '회원');
 
 const hasChanges = computed(() => {
-  return localLogs.value.some(l => l.isNew) || deletedIds.value.length > 0;
+  return localLogs.value.some(l => l.isNew || l.isModified) || 
+         deletedIds.value.length > 0 || 
+         localWeeklyNote.value !== initialWeeklyNote.value;
 });
+
+// Duplicate Detection
+const duplicateIds = computed(() => {
+  const dateMap = {};
+  const conflictIds = new Set();
+  
+  localLogs.value.forEach(log => {
+    const key = `${log.local_date} ${log.local_time}`;
+    if (!dateMap[key]) {
+      dateMap[key] = [];
+    }
+    dateMap[key].push(log.id);
+  });
+
+  Object.values(dateMap).forEach(ids => {
+    if (ids.length > 1) {
+      ids.forEach(id => conflictIds.add(id));
+    }
+  });
+
+  return conflictIds;
+});
+
+const hasDuplicates = computed(() => duplicateIds.value.size > 0);
 
 const handleEsc = (e) => {
   if (e.key === 'Escape' && props.isOpen && !isProcessing.value) close();
@@ -176,28 +266,72 @@ const handleEsc = (e) => {
 onMounted(() => window.addEventListener('keydown', handleEsc));
 onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
-// Filter logs from global store to local state when opening
-const syncLocalLogs = () => {
+// Helper to parse "YYYY-MM-DD HH:mm:ss" or Date objects into UI-ready strings
+const parseToLocalParts = (input) => {
+  if (!input) return { date: '', time: '00:00' };
+  
+  let dateObj = null;
+  if (input instanceof Date) {
+    dateObj = input;
+  } else {
+    const str = String(input).replace(' ', 'T');
+    dateObj = new Date(str);
+  }
+
+  if (isNaN(dateObj.getTime())) {
+    const parts = String(input).split(' ');
+    return { date: parts[0] || '', time: (parts[1] || '00:00').slice(0, 5) };
+  }
+  
+  const pad = n => n < 10 ? '0'+n : n;
+  return {
+    date: `${dateObj.getFullYear()}-${pad(dateObj.getMonth()+1)}-${pad(dateObj.getDate())}`,
+    time: `${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}`
+  };
+};
+
+const syncLocalState = () => {
   if (!props.weekData || !props.memberId) {
     localLogs.value = [];
+    localWeeklyNote.value = '';
+    initialWeeklyNote.value = '';
     return;
   }
   
-  const start = new Date(props.weekData.start_date);
-  start.setHours(0,0,0,0);
-  const end = new Date(props.weekData.end_date);
-  end.setHours(23,59,59,999);
+  const startParts = parseToLocalParts(props.weekData.start_date);
+  const endParts = parseToLocalParts(props.weekData.end_date);
+  const startDate = startParts.date;
+  const endDate = endParts.date;
 
   localLogs.value = workoutLogs.value
-    .filter(log => {
-      if (log.member_id !== props.memberId) return false;
-      const logDateStr = log.workout_date.split(' ')[0];
-      const logDate = new Date(logDateStr);
-      return logDate >= start && logDate <= end;
+    .filter((log) => {
+      const idMatch = String(log.member_id) === String(props.memberId);
+      const parts = parseToLocalParts(log.workout_date);
+      const dateMatch = parts.date >= startDate && parts.date <= endDate;
+      return idMatch && dateMatch;
     })
-    .map(log => ({ ...log, isNew: false }))
+    .map(log => {
+      const parts = parseToLocalParts(log.workout_date);
+      return { 
+        ...log, 
+        local_date: parts.date,
+        local_time: parts.time,
+        isNew: false, 
+        isModified: false 
+      };
+    })
     .sort((a, b) => new Date(b.workout_date) - new Date(a.workout_date));
   
+  const record = workoutRecords.value.find(r => 
+    String(r.member_id) === String(props.memberId) &&
+    String(r.year) === String(props.weekData.year) &&
+    String(r.month) === String(props.weekData.month) &&
+    String(r.week_number) === String(props.weekData.week_number)
+  );
+  
+  const note = record ? (record.note || '') : '';
+  localWeeklyNote.value = note;
+  initialWeeklyNote.value = note;
   deletedIds.value = [];
 };
 
@@ -206,29 +340,32 @@ const setDefaultValues = () => {
     const today = new Date();
     const start = new Date(props.weekData.start_date);
     const end = new Date(props.weekData.end_date);
-    
     let targetDate = today;
-    if (today < start || today > end) {
-      targetDate = start;
-    }
+    if (today < start || today > end) targetDate = start;
     
     const pad = n => n < 10 ? '0'+n : n;
     newDate.value = `${targetDate.getFullYear()}-${pad(targetDate.getMonth()+1)}-${pad(targetDate.getDate())}`;
     newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
+    newType.value = '';
+    newDuration.value = 30;
   }
 };
 
 onMounted(() => {
-  syncLocalLogs();
+  syncLocalState();
   setDefaultValues();
 });
 
 watch(() => props.isOpen, (newVal) => {
   if (newVal) {
-    syncLocalLogs();
+    syncLocalState();
     setDefaultValues();
   }
 });
+
+watch(() => workoutLogs.value, () => {
+  if (props.isOpen) syncLocalState();
+}, { deep: true });
 
 const close = () => {
   if (isProcessing.value) return;
@@ -237,32 +374,38 @@ const close = () => {
 
 const addLogLocal = () => {
   if (!newDate.value || !newTime.value) return;
-
-  const workoutDate = `${newDate.value} ${newTime.value}`;
   const tempId = 'new-' + Date.now();
   
   localLogs.value.unshift({
     id: tempId,
     member_id: props.memberId,
-    workout_date: workoutDate,
+    workout_date: `${newDate.value} ${newTime.value}`,
+    local_date: newDate.value,
+    local_time: newTime.value,
     workout_type: newType.value,
-    duration_minutes: newDuration.value,
-    isNew: true
+    duration_minutes: Number(newDuration.value),
+    isNew: true,
+    isModified: false
   });
 
-  // Reset time but keep date
   const today = new Date();
   const pad = n => n < 10 ? '0'+n : n;
   newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
 };
 
+const updateLogTimestamp = (log) => {
+  log.workout_date = `${log.local_date} ${log.local_time}`;
+  markAsModified(log);
+};
+
+const markAsModified = (log) => {
+  if (!log.isNew) log.isModified = true;
+};
+
 const deleteLogLocal = (id) => {
   const log = localLogs.value.find(l => l.id === id);
   if (!log) return;
-
-  if (!log.isNew) {
-    deletedIds.value.push(id);
-  }
+  if (!log.isNew) deletedIds.value.push(id);
   localLogs.value = localLogs.value.filter(l => l.id !== id);
 };
 
@@ -272,12 +415,14 @@ const saveBatch = () => {
     workout_type: l.workout_type,
     duration_minutes: l.duration_minutes
   }));
+  const logsToUpdate = localLogs.value.filter(l => l.isModified).map(l => ({
+    id: l.id,
+    workout_date: l.workout_date,
+    workout_type: l.workout_type,
+    duration_minutes: l.duration_minutes
+  }));
   const idsToDelete = deletedIds.value;
-
-  if (logsToAdd.length === 0 && idsToDelete.length === 0) {
-    close();
-    return;
-  }
+  const weeklyNote = localWeeklyNote.value;
 
   isProcessing.value = true;
 
@@ -285,17 +430,15 @@ const saveBatch = () => {
     .withSuccessHandler((res) => {
       isProcessing.value = false;
       if (res && res.success) {
-        // Update global store
-        // 1. Remove deleted logs
         workoutLogs.value = workoutLogs.value.filter(l => !idsToDelete.includes(l.id));
-        // 2. Add newly created logs (from response data which has real IDs)
-        if (res.data.added) {
-          workoutLogs.value.push(...res.data.added);
-        }
+        logsToUpdate.forEach(u => {
+          const idx = workoutLogs.value.findIndex(l => l.id === u.id);
+          if (idx > -1) workoutLogs.value[idx] = { ...workoutLogs.value[idx], ...u };
+        });
+        if (res.data.added) workoutLogs.value.push(...res.data.added);
         
-        // 3. Update workout record count in global store
         const recordIndex = workoutRecords.value.findIndex(r => 
-          r.member_id === props.memberId &&
+          String(r.member_id) === String(props.memberId) &&
           String(r.year) === String(props.weekData.year) &&
           String(r.month) === String(props.weekData.month) &&
           String(r.week_number) === String(props.weekData.week_number)
@@ -304,18 +447,18 @@ const saveBatch = () => {
         const netChange = logsToAdd.length - idsToDelete.length;
         if (recordIndex > -1) {
           workoutRecords.value[recordIndex].count = Math.max(0, (Number(workoutRecords.value[recordIndex].count) || 0) + netChange);
-        } else if (netChange > 0) {
+          workoutRecords.value[recordIndex].note = weeklyNote;
+        } else {
           workoutRecords.value.push({
             member_id: props.memberId,
             year: props.weekData.year,
             month: props.weekData.month,
             week_number: props.weekData.week_number,
-            count: netChange,
+            count: Math.max(0, netChange),
             super_pass: false,
-            note: ''
+            note: weeklyNote
           });
         }
-
         close();
       } else {
         alert({ title: '오류', message: '저장에 실패했습니다: ' + (res?.message || '알 수 없는 오류'), isDanger: true });
@@ -325,9 +468,26 @@ const saveBatch = () => {
       isProcessing.value = false;
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
-    .apiBatchSaveWorkoutLogs(props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number, logsToAdd, idsToDelete);
+    .apiBatchSaveWorkoutLogs(props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number, logsToAdd, logsToUpdate, idsToDelete, weeklyNote);
 };
 </script>
+
+<style>
+/* Global Element Plus overrides to match theme */
+.el-input__wrapper {
+  background-color: white !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 0 1px #e2e8f0 inset !important;
+}
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px #6366f1 inset !important;
+}
+/* Ensure el-time-picker dropdown matches theme or behaves correctly */
+.el-time-spinner__item.is-active {
+  color: #4f46e5 !important;
+  font-weight: bold;
+}
+</style>
 
 <style scoped>
 .modal-fade-enter-active, .modal-fade-leave-active {
