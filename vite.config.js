@@ -9,7 +9,7 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         { src: 'appsscript.json', dest: '' },
-        { src: 'src/backend/*.js', dest: '' }
+        { src: 'src/backend/**/*.js', dest: '' }
       ]
     })
   ],
