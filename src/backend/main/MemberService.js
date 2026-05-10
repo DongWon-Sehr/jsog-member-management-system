@@ -36,6 +36,52 @@ const MemberService = {
   },
 
   /**
+   * Retrieves a member by Kakao Plus ID
+   */
+  getMemberByKakaoId(kakaoId) {
+    if (!kakaoId) return null;
+    return this.getAllMembers().find(member => member.kakao_plus_id === kakaoId) || null;
+  },
+
+  /**
+   * Retrieves a member by exact Email
+   */
+  getMemberByEmail(email) {
+    if (!email) return null;
+    const searchEmail = String(email).trim().toLowerCase();
+    return this.getAllMembers().find(member => member.email.toLowerCase() === searchEmail) || null;
+  },
+
+  /**
+   * Smart Search: Retrieves a member by Name (emoji-safe) or Email
+   */
+  getMemberByName(input) {
+    if (!input) return null;
+    const cleanInput = String(input).trim();
+
+    // 1. If it looks like an email, use email search
+    if (cleanInput.includes('@')) {
+      return this.getMemberByEmail(cleanInput);
+    }
+
+    // 2. Name search with emoji and special character removal
+    const allMembers = this.getAllMembers();
+    
+    // Helper to strip everything except Korean, English, and Numbers
+    const purify = (str) => String(str).replace(/[^\wㄱ-힣]/g, '').trim();
+    const target = purify(cleanInput);
+    if (!target) return null;
+
+    // Try exact match first, then partial match
+    const matches = allMembers.filter(member => {
+      const dbNameClean = purify(member.name);
+      return dbNameClean === target || dbNameClean.includes(target);
+    });
+
+    return matches.length > 0 ? matches[0] : null;
+  },
+
+  /**
    * Adds a new member
    */
   addMember(name, email) {
@@ -43,6 +89,7 @@ const MemberService = {
       id: Util.generateUUID(),
       name: name,
       email: email || '',
+      kakao_plus_id: '',
       created_at: Util.getCurrentTimestamp(),
       updated_at: Util.getCurrentTimestamp(),
       enabled: true
@@ -57,7 +104,7 @@ const MemberService = {
   },
 
   /**
-   * Updates an existing member's information (name, email)
+   * Updates an existing member's information (name, email, kakao_plus_id)
    */
   updateMember(memberId, updateData) {
     const data = this.sheet.getDataRange().getValues();
@@ -77,6 +124,9 @@ const MemberService = {
         }
         if (updateData.email !== undefined) {
           this.sheet.getRange(rowIndex, headers.indexOf('email') + 1).setValue(updateData.email);
+        }
+        if (updateData.kakao_plus_id !== undefined) {
+          this.sheet.getRange(rowIndex, headers.indexOf('kakao_plus_id') + 1).setValue(updateData.kakao_plus_id);
         }
         
         // Always update timestamp

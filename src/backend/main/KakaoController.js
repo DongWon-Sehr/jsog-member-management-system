@@ -8,13 +8,27 @@ const KakaoController = {
    */
   handleRequest(payload) {
     const intentName = payload.intent ? payload.intent.name : 'default';
+    const userKey = payload.userRequest.user.id;
+    const utterance = payload.userRequest.utterance;
+    const params = payload.action.params || {};
+
+    console.log(`[KakaoController] Request: ${intentName}, User: ${userKey}`);
     
     switch (intentName) {
-      case '인증사진_전송':
-        return this.onPhotoUpload(payload);
+      case '인증_시작': // User says "인증" or "운동"
+        return KakaoService.startManualAuth(userKey);
       
-      case '인증데이터_확인':
-        return this.onConfirmData(payload);
+      case '사용자_등록': // Combined intent: menu click + email mandatory parameter
+        const email = params.email; // Filled by Kakao before calling Skill
+        return KakaoService.verifyAndRegister(userKey, email);
+
+      case '인증_데이터_전송': // User selected workout type and provided optional data
+        return KakaoService.registerManualWorkout(userKey, params);
+
+      case '인증사진_전송': // Existing photo intent (placeholder for now)
+        const imageUrl = payload.userRequest.params.media ? payload.userRequest.params.media.url : null;
+        if (!imageUrl) return this.sendSimpleText("사진이 감지되지 않았습니다.");
+        return KakaoService.processPhoto(userKey, imageUrl);
 
       default:
         return this.onDefault(payload);
@@ -22,36 +36,10 @@ const KakaoController = {
   },
 
   /**
-   * Handler: When user sends a photo.
-   */
-  onPhotoUpload(payload) {
-    const userKey = payload.userRequest.user.id;
-    const imageUrl = payload.userRequest.params.media ? payload.userRequest.params.media.url : null;
-
-    if (!imageUrl) {
-      return this.sendSimpleText("인증 사진이 감지되지 않았습니다. 사진을 다시 보내주세요.");
-    }
-
-    // Delegation to KakaoService for business logic (OCR, analysis, etc.)
-    return KakaoService.processPhoto(userKey, imageUrl);
-  },
-
-  /**
-   * Handler: When user confirms or corrects the parsed data.
-   */
-  onConfirmData(payload) {
-    const userKey = payload.userRequest.user.id;
-    const params = payload.action.params || {};
-    
-    // Delegation to KakaoService
-    return KakaoService.registerWorkout(userKey, params);
-  },
-
-  /**
    * Handler: Fallback / Welcome message.
    */
   onDefault(payload) {
-    return this.sendSimpleText("안녕하세요! 주삼오공 챗봇입니다. 운동 인증 사진을 보내주시면 자동으로 기록해 드립니다.");
+    return this.sendSimpleText("안녕하세요! 주삼오공 챗봇입니다. '인증'이라고 입력하시거나 운동 사진을 보내주세요.");
   },
 
   /**
