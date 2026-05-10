@@ -8,6 +8,7 @@ const MigrationService = {
       { name: 'id', type: 'TEXT' },
       { name: 'name', type: 'TEXT' },
       { name: 'email', type: 'TEXT' },
+      { name: 'kakao_plus_id', type: 'TEXT' },
       { name: 'created_at', type: 'DATE_TIME' },
       { name: 'updated_at', type: 'DATE_TIME' },
       { name: 'enabled', type: 'BOOLEAN' }
