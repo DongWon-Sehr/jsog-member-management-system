@@ -63,7 +63,7 @@ const MigrationService = {
   setup() {
     const ss = Util.getSpreadsheet();
 
-    // 1. Initialize member table
+    // 2. Initialize member table
     this._ensureTable(ss, 'member', this.SCHEMA.member);
 
     // 2. Initialize workout_records table

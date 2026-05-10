@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col w-full">
+  <div class="min-h-screen flex flex-col w-full transition-all duration-700">
     <!-- Common Header (Responsive) -->
     <LayoutHeader :currentView="currentView" @navigate="currentView = $event" />
 
@@ -14,7 +14,7 @@
       </transition>
     </main>
 
-    <!-- Global Loading Overlay with Animated Phrases -->
+    <!-- Global Loading Overlay -->
     <div v-if="isLoading" class="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-[100] backdrop-blur-md">
       <div class="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 max-w-[90%] text-center transform transition-all animate-in fade-in zoom-in duration-300">
         <div class="relative">
@@ -54,8 +54,7 @@ import WorkoutRecords from './views/WorkoutView.vue';
 import Rewards from './views/RewardView.vue';
 import Logs from './views/LogView.vue';
 
-
-const { members, activeMembers, rewards, weeks, workoutRecords, workoutLogs, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
+const { members, activeMembers, rewards, weeks, workoutRecords, workoutLogs, systemLogs, dashboardSummary, isLoading, loadingText, LOADING_PHRASES, currentView } = useStore();
 const { call } = useGas();
 
 const phraseInterval = ref(null);
@@ -70,9 +69,6 @@ const components = {
 
 const activeComponent = computed(() => components[currentView.value]);
 
-/**
- * Start rotating loading phrases for better UX
- */
 const startLoadingAnimation = () => {
   let index = 0;
   loadingText.value = LOADING_PHRASES[0];
@@ -89,9 +85,6 @@ const stopLoadingAnimation = () => {
   }
 };
 
-/**
- * Parallel Data Loading Strategy
- */
 const loadData = async () => {
   isLoading.value = true;
   startLoadingAnimation();
@@ -161,6 +154,15 @@ const loadData = async () => {
       .apiGetAllWorkoutLogs();
   });
 
+  const systemLogsPromise = new Promise((resolve) => {
+    google.script.run
+      .withSuccessHandler((res) => {
+        if (res && res.success) systemLogs.value = res.data;
+        resolve();
+      })
+      .apiGetRecentLogs(50);
+  });
+
   await Promise.all([
     allMembersPromise,
     activeMembersPromise,
@@ -168,7 +170,8 @@ const loadData = async () => {
     summaryPromise,
     weeksPromise,
     recordsPromise,
-    logsPromise
+    logsPromise,
+    systemLogsPromise
   ]);
 
   stopLoadingAnimation();
@@ -178,14 +181,6 @@ const loadData = async () => {
 onMounted(() => {
   if (typeof google !== 'undefined' && google.script && google.script.run) {
     loadData();
-  } else {
-    // Local development fallback
-    isLoading.value = true;
-    startLoadingAnimation();
-    setTimeout(() => { 
-      stopLoadingAnimation();
-      isLoading.value = false; 
-    }, 1500);
   }
 });
 
@@ -227,7 +222,6 @@ html, body {
   transform: translateY(-10px);
 }
 
-/* Hide scrollbar for mobile nav */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

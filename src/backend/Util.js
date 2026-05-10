@@ -21,17 +21,40 @@ const Util = {
   },
 
   /**
-   * Converts sheet data into an array of objects.
+   * Converts sheet data into an array of objects based on schema definition.
    */
   sheetToObjects(sheet, tableName) {
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return [];
 
     const headers = data[0];
+    const schema = MigrationService.SCHEMA[tableName] || [];
+    const schemaMap = {};
+    schema.forEach(col => { schemaMap[col.name] = col.type; });
+
     return data.slice(1).map(row => {
       const obj = {};
       headers.forEach((header, index) => {
-        obj[header] = Util.sanitizeData(row[index]);
+        let value = row[index];
+        const type = schemaMap[header];
+
+        if (value instanceof Date) {
+          const y = value.getFullYear();
+          const m = String(value.getMonth() + 1).padStart(2, '0');
+          const d = String(value.getDate()).padStart(2, '0');
+          
+          if (type === 'DATE') {
+            value = `${y}-${m}-${d}`;
+          } else {
+            // Default to DATE_TIME or if type is unknown but it's a Date object
+            const hh = String(value.getHours()).padStart(2, '0');
+            const mm = String(value.getMinutes()).padStart(2, '0');
+            const ss = String(value.getSeconds()).padStart(2, '0');
+            value = `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
+          }
+        }
+        
+        obj[header] = Util.sanitizeData(value);
       });
       return obj;
     });
@@ -39,7 +62,7 @@ const Util = {
 
   /**
    * Recursively sanitizes data for frontend transfer.
-   * Ensures all Date objects are converted to standard strings.
+   * Ensures all basic Date objects (not caught by schema) are still converted.
    */
   sanitizeData(data) {
     if (data === null || data === undefined) return data;
@@ -49,7 +72,7 @@ const Util = {
       return data.map(item => Util.sanitizeData(item));
     }
 
-    // Handle Dates (Crucial for GAS -> Vue transfer)
+    // Handle Dates (Fallback for objects/arrays not coming directly from sheetToObjects)
     if (data instanceof Date) {
       const pad = (n) => (n < 10 ? '0' + n : n);
       return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())} ` +

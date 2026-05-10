@@ -9,14 +9,19 @@
           </div>
           <h2 class="text-xl font-black text-gray-900 tracking-tight">대시보드</h2>
         </div>
-        <button @click="fullReload" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95" title="새로고침">
-          <i class="ph-bold ph-arrows-clockwise text-gray-500 text-xl" :class="{ 'animate-spin': isRefreshing }"></i>
-        </button>
+        <div class="flex items-center gap-3">
+          <button @click="takeScreenshot" :disabled="isRefreshing" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95" title="스크린샷 저장">
+            <i class="ph-bold ph-camera text-gray-500 text-xl"></i>
+          </button>
+          <button @click="fullReload" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95" title="새로고침">
+            <i class="ph-bold ph-arrows-clockwise text-gray-500 text-xl" :class="{ 'animate-spin': isRefreshing }"></i>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-6 space-y-6 min-h-[400px]">
+    <!-- Main Content Area (Captured Area) -->
+    <div id="capture-area" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-6 space-y-6 min-h-[400px]">
       <!-- Summary Stats -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Activity Member Card -->
@@ -55,26 +60,6 @@
           <div>
             <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">누적 리워드</p>
             <p class="text-2xl font-black text-gray-900">{{ (dashboardSummary.totalPrizeAmount || 0).toLocaleString() }}원</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Charts / Main Content -->
-      <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col">
-        <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
-          <i class="ph-bold ph-chart-line-up text-indigo-500"></i>
-          이번 분기 멤버별 누적 성적 ({{ currentQuarterLabel }})
-        </h3>
-        
-        <div class="flex-1 relative min-h-[350px]">
-          <canvas ref="chartCanvas"></canvas>
-          
-          <!-- Empty State for Chart -->
-          <div v-if="!hasChartData" class="absolute inset-0 flex flex-col items-center justify-center text-center bg-white/80 backdrop-blur-[1px]">
-            <div class="bg-gray-50 p-4 rounded-full mb-4">
-              <i class="ph-bold ph-chart-line-up text-gray-300 text-4xl"></i>
-            </div>
-            <p class="text-gray-400 font-bold">이번 분기 활동 데이터가 없습니다.</p>
           </div>
         </div>
       </div>
@@ -139,6 +124,53 @@
           </div>
         </div>
       </div>
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <!-- Cumulative Quarterly Performance -->
+        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col xl:col-span-2">
+          <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+            <i class="ph-bold ph-chart-line-up text-indigo-500"></i>
+            이번 분기 멤버별 누적 성적 ({{ currentQuarterLabel }})
+          </h3>
+          
+          <div class="flex-1 relative min-h-[350px]">
+            <canvas ref="perfChartCanvas"></canvas>
+            
+            <!-- Empty State for Chart -->
+            <div v-if="!hasPerfData" class="absolute inset-0 flex flex-col items-center justify-center text-center bg-white/80 backdrop-blur-[1px]">
+              <div class="bg-gray-50 p-4 rounded-full mb-4">
+                <i class="ph-bold ph-chart-line-up text-gray-300 text-4xl"></i>
+              </div>
+              <p class="text-gray-400 font-bold">이번 분기 활동 데이터가 없습니다.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workout Type Distribution -->
+        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col">
+          <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+            <i class="ph-bold ph-chart-pie text-indigo-500"></i>
+            선호 운동 종류
+          </h3>
+          
+          <div class="flex-1 relative min-h-[300px]">
+            <canvas ref="typeChartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- Day of Week Distribution -->
+        <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col xl:col-span-3">
+          <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+            <i class="ph-bold ph-calendar-check text-indigo-500"></i>
+            요일별 운동 집중도 (전체 기간)
+          </h3>
+          
+          <div class="flex-1 relative min-h-[350px]">
+            <canvas ref="dayChartCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -147,10 +179,14 @@
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
 
-const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers } = useStore();
+const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, workoutLogs } = useStore();
 const isRefreshing = ref(false);
-const chartCanvas = ref(null);
-let chartInstance = null;
+const perfChartCanvas = ref(null);
+const dayChartCanvas = ref(null);
+const typeChartCanvas = ref(null);
+let perfChartInstance = null;
+let dayChartInstance = null;
+let typeChartInstance = null;
 
 // Helper: Calculate joint rankings for top 3 slots
 const calculateTop3Ranks = (list) => {
@@ -188,7 +224,6 @@ const currentQuarterLabel = computed(() => {
   return `${new Date().getFullYear()} Q${quarter}`;
 });
 
-// Ranking Calculation Logic (Top 3 with ties)
 const weeklyRanking = computed(() => {
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -214,34 +249,60 @@ const quarterlyRanking = computed(() => {
   const currentMonth = now.getMonth() + 1;
   const currentQuarter = Math.ceil(currentMonth / 3);
   
+  // Find weeks in the current quarter up to today
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const quarterWeeks = weeks.value.filter(w => {
+    const q = Math.ceil(Number(w.month) / 3);
+    return Number(w.year) === currentYear && q === currentQuarter && Number(w.week_number) !== 0 && w.start_date <= todayStr;
+  });
+
+  const totalWeeks = quarterWeeks.length;
+  if (totalWeeks === 0) return [];
+
   const rawCounts = members.value.map(m => {
-    const totalCount = workoutRecords.value
-      .filter(r => {
-        if (r.member_id !== m.id) return false;
-        const isSameYear = Number(r.year) === currentYear;
-        const rQuarter = Math.ceil(Number(r.month) / 3);
-        return isSameYear && rQuarter === currentQuarter;
-      })
-      .reduce((sum, r) => sum + (Number(r.count) || 0), 0);
-    
-    return { memberId: m.id, name: m.name, count: totalCount };
+    let totalCount = 0;
+    let successWeeks = 0;
+
+    quarterWeeks.forEach(w => {
+      const record = workoutRecords.value.find(r => 
+        r.member_id === m.id &&
+        String(r.year) === String(w.year) &&
+        String(r.month) === String(w.month) &&
+        String(r.week_number) === String(w.week_number)
+      );
+      if (record) {
+        const count = Number(record.count) || 0;
+        const sp = record.super_pass === true || String(record.super_pass).toUpperCase() === 'TRUE';
+        totalCount += count;
+        if (count >= 3 || (count >= 1 && sp)) successWeeks++;
+      }
+    });
+
+    const successRate = Math.round((successWeeks / totalWeeks) * 100);
+    return { memberId: m.id, name: m.name, count: totalCount, successRate };
   }).filter(i => i.count > 0);
 
   return calculateTop3Ranks(rawCounts);
 });
 
+const getBadgeInfo = (rate) => {
+  if (rate >= 90) return { label: '전설', class: 'bg-rose-100 text-rose-600 border-rose-200' };
+  if (rate >= 70) return { label: '열정', class: 'bg-orange-100 text-orange-600 border-orange-200' };
+  if (rate >= 50) return { label: '성실', class: 'bg-emerald-100 text-emerald-600 border-emerald-200' };
+  return null;
+};
+
 const getRankClass = (index) => {
-  if (index === 0) return 'bg-amber-100 text-amber-600 border border-amber-200';
-  if (index === 1) return 'bg-slate-100 text-slate-500 border border-slate-200';
-  if (index === 2) return 'bg-orange-50 text-orange-600 border border-orange-100';
+  if (index === 0) return 'bg-amber-100 text-amber-600 border-amber-200';
+  if (index === 1) return 'bg-slate-100 text-slate-500 border-slate-200';
+  if (index === 2) return 'bg-orange-50 text-orange-600 border-orange-100';
   return 'bg-gray-100 text-gray-500 border border-gray-200';
 };
 
-const hasChartData = computed(() => {
+const hasPerfData = computed(() => {
   const currentMonth = new Date().getMonth() + 1;
   const currentQuarter = Math.ceil(currentMonth / 3);
   const currentYear = new Date().getFullYear();
-  
   return weeks.value.some(w => Number(w.year) === currentYear && Math.ceil(Number(w.month) / 3) === currentQuarter);
 });
 
@@ -249,8 +310,38 @@ const fullReload = () => {
   window.location.reload();
 };
 
-const initChart = () => {
-  if (!chartCanvas.value || !hasChartData.value) return;
+const takeScreenshot = async () => {
+  const element = document.getElementById('capture-area');
+  if (!element || typeof html2canvas === 'undefined') return;
+
+  try {
+    const canvas = await html2canvas(element, {
+      backgroundColor: '#f9fafb', // Matching gray-50
+      scale: 2, // Higher quality
+      logging: false,
+      useCORS: true
+    });
+    
+    const image = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    link.href = image;
+    link.download = `jsog_dashboard_${date}.png`;
+    link.click();
+  } catch (err) {
+    console.error('Screenshot failed:', err);
+  }
+};
+
+const colors = [
+  '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', 
+  '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#a855f7',
+  '#1e1b4b', '#be123c', '#ca8a04', '#15803d', '#1d4ed8',
+  '#6d28d9', '#b91c1c', '#0e7490', '#c2410c', '#7e22ce'
+];
+
+const initPerfChart = () => {
+  if (!perfChartCanvas.value || !hasPerfData.value) return;
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -258,24 +349,20 @@ const initChart = () => {
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  // 1. Get weeks in the current quarter (ascending) up to TODAY
   const quarterWeeks = weeks.value
     .filter(w => {
       const q = Math.ceil(Number(w.month) / 3);
-      const isCurrentQuarter = Number(w.year) === currentYear && q === currentQuarter && Number(w.week_number) !== 0;
-      // ONLY show weeks that have started or are past
-      return isCurrentQuarter && w.start_date <= todayStr;
+      return Number(w.year) === currentYear && q === currentQuarter && Number(w.week_number) !== 0 && w.start_date <= todayStr;
     })
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
   if (quarterWeeks.length === 0) return;
 
-  const labels = quarterWeeks.map(w => `${w.month}/${w.week_number}주`);
+  const labels = quarterWeeks.map(w => `${w.month}-${w.week_number}주차`);
   
-  // 2. Prepare datasets (Cumulative per member)
   const membersWithCumulative = activeMembers.value.map(m => {
     let runningTotal = 0;
-    const weeklyData = [];
+    const weeklyDataList = [];
     const cumulativeData = quarterWeeks.map(w => {
       const record = workoutRecords.value.find(r => 
         r.member_id === m.id && 
@@ -284,75 +371,51 @@ const initChart = () => {
         String(r.week_number) === String(w.week_number)
       );
       const weeklyCount = (record ? Number(record.count) : 0);
-      weeklyData.push(weeklyCount);
+      weeklyDataList.push(weeklyCount);
       runningTotal += weeklyCount;
       return runningTotal;
     });
-    return { member: m, cumulativeData, weeklyData, finalTotal: runningTotal };
+    return { member: m, cumulativeData, weeklyDataList, finalTotal: runningTotal };
   }).filter(item => item.finalTotal > 0);
 
-  // SORT by finalTotal Descending
   membersWithCumulative.sort((a, b) => b.finalTotal - a.finalTotal);
-
-  // 20+ High Contrast Colors
-  const colors = [
-    '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', 
-    '#8b5cf6', '#ef4444', '#06b6d4', '#f97316', '#a855f7',
-    '#1e1b4b', '#be123c', '#ca8a04', '#15803d', '#1d4ed8',
-    '#6d28d9', '#b91c1c', '#0e7490', '#c2410c', '#7e22ce'
-  ];
 
   const datasets = membersWithCumulative.map((item, i) => {
     const color = colors[i % colors.length];
     return {
       label: item.member.name,
       data: item.cumulativeData,
-      weeklyData: item.weeklyData,
+      weeklyData: item.weeklyDataList,
       borderColor: color,
       backgroundColor: color,
       borderWidth: 5,
-      tension: 0, // STRAIGHT LINES
+      tension: 0,
       pointRadius: 4,
       pointHoverRadius: 8,
-      hidden: false
     };
   });
 
-  if (chartInstance) chartInstance.destroy();
+  if (perfChartInstance) perfChartInstance.destroy();
 
-  chartInstance = new Chart(chartCanvas.value, {
+  perfChartInstance = new Chart(perfChartCanvas.value, {
     type: 'line',
-    data: {
-      labels: labels,
-      datasets: datasets
-    },
+    data: { labels: labels, datasets: datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      interaction: {
-        mode: 'index',
-        intersect: false,
-      },
+      interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
           position: 'bottom',
-          labels: {
-            boxWidth: 10,
-            padding: 20,
-            font: { weight: 'bold', size: 11 },
-            usePointStyle: true,
-            pointStyle: 'circle'
-          },
+          labels: { boxWidth: 10, padding: 15, font: { weight: 'bold', size: 10 }, usePointStyle: true, pointStyle: 'circle' },
           onClick: (e, legendItem, legend) => {
             const index = legendItem.datasetIndex;
             const ci = legend.chart;
             const dataset = ci.data.datasets[index];
             const baseColor = colors[index % colors.length];
-
-            // Toggle: Highlight (borderWidth 5, solid) vs Dim (borderWidth 1.5, transparent)
             if (dataset.borderWidth === 5) {
               dataset.borderWidth = 1.5;
-              dataset.borderColor = baseColor + '26'; // Approx 15% opacity
+              dataset.borderColor = baseColor + '26';
               dataset.backgroundColor = baseColor + '26';
               dataset.pointRadius = 0;
             } else {
@@ -365,41 +428,127 @@ const initChart = () => {
           }
         },
         tooltip: {
-          backgroundColor: '#1e1b4b',
-          padding: 12,
-          titleFont: { size: 14, weight: 'bold' },
-          bodyFont: { size: 13 },
-          callbacks: {
-            label: (context) => {
-              const weekly = context.dataset.weeklyData[context.dataIndex];
-              return `${context.dataset.label}: 누적 ${context.raw}회 (+${weekly}회)`;
-            }
-          }
+          filter: (tooltipItem) => tooltipItem.dataset.borderWidth === 5,
+          backgroundColor: '#1e1b4b', padding: 12, titleFont: { size: 14, weight: 'bold' }, bodyFont: { size: 13 },
+          callbacks: { label: (context) => `${context.dataset.label}: 누적 ${context.raw}회 (+${context.dataset.weeklyData[context.dataIndex]}회)` }
         }
       },
       scales: {
-        y: {
-          beginAtZero: true,
-          grid: { color: '#f1f5f9' },
-          ticks: { font: { weight: 'bold' }, color: '#94a3b8' },
-          title: { display: true, text: '누적 인증 횟수', font: { weight: 'bold' } }
+        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { weight: 'bold' }, color: '#94a3b8' }, title: { display: true, text: '누적 인증 횟수', font: { weight: 'bold' } } },
+        x: { grid: { display: false }, ticks: { font: { weight: 'bold' }, color: '#64748b' } }
+      }
+    }
+  });
+};
+
+const initDayChart = () => {
+  if (!dayChartCanvas.value || workoutLogs.value.length === 0) return;
+
+  const dayCounts = [0, 0, 0, 0, 0, 0, 0];
+  workoutLogs.value.forEach(log => {
+    const date = new Date(log.workout_date.replace(' ', 'T'));
+    if (!isNaN(date.getTime())) {
+      dayCounts[date.getDay()]++;
+    }
+  });
+
+  const labels = ['월', '화', '수', '목', '금', '토', '일'];
+  const data = [dayCounts[1], dayCounts[2], dayCounts[3], dayCounts[4], dayCounts[5], dayCounts[6], dayCounts[0]];
+
+  if (dayChartInstance) dayChartInstance.destroy();
+
+  dayChartInstance = new Chart(dayChartCanvas.value, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: '총 인증 횟수',
+        data: data,
+        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+        borderColor: 'rgb(99, 102, 241)',
+        borderWidth: 2,
+        borderRadius: 12,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e1b4b', padding: 12, titleFont: { size: 14, weight: 'bold' }, bodyFont: { size: 13 },
+          callbacks: { label: (context) => `인증 ${context.raw}회` }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { font: { weight: 'bold' }, color: '#94a3b8' } },
+        x: { grid: { display: false }, ticks: { font: { weight: 'bold' }, color: '#64748b' } }
+      }
+    }
+  });
+};
+
+const initTypeChart = () => {
+  if (!typeChartCanvas.value || workoutLogs.value.length === 0) return;
+
+  const typeMap = {};
+  workoutLogs.value.forEach(log => {
+    const type = log.workout_type || '기타';
+    typeMap[type] = (typeMap[type] || 0) + 1;
+  });
+
+  const sortedTypes = Object.entries(typeMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 7);
+
+  const labels = sortedTypes.map(t => t[0]);
+  const data = sortedTypes.map(t => t[1]);
+
+  if (typeChartInstance) typeChartInstance.destroy();
+
+  typeChartInstance = new Chart(typeChartCanvas.value, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors,
+        borderWidth: 0,
+        hoverOffset: 10
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '70%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth: 8, padding: 12, font: { weight: 'bold', size: 10 }, usePointStyle: true }
         },
-        x: {
-          grid: { display: false },
-          ticks: { font: { weight: 'bold' }, color: '#64748b' }
+        tooltip: {
+          backgroundColor: '#1e1b4b', padding: 12, titleFont: { size: 14, weight: 'bold' }, bodyFont: { size: 13 },
+          callbacks: { label: (context) => ` ${context.label}: ${context.raw}회` }
         }
       }
     }
   });
 };
 
+const initCharts = () => {
+  initPerfChart();
+  initDayChart();
+  initTypeChart();
+};
+
 onMounted(() => {
   nextTick(() => {
-    initChart();
+    initCharts();
   });
 });
 
-watch([weeks, workoutRecords, activeMembers], () => {
-  initChart();
+watch([weeks, workoutRecords, activeMembers, workoutLogs], () => {
+  initCharts();
 }, { deep: true });
 </script>

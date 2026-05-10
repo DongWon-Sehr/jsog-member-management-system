@@ -83,12 +83,16 @@
 </template>
 
 <script setup>
+import { toRef } from 'vue';
+import { useScrollLock } from '../composables/useScrollLock';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 
 const props = defineProps({
   isOpen: Boolean
 });
+
+useScrollLock(toRef(props, 'isOpen'));
 
 const emit = defineEmits(['close', 'select']);
 const { members, weeks, workoutRecords } = useStore();

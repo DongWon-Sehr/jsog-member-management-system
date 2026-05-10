@@ -127,6 +127,8 @@
 </template>
 
 <script setup>
+import { toRef } from 'vue';
+import { useScrollLock } from '../composables/useScrollLock';
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
@@ -134,6 +136,8 @@ import { useDialog } from '../composables/useDialog';
 const props = defineProps({
   isOpen: Boolean
 });
+
+useScrollLock(toRef(props, 'isOpen'));
 
 const emit = defineEmits(['close']);
 const { weeks } = useStore();
@@ -202,11 +206,17 @@ const generateMatrix = (year) => {
     const endStr = formatDateFull(currentEnd);
 
     // Check if we have an existing record in the DB for this start_date
-    const existingRecord = weeks.value.find(w => w.start_date === startStr);
+    const existingRecord = weeks.value.find(w => {
+      if (!w.start_date) return false;
+      // Handle standardized date (YYYY-MM-DD) or datetime (YYYY-MM-DD HH:mm:ss)
+      const dbStart = String(w.start_date).split(' ')[0].split('T')[0];
+      return dbStart === startStr;
+    });
 
     if (existingRecord) {
       // Use DB data
       matrix.push({
+        id: existingRecord.id, // Keep ID for updates
         start_date: startStr,
         end_date: endStr,
         year: Number(existingRecord.year),

@@ -7,6 +7,7 @@ const rewards = ref([]);
 const weeks = ref([]);
 const workoutRecords = ref([]);
 const workoutLogs = ref([]);
+const systemLogs = ref([]);
 const dashboardSummary = reactive({
   activeMemberCount: 0,
   weeklyWorkoutCount: 0,
@@ -47,6 +48,7 @@ export function useStore() {
     weeks,
     workoutRecords,
     workoutLogs,
+    systemLogs,
     dashboardSummary,
     isLoading,
     loadingText,

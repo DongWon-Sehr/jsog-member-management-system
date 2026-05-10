@@ -9,7 +9,7 @@
             </div>
             <span class="text-xl font-bold text-gray-900 tracking-tight">주삼오공 <span class="text-indigo-600">Admin</span></span>
           </div>
-          <nav class="hidden md:ml-8 md:flex md:space-x-4">
+          <nav class="hidden md:ml-8 md:flex md:space-x-4 items-center">
             <button 
               v-for="item in navigation" 
               :key="item.name"
@@ -21,8 +21,9 @@
             </button>
           </nav>
         </div>
-        <div class="flex items-center gap-4">
-          <span class="text-xs text-gray-400 font-mono hidden sm:inline-block">V1.0.0</span>
+        <div class="flex items-center gap-2 sm:gap-4">
+          <span class="text-xs text-gray-400 font-mono hidden sm:inline-block">V1.1.0</span>
+
           <div class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200 shadow-inner">
             <i class="ph-bold ph-user text-gray-400"></i>
           </div>
@@ -46,6 +47,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { useStore } from '../composables/useStore';
 
 const { currentView } = useStore();

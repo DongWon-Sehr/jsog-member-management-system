@@ -43,7 +43,10 @@
 <script setup>
 import { onMounted, onUnmounted } from 'vue';
 import { useDialog } from '../composables/useDialog';
+import { useScrollLock } from '../composables/useScrollLock';
 const { isOpen, dialogType, title, message, confirmText, cancelText, isDanger, handleConfirm, handleCancel } = useDialog();
+
+useScrollLock(isOpen);
 
 const handleEsc = (e) => {
   if (e.key === 'Escape' && isOpen.value) {

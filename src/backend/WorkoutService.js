@@ -62,6 +62,33 @@ const WorkoutService = {
       existingMap[key] = i + 1;
     }
 
+    // Validate Super Pass rule: Only 1 super pass per month per member
+    const allRecords = Util.sheetToObjects(this.sheet, this.tableName);
+    const superPassUsage = {};
+
+    for (const record of recordsArray) {
+      if (record.superPass === true || String(record.superPass).toUpperCase() === 'TRUE') {
+        const usageKey = `${record.memberId}_${record.year}_${record.month}`;
+        
+        const alreadyUsedDb = allRecords.find(r => 
+          r.member_id === record.memberId &&
+          String(r.year) === String(record.year) &&
+          String(r.month) === String(record.month) &&
+          String(r.week_number) !== String(record.weekNumber) &&
+          (r.super_pass === true || String(r.super_pass).toUpperCase() === 'TRUE')
+        );
+
+        if (alreadyUsedDb) {
+          const memberName = MemberService.getMemberById(record.memberId)?.name || record.memberId;
+          throw new Error(`[슈퍼패스 정책 위반] ${memberName} 멤버는 이미 ${record.month}-${alreadyUsedDb.week_number}주차에 슈퍼패스를 사용했습니다.`);
+        } else if (superPassUsage[usageKey]) {
+          const memberName = MemberService.getMemberById(record.memberId)?.name || record.memberId;
+          throw new Error(`[슈퍼패스 정책 위반] ${memberName} 멤버는 이미 저장 목록 내 동일한 월(${record.month}월)에 슈퍼패스 사용 요청이 포함되어 있습니다.`);
+        }
+        superPassUsage[usageKey] = true;
+      }
+    }
+
     const timestamp = Util.getCurrentTimestamp();
 
     recordsArray.forEach(record => {
@@ -117,6 +144,22 @@ const WorkoutService = {
       note: headers.indexOf('note'),
       updated_at: headers.indexOf('updated_at')
     };
+
+    // Validate Super Pass rule
+    if (superPass === true || String(superPass).toUpperCase() === 'TRUE') {
+      const allRecords = Util.sheetToObjects(this.sheet, this.tableName);
+      const alreadyUsed = allRecords.find(r => 
+        r.member_id === memberId &&
+        String(r.year) === String(year) &&
+        String(r.month) === String(month) &&
+        String(r.week_number) !== String(weekNumber) &&
+        (r.super_pass === true || String(r.super_pass).toUpperCase() === 'TRUE')
+      );
+      if (alreadyUsed) {
+        const memberName = MemberService.getMemberById(memberId)?.name || memberId;
+        throw new Error(`[슈퍼패스 정책 위반] ${memberName} 멤버는 이미 ${month}-${alreadyUsed.week_number}주차에 슈퍼패스를 사용했습니다.`);
+      }
+    }
 
     let foundRowIndex = -1;
 

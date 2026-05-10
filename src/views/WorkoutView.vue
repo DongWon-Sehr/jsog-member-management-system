@@ -3,7 +3,7 @@
     <!-- Unified Header Section (Sticky) -->
     <div class="sticky top-16 z-30 bg-white">
       <!-- Page Title & Primary Selectors (Indigo Style) -->
-      <div class="px-6 py-5 border-b border-gray-50 flex flex-col lg:flex-row lg:items-center justify-between bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100 gap-4">
+      <div class="px-6 py-5 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100 gap-4">
         <div class="flex items-center gap-3">
           <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl shadow-sm">
             <i class="ph-bold ph-person-simple-run text-xl"></i>
@@ -26,9 +26,19 @@
               v-model="searchQuery"
               type="text" 
               placeholder="회원 이름 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-40 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
             />
           </div>
+
+          <!-- Status Filter -->
+          <select 
+            v-model="statusFilter"
+            class="px-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-700 shadow-sm transition-all cursor-pointer"
+          >
+            <option value="all">전체 상태</option>
+            <option value="eligible">환급 대상</option>
+            <option value="incomplete">미달성</option>
+          </select>
 
           <!-- Year Selector -->
           <div class="flex items-center gap-1 bg-white border border-gray-200 rounded-xl p-1 shadow-sm transition-all focus-within:border-indigo-500">
@@ -65,16 +75,29 @@
           <button @click="isPlannerOpen = true" class="p-2.5 text-gray-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all active:scale-95 border border-transparent hover:border-indigo-100" title="연간 주차 셋업">
             <i class="ph-bold ph-gear text-xl"></i>
           </button>
+
+          <button @click="downloadCsv" :disabled="!currentWeekData" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
+            <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
+          </button>
         </div>
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100">
+        <!-- Quick Summary Bar -->
+        <div v-if="currentWeekData" class="flex items-center gap-3 mb-4 px-2 text-sm font-black text-gray-700 tracking-tight">
+          <span>총원 {{ summaryCounts.total }}</span>
+          <span class="text-gray-300">|</span>
+          <span class="text-blue-600">환급대상 {{ summaryCounts.eligible }} <span class="text-xs font-bold opacity-75">(목표달성 {{ summaryCounts.targetReached }} / 슈퍼패스 {{ summaryCounts.superPassUsed }})</span></span>
+          <span class="text-gray-300">|</span>
+          <span class="text-red-500">미달성 {{ summaryCounts.incomplete }}</span>
+        </div>
+
         <div class="hidden lg:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
           <div class="col-span-2">이름</div>
           <div class="col-span-3 text-center">운동 횟수</div>
           <div class="col-span-2 text-center">슈퍼패스</div>
-          <div class="col-span-2 text-center">환급 여부</div>
+          <div class="col-span-2 text-center">환급 상태</div>
           <div class="col-span-3">메모</div>
         </div>
       </div>
@@ -175,6 +198,8 @@ const isPlannerOpen = ref(false);
 
 const selectedYear = ref(new Date().getFullYear());
 const selectedWeekId = ref('');
+const searchQuery = ref('');
+const statusFilter = ref('all'); // all, eligible, incomplete
 let isNavigating = false; // Flag to prevent watcher interference
 
 // Log Modal state
@@ -190,20 +215,6 @@ const validWeeks = computed(() => {
       if (Number(b.month) !== Number(a.month)) return Number(b.month) - Number(a.month);
       return Number(b.week_number) - Number(a.week_number);
     });
-});
-
-const isPrevWeekDisabled = computed(() => {
-  if (!selectedWeekId.value) return true;
-  const list = validWeeks.value;
-  const currentIndex = list.findIndex(w => w.id === selectedWeekId.value);
-  return currentIndex === -1 || currentIndex === list.length - 1;
-});
-
-const isNextWeekDisabled = computed(() => {
-  if (!selectedWeekId.value) return true;
-  const list = validWeeks.value;
-  const currentIndex = list.findIndex(w => w.id === selectedWeekId.value);
-  return currentIndex <= 0;
 });
 
 // Year Navigation Logic
@@ -227,9 +238,9 @@ const filteredWeeks = computed(() => {
   return validWeeks.value.filter(w => Number(w.year) === selectedYear.value);
 });
 
-// Week Navigation Logic (Supports Year Crossing)
+// Week Navigation Logic
 const navigateWeek = async (directionStr) => {
-  const list = validWeeks.value; // Use the global valid list for seamless transition
+  const list = validWeeks.value;
   const currentIndex = list.findIndex(w => w.id === selectedWeekId.value);
   
   if (currentIndex === -1) {
@@ -241,9 +252,6 @@ const navigateWeek = async (directionStr) => {
     return;
   }
   
-  // list is desc sorted (newest to oldest)
-  // 'prev' (Left/Past): go to older (higher index)
-  // 'next' (Right/Future): go to newer (lower index)
   let nextIndex = currentIndex;
   if (directionStr === 'prev') {
     nextIndex = currentIndex + 1;
@@ -254,12 +262,10 @@ const navigateWeek = async (directionStr) => {
   if (nextIndex >= 0 && nextIndex < list.length) {
     isNavigating = true;
     const targetWeek = list[nextIndex];
-    
     if (selectedYear.value !== Number(targetWeek.year)) {
-      selectedYear.value = Number(targetWeek.year); // Sync Year Selector
-      await nextTick(); // Wait for filteredWeeks and DOM to update options
+      selectedYear.value = Number(targetWeek.year);
+      await nextTick();
     }
-    
     selectedWeekId.value = targetWeek.id;
     await nextTick();
     isNavigating = false;
@@ -271,31 +277,92 @@ const currentWeekData = computed(() => {
   return weeks.value.find(w => w.id === selectedWeekId.value) || null;
 });
 
-// Calculate Member Records on the fly using store data
+// Calculate Member Records with Search and Status Filters
 const memberRecords = computed(() => {
   const weekData = currentWeekData.value;
   if (!weekData) return [];
 
-  // Filter records for the selected week
   const dbRecords = workoutRecords.value.filter(r => 
     String(r.year) === String(weekData.year) &&
     String(r.month) === String(weekData.month) &&
     String(r.week_number) === String(weekData.week_number)
   );
   
-  return activeMembers.value.map(member => {
-    const existing = dbRecords.find(r => r.member_id === member.id);
-    return {
-      memberId: member.id,
-      name: member.name,
-      count: existing ? Number(existing.count) : 0,
-      superPass: existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false,
-      note: existing ? existing.note : ''
-    };
-  });
+  return activeMembers.value
+    .map(member => {
+      const existing = dbRecords.find(r => r.member_id === member.id);
+      return {
+        memberId: member.id,
+        name: member.name,
+        count: existing ? Number(existing.count) : 0,
+        superPass: existing ? (existing.super_pass === true || String(existing.super_pass).toUpperCase() === 'TRUE') : false,
+        note: existing ? existing.note : ''
+      };
+    })
+    .filter(record => {
+      // 1. Search Filter
+      if (searchQuery.value.trim() && !record.name.toLowerCase().includes(searchQuery.value.toLowerCase().trim())) {
+        return false;
+      }
+      
+      // 2. Status Filter
+      const isEligible = record.count >= 3 || (record.count >= 1 && record.superPass);
+      if (statusFilter.value === 'eligible' && !isEligible) return false;
+      if (statusFilter.value === 'incomplete' && isEligible) return false;
+
+      return true;
+    });
+});
+
+// Summary Counts for the Current View
+const summaryCounts = computed(() => {
+  const weekData = currentWeekData.value;
+  if (!weekData) return { total: 0, eligible: 0, incomplete: 0, targetReached: 0, superPassUsed: 0 };
+
+  const dbRecords = workoutRecords.value.filter(r => 
+    String(r.year) === String(weekData.year) &&
+    String(r.month) === String(weekData.month) &&
+    String(r.week_number) === String(weekData.week_number)
+  );
+
+  const stats = activeMembers.value.reduce((acc, m) => {
+    const existing = dbRecords.find(r => r.member_id === m.id);
+    const count = existing ? Number(existing.count) : 0;
+    const sp = existing ? (existing.super_pass === true || String(existing.super_pass).toUpperCase() === 'TRUE') : false;
+    
+    acc.total++;
+    if (count >= 3 || (count >= 1 && sp)) {
+      acc.eligible++;
+      if (count >= 3) acc.targetReached++;
+      else acc.superPassUsed++;
+    } else {
+      acc.incomplete++;
+    }
+    
+    return acc;
+  }, { total: 0, eligible: 0, incomplete: 0, targetReached: 0, superPassUsed: 0 });
+
+  return stats;
 });
 
 const toggleSuperPass = async (record) => {
+  const newValue = !record.superPass;
+  const weekData = currentWeekData.value;
+
+  if (newValue) {
+    const alreadyUsed = workoutRecords.value.find(r => 
+      r.member_id === record.memberId &&
+      String(r.year) === String(weekData.year) &&
+      String(r.month) === String(weekData.month) &&
+      String(r.week_number) !== String(weekData.week_number) &&
+      (r.super_pass === true || String(r.super_pass).toUpperCase() === 'TRUE')
+    );
+    if (alreadyUsed) {
+      await alert({ title: '사용 불가', message: `해당 멤버는 이미 ${weekData.month}-${alreadyUsed.week_number}주차에 슈퍼패스를 사용했습니다.`, isDanger: true });
+      return;
+    }
+  }
+
   const confirmResult = await confirm({
     title: '슈퍼패스 상태 변경',
     message: record.superPass ? '슈퍼패스 사용을 취소하시겠습니까?' : '슈퍼패스를 사용 처리하시겠습니까?',
@@ -304,10 +371,6 @@ const toggleSuperPass = async (record) => {
   });
   if (!confirmResult) return;
 
-  const newValue = !record.superPass;
-  const weekData = currentWeekData.value;
-  
-  // Optimistic update in global store
   const dbRecordIndex = workoutRecords.value.findIndex(r => 
     r.member_id === record.memberId &&
     String(r.year) === String(weekData.year) &&
@@ -316,18 +379,12 @@ const toggleSuperPass = async (record) => {
   );
 
   const prevRecords = JSON.parse(JSON.stringify(workoutRecords.value));
-
   if (dbRecordIndex > -1) {
     workoutRecords.value[dbRecordIndex].super_pass = newValue;
   } else {
     workoutRecords.value.push({
-      member_id: record.memberId,
-      year: weekData.year,
-      month: weekData.month,
-      week_number: weekData.week_number,
-      count: 0,
-      super_pass: newValue,
-      note: ''
+      member_id: record.memberId, year: weekData.year, month: weekData.month,
+      week_number: weekData.week_number, count: 0, super_pass: newValue, note: ''
     });
   }
 
@@ -345,35 +402,17 @@ const toggleSuperPass = async (record) => {
         alert({ title: '오류', message: '저장에 실패했습니다.', isDanger: true });
       }
     })
-    .withFailureHandler(() => {
-      workoutRecords.value = prevRecords;
-      alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
-    })
-    .apiUpdateWorkoutCount(
-      record.memberId, 
-      weekData.year, 
-      weekData.month, 
-      weekData.week_number, 
-      actualDbRecord.count, 
-      newValue, 
-      actualDbRecord.note
-    );
+    .apiUpdateWorkoutCount(record.memberId, weekData.year, weekData.month, weekData.week_number, actualDbRecord.count, newValue, actualDbRecord.note);
 };
 
-// Initial Selection
 onMounted(() => {
   const today = new Date();
   today.setHours(0,0,0,0);
-  
-  // Try to find current week (must not be a rest week)
   const currentWeek = validWeeks.value.find(w => {
     const start = new Date(w.start_date);
-    start.setHours(0,0,0,0);
     const end = new Date(w.end_date);
-    end.setHours(23,59,59,999);
     return today >= start && today <= end;
   });
-
   if (currentWeek) {
     selectedYear.value = Number(currentWeek.year);
     selectedWeekId.value = currentWeek.id;
@@ -383,9 +422,8 @@ onMounted(() => {
   }
 });
 
-// Auto-select first week when year changes if current selection is invalid
 watch(() => selectedYear.value, (newYear) => {
-  if (isNavigating) return; // Skip auto-selection if we are navigating via arrows
+  if (isNavigating) return;
   if (selectedWeekId.value) {
     const exists = filteredWeeks.value.find(w => w.id === selectedWeekId.value);
     if (!exists && filteredWeeks.value.length > 0) {
@@ -410,26 +448,12 @@ const downloadCsv = () => {
   if (!currentWeekData.value) return;
   const data = memberRecords.value;
   const week = currentWeekData.value;
-
   const headers = ['이름', '운동횟수', '슈퍼패스', '환급상태', '메모'];
-  const rows = data.map(r => [
-    r.name,
-    r.count,
-    r.superPass ? '사용' : '-',
-    getRefundStatus(r).text,
-    (r.note || '').replace(/,/g, ' ') // Escape commas in notes
-  ]);
-
-  const csvContent = [
-    `주차: ${week.year}년 ${week.month}월 ${week.week_number}주차 (${week.start_date} ~ ${week.end_date})`,
-    headers.join(','),
-    ...rows.map(r => r.join(','))
-  ].join('\n');
-
+  const rows = data.map(r => [r.name, r.count, r.superPass ? '사용' : '-', getRefundStatus(r).text, (r.note || '').replace(/,/g, ' ')]);
+  const csvContent = [`주차: ${week.year}년 ${week.month}월 ${week.week_number}주차 (${week.start_date} ~ ${week.end_date})`, headers.join(','), ...rows.map(r => r.join(','))].join('\n');
   const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
+  link.setAttribute('href', URL.createObjectURL(blob));
   link.setAttribute('download', `workout_report_${week.year}_${week.month}_W${week.week_number}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
@@ -440,7 +464,6 @@ const downloadCsv = () => {
 const formatMdDate = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return dateStr;
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+  return isNaN(date.getTime()) ? dateStr : `${date.getMonth() + 1}/${date.getDate()}`;
 };
 </script>

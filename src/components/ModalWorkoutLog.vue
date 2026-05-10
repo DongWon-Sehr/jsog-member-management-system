@@ -200,6 +200,8 @@
 </template>
 
 <script setup>
+import { toRef } from 'vue';
+import { useScrollLock } from '../composables/useScrollLock';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
@@ -209,6 +211,8 @@ const props = defineProps({
   memberId: String,
   weekData: Object
 });
+
+useScrollLock(toRef(props, 'isOpen'));
 
 const emit = defineEmits(['close']);
 

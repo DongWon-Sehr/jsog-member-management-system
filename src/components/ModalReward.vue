@@ -89,6 +89,8 @@
 </template>
 
 <script setup>
+import { toRef } from 'vue';
+import { useScrollLock } from '../composables/useScrollLock';
 import { reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
@@ -98,6 +100,8 @@ const props = defineProps({
   isProcessing: Boolean,
   initialData: Object
 });
+
+useScrollLock(toRef(props, 'isOpen'));
 
 const emit = defineEmits(['close', 'save']);
 const { activeMembers } = useStore();

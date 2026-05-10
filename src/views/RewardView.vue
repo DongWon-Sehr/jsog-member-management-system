@@ -3,7 +3,7 @@
     <!-- Unified Header Section (Sticky) -->
     <div class="sticky top-16 z-30 bg-white">
       <!-- Page Title & Primary Actions (Indigo Style) -->
-      <div class="px-6 py-5 border-b border-gray-50 flex flex-col sm:flex-row sm:items-center justify-between bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100 gap-4">
+      <div class="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100 gap-4">
         <div class="flex items-center gap-3">
           <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl shadow-sm">
             <i class="ph-bold ph-gift text-xl"></i>
@@ -12,6 +12,19 @@
         </div>
         
         <div class="flex items-center gap-3">
+          <!-- Search Member -->
+          <div class="relative group">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+            </div>
+            <input 
+              v-model="searchQuery"
+              type="text" 
+              placeholder="멤버 이름 검색"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+            />
+          </div>
+
           <button @click="fetchRewards" :disabled="isLoading" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="로그 새로고침">
             <i class="ph-bold ph-arrows-clockwise text-gray-500 text-xl" :class="{ 'animate-spin': isLoading }"></i>
           </button>
@@ -23,11 +36,28 @@
             <i class="ph-bold ph-plus text-lg"></i>
             <span class="font-black text-sm">지급 등록</span>
           </button>
+
+          <button @click="downloadCsv" :disabled="rewards.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
+            <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
+          </button>
         </div>
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100">
+        <!-- Quick Summary Bar -->
+        <div v-if="rewards.length > 0" class="flex items-center gap-6 mb-4 px-2">
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">총 지급 건수</span>
+            <span class="text-sm font-black text-gray-900">{{ rewards.length }}건</span>
+          </div>
+          <div class="h-3 w-px bg-gray-200"></div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">총 지급액</span>
+            <span class="text-sm font-black text-indigo-600">{{ totalRewardAmount.toLocaleString() }}원</span>
+          </div>
+        </div>
+
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
           <div class="col-span-2">지급 대상</div>
           <div class="col-span-2">지급 기간</div>
@@ -83,11 +113,11 @@
         </div>
 
         <!-- Empty State -->
-        <div v-if="!isLoading && rewards.length === 0" class="py-32 text-center">
+        <div v-if="!isLoading && sortedRewards.length === 0" class="py-32 text-center">
           <div class="inline-flex p-5 rounded-full bg-white shadow-sm border border-gray-100 mb-4">
             <i class="ph-bold ph-gift text-gray-200 text-5xl"></i>
           </div>
-          <p class="text-gray-400 font-black text-lg">지급된 리워드 내역이 없습니다.</p>
+          <p class="text-gray-400 font-black text-lg">기록이 없습니다.</p>
         </div>
       </div>
     </div>
@@ -119,21 +149,32 @@ import { useDialog } from '../composables/useDialog';
 import ModalReward from '../components/ModalReward.vue';
 import ModalRewardRecommendation from '../components/ModalRewardRecommendation.vue';
 
-const { memberMap } = useStore();
+const { memberMap, rewards } = useStore();
 const { alert, confirm } = useDialog();
 
-const rewards = ref([]);
 const isLoading = ref(false);
 const isProcessing = ref(false);
 const isModalOpen = ref(false);
 const isRecommendationOpen = ref(false);
 const prefillData = ref(null);
-
-const sortedRewards = computed(() => {
-  return [...rewards.value].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-});
+const searchQuery = ref('');
 
 const getMemberName = (id) => memberMap.value[id]?.name || '알 수 없음';
+
+const sortedRewards = computed(() => {
+  let list = [...rewards.value];
+
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase().trim();
+    list = list.filter(r => getMemberName(r.member_id).toLowerCase().includes(q));
+  }
+
+  return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+});
+
+const totalRewardAmount = computed(() => {
+  return rewards.value.reduce((sum, r) => sum + Number(r.amount), 0);
+});
 
 const fetchRewards = () => {
   isLoading.value = true;
@@ -209,7 +250,7 @@ const handleDelete = async (id) => {
 };
 
 const downloadCsv = () => {
-  const data = rewards.value;
+  const data = sortedRewards.value;
   if (data.length === 0) return;
 
   const headers = ['지급대상', '지급기간/일자', '금액', '상세내용'];
@@ -235,6 +276,4 @@ const downloadCsv = () => {
   link.click();
   document.body.removeChild(link);
 };
-
-onMounted(fetchRewards);
 </script>
