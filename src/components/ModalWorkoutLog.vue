@@ -56,30 +56,22 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                   <div class="flex flex-col">
                     <label class="text-xs font-bold text-gray-500 mb-1">날짜</label>
-                    <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                    <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all h-[38px]">
                   </div>
                   <div class="flex flex-col">
                     <label class="text-xs font-bold text-gray-500 mb-1">시간</label>
-                    <el-time-picker
-                      v-model="newTime"
-                      format="HH:mm"
-                      value-format="HH:mm"
-                      placeholder="HH:mm"
-                      :editable="true"
-                      :clearable="false"
-                      class="!w-full !rounded-xl"
-                    />
+                    <TimeInput v-model="newTime" />
                   </div>
                   <div class="flex flex-col">
                     <label class="text-xs font-bold text-gray-500 mb-1">운동 종류</label>
-                    <input v-model="newType" type="text" placeholder="런닝, 필라테스 등" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                    <input v-model="newType" type="text" placeholder="런닝, 필라테스 등" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all h-[38px]">
                   </div>
                   <div class="flex items-center gap-2">
                     <div class="flex flex-col flex-1">
                       <label class="text-xs font-bold text-gray-500 mb-1">운동 시간 (분)</label>
-                      <input v-model="newDuration" type="number" min="1" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all">
+                      <input v-model="newDuration" type="number" min="1" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all h-[38px]">
                     </div>
-                    <button @click="addLogLocal" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all flex-shrink-0 shadow-sm mt-6 h-[38px]">
+                    <button @click="addLogLocal" class="p-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all flex-shrink-0 shadow-sm h-[38px]">
                       <i class="ph-bold ph-plus"></i>
                     </button>
                   </div>
@@ -144,15 +136,10 @@
                       />
                     </div>
                     <div class="col-span-3">
-                      <el-time-picker
+                      <TimeInput 
                         v-model="log.local_time"
-                        format="HH:mm"
-                        value-format="HH:mm"
-                        placeholder="HH:mm"
-                        :editable="true"
-                        :clearable="false"
-                        @change="updateLogTimestamp(log)"
-                        class="!w-full !bg-transparent"
+                        @update:model-value="updateLogTimestamp(log)"
+                        class="custom-time-input-mini"
                       />
                     </div>
                     <div class="col-span-3">
@@ -205,6 +192,7 @@ import { useScrollLock } from '../composables/useScrollLock';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import TimeInput from './TimeInput.vue';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -227,7 +215,7 @@ const initialWeeklyNote = ref('');
 
 // Form states
 const newDate = ref('');
-const newTime = ref('');
+const newTime = ref('00:00');
 const newType = ref('');
 const newDuration = ref(30);
 
@@ -341,15 +329,19 @@ const syncLocalState = () => {
 
 const setDefaultValues = () => {
   if (props.isOpen && props.weekData) {
-    const today = new Date();
-    const start = new Date(props.weekData.start_date);
-    const end = new Date(props.weekData.end_date);
-    let targetDate = today;
-    if (today < start || today > end) targetDate = start;
-    
+    const now = new Date();
     const pad = n => n < 10 ? '0'+n : n;
-    newDate.value = `${targetDate.getFullYear()}-${pad(targetDate.getMonth()+1)}-${pad(targetDate.getDate())}`;
-    newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    
+    const startDate = props.weekData.start_date.split(' ')[0].split('T')[0];
+    const endDate = props.weekData.end_date.split(' ')[0].split('T')[0];
+    
+    let defaultDate = todayStr;
+    if (todayStr < startDate) defaultDate = startDate;
+    else if (todayStr > endDate) defaultDate = endDate;
+    
+    newDate.value = defaultDate;
+    newTime.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
     newType.value = '';
     newDuration.value = 30;
   }
@@ -379,7 +371,7 @@ const close = () => {
 const addLogLocal = () => {
   if (!newDate.value || !newTime.value) return;
   const tempId = 'new-' + Date.now();
-  
+
   localLogs.value.unshift({
     id: tempId,
     member_id: props.memberId,
@@ -392,9 +384,9 @@ const addLogLocal = () => {
     isModified: false
   });
 
-  const today = new Date();
+  const now = new Date();
   const pad = n => n < 10 ? '0'+n : n;
-  newTime.value = `${pad(today.getHours())}:${pad(today.getMinutes())}`;
+  newTime.value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 };
 
 const updateLogTimestamp = (log) => {
@@ -475,23 +467,6 @@ const saveBatch = () => {
     .apiBatchSaveWorkoutLogs(props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number, logsToAdd, logsToUpdate, idsToDelete, weeklyNote);
 };
 </script>
-
-<style>
-/* Global Element Plus overrides to match theme */
-.el-input__wrapper {
-  background-color: white !important;
-  border-radius: 12px !important;
-  box-shadow: 0 0 0 1px #e2e8f0 inset !important;
-}
-.el-input__wrapper.is-focus {
-  box-shadow: 0 0 0 1px #6366f1 inset !important;
-}
-/* Ensure el-time-picker dropdown matches theme or behaves correctly */
-.el-time-spinner__item.is-active {
-  color: #4f46e5 !important;
-  font-weight: bold;
-}
-</style>
 
 <style scoped>
 .modal-fade-enter-active, .modal-fade-leave-active {

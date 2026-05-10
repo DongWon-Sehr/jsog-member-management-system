@@ -405,22 +405,36 @@ const toggleSuperPass = async (record) => {
     .apiUpdateWorkoutCount(record.memberId, weekData.year, weekData.month, weekData.week_number, actualDbRecord.count, newValue, actualDbRecord.note);
 };
 
-onMounted(() => {
+const setInitialWeek = () => {
+  if (selectedWeekId.value || validWeeks.value.length === 0) return;
+
   const today = new Date();
   today.setHours(0,0,0,0);
+  const pad = n => n < 10 ? '0'+n : n;
+  const todayStr = `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+  
   const currentWeek = validWeeks.value.find(w => {
-    const start = new Date(w.start_date);
-    const end = new Date(w.end_date);
-    return today >= start && today <= end;
+    const start = w.start_date.split(' ')[0].split('T')[0];
+    const end = w.end_date.split(' ')[0].split('T')[0];
+    return todayStr >= start && todayStr <= end;
   });
+
   if (currentWeek) {
     selectedYear.value = Number(currentWeek.year);
     selectedWeekId.value = currentWeek.id;
-  } else if (validWeeks.value.length > 0) {
+  } else {
     selectedYear.value = Number(validWeeks.value[0].year);
     selectedWeekId.value = validWeeks.value[0].id;
   }
+};
+
+onMounted(() => {
+  setInitialWeek();
 });
+
+watch(weeks, () => {
+  setInitialWeek();
+}, { immediate: true });
 
 watch(() => selectedYear.value, (newYear) => {
   if (isNavigating) return;

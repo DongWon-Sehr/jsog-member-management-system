@@ -38,7 +38,7 @@ async function run() {
   const components = [
     'DashboardView', 'MemberView', 'WorkoutView', 'RewardView', 'LogView', 
     'LayoutHeader', 'ModalMember', 'ModalWeekPlanner', 'ModalWorkoutLog', 
-    'ModalReward', 'ModalRewardRecommendation', 'GlobalDialog'
+    'ModalReward', 'ModalRewardRecommendation', 'GlobalDialog', 'TimeInput'
   ];
 
   components.forEach(name => {
@@ -91,6 +91,7 @@ async function run() {
         <?!= include('ModalReward'); ?>
         <?!= include('ModalRewardRecommendation'); ?>
         <?!= include('GlobalDialog'); ?>
+        <?!= include('TimeInput'); ?>
       </div>
 
       <!-- App mounting point -->
