@@ -2,7 +2,7 @@
 
 ## Core Technical Standards
 - **Build Requirement**: ALWAYS run `npm run build` after any code change. This triggers the `post-build.js` script which extracts Vue templates for GAS compatibility. **NEVER run `clasp push` or deploy the application.** The user will manually review the code and deploy it themselves.
-- **Frontend Architecture**: Vue 3 (Composition API) with Tailwind CSS. Specialized components use **Element Plus** (Forms), **Chart.js** (Analytics), and **html2canvas** (Screenshots).
+- **Frontend Architecture**: Vue 3 (Composition API) with Tailwind CSS. Specialized components use **Chart.js** (Analytics) and **html2canvas** (Screenshots). Form inputs are built with native primitives and IMask for specialized validation.
 - **Backend Architecture**: Modular GAS services (Member, Workout, Reward, Log) linked via `Api.js`.
 - **Date Handling**: Use `YYYY-MM-DD` string format for all GAS/Frontend transfers. Use `parseToLocalParts` helper for safe local date manipulation.
 

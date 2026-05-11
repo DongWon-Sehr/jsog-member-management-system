@@ -18,10 +18,11 @@ export default defineConfig({
     emptyOutDir: true,
     cssCodeSplit: false,
     rollupOptions: {
-      external: ["vue"],
+      external: ["vue", "imask"],
       plugins: [
         externalGlobals({
           vue: "Vue",
+          imask: "IMask"
         }),
       ],
       output: {
