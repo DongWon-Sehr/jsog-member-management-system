@@ -25,24 +25,30 @@ function doGet(e) {
 }
 
 /**
- * Handles HTTP POST requests (Main entry for Kakao Webhooks & other POSTs).
+ * Handles HTTP POST requests.
+ * Supports RESTful path routing via e.pathInfo (e.g., .../exec/kakao).
  */
 function doPost(e) {
   try {
+    const path = e.pathInfo || "";
     const postData = e.postData.contents;
     const payload = JSON.parse(postData);
     
-    // Detect if it's a Kakao Chatbot Skill request
-    if (payload.userRequest && payload.userRequest.user) {
+    console.log(`[doPost] Received request on path: /${path}`);
+
+    // 1. REST Path: /kakao (Primary for Chatbot Skills)
+    if (path === "kakao" || (payload.userRequest && payload.userRequest.user)) {
       const response = _executeApi('KakaoSkill', () => KakaoController.handleRequest(payload), payload);
       
       return ContentService.createTextOutput(JSON.stringify(response.data))
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // Default logic for other POST requests
-    SystemLogService.addLog("POST_RECEIVED", payload);
-    throw new Error("Unknown POST payload structure.");
+    // 2. Generic API or Webhook logs
+    SystemLogService.addLog("POST_RECEIVED", { path, payload });
+    
+    return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Data received" }))
+      .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
     console.error("[doPost] Error:", err.toString());

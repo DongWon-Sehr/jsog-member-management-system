@@ -7,31 +7,41 @@ const KakaoController = {
    * Routes the incoming Kakao payload to the appropriate handler.
    */
   handleRequest(payload) {
-    const intentName = payload.intent ? payload.intent.name : 'default';
-    const userKey = payload.userRequest.user.id;
-    const utterance = payload.userRequest.utterance;
-    const params = payload.action.params || {};
+    try {
+      // Kakao Payload Structure check
+      if (!payload || !payload.userRequest || !payload.userRequest.user) {
+        throw new Error("Invalid Kakao payload structure.");
+      }
 
-    console.log(`[KakaoController] Request: ${intentName}, User: ${userKey}`);
-    
-    switch (intentName) {
-      case '인증_시작': // User says "인증" or "운동"
-        return KakaoService.startManualAuth(userKey);
+      const intentName = payload.intent ? payload.intent.name : 'default';
+      const userKey = payload.userRequest.user.id;
+      const params = payload.action.params || {};
+
+      console.log(`[KakaoController] Request: ${intentName}, User: ${userKey}`);
       
-      case '사용자_등록': // Combined intent: menu click + email mandatory parameter
-        const email = params.email; // Filled by Kakao before calling Skill
-        return KakaoService.verifyAndRegister(userKey, email);
+      switch (intentName) {
+        case '인증_시작': // User says "인증" or "운동"
+          return KakaoService.startManualAuth(userKey);
+        
+        case '사용자_등록': // Combined intent: menu click + email mandatory parameter
+          // Kakao Builder must send 'email' as a parameter
+          const email = params.email; 
+          return KakaoService.verifyAndRegister(userKey, email);
 
-      case '인증_데이터_전송': // User selected workout type and provided optional data
-        return KakaoService.registerManualWorkout(userKey, params);
+        case '인증_데이터_전송': // User selected workout type and provided optional data
+          return KakaoService.registerManualWorkout(userKey, params);
 
-      case '인증사진_전송': // Existing photo intent (placeholder for now)
-        const imageUrl = payload.userRequest.params.media ? payload.userRequest.params.media.url : null;
-        if (!imageUrl) return this.sendSimpleText("사진이 감지되지 않았습니다.");
-        return KakaoService.processPhoto(userKey, imageUrl);
+        case '인증사진_전송': // Existing photo intent (placeholder for now)
+          const imageUrl = payload.userRequest.params.media ? payload.userRequest.params.media.url : null;
+          if (!imageUrl) return this.sendSimpleText("사진이 감지되지 않았습니다.");
+          return KakaoService.processPhoto(userKey, imageUrl);
 
-      default:
-        return this.onDefault(payload);
+        default:
+          return this.onDefault(payload);
+      }
+    } catch (err) {
+      console.error(`[KakaoController] Error: ${err.toString()}`);
+      return this.sendSimpleText(`처리 중 오류가 발생했습니다: ${err.message}`);
     }
   },
 

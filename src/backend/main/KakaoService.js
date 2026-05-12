@@ -8,6 +8,8 @@ const KakaoService = {
    * Called only after Kakao has successfully collected the 'email' parameter.
    */
   verifyAndRegister(userKey, email) {
+    console.log(`[KakaoService] verifyAndRegister - UserKey: ${userKey}, Email: ${email}`);
+    
     if (!email) {
       return this.createSimpleResponse("이메일 정보가 전달되지 않았습니다.");
     }
@@ -17,22 +19,27 @@ const KakaoService = {
     // 1. Email Format Validation (Since we use @sys.text)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) {
-      return this.createSimpleResponse(`'${cleanEmail}'은 올바른 이메일 형식이 아닙니다. 메뉴를 다시 눌러 정확한 이메일을 입력해주세요.`);
+      return this.createSimpleResponse(`'${cleanEmail}'은 올바른 이메일 형식이 아닙니다. 정확한 이메일을 입력해주세요.`);
     }
 
     // 2. Database Lookup
     const member = MemberService.getMemberByEmail(cleanEmail);
 
     if (!member) {
-      return this.createSimpleResponse(`'${cleanEmail}'은 등록된 이메일이 아닙니다. 관리자에게 문의주세요.`);
+      return this.createSimpleResponse(`'${cleanEmail}'은 등록되지 않은 이메일입니다. 시스템 관리자에게 멤버 등록을 먼저 요청해주세요.`);
     }
 
-    // Update the member record with the Kakao ID (kakao_plus_id)
-    const success = MemberService.updateMember(member.id, { kakao_plus_id: userKey });
+    // 3. Update the member record with the Kakao ID (kakao_plus_id)
+    try {
+      const success = MemberService.updateMember(member.id, { kakao_plus_id: userKey });
 
-    if (success) {
-      return this.createSimpleResponse(`🎉 인증 완료! 이제부터 [${member.name}]님으로 운동 인증이 가능합니다.`);
-    } else {
+      if (success) {
+        return this.createSimpleResponse(`🎉 인증 완료!\n이제부터 [${member.name}]님으로 운동 인증이 가능합니다.`);
+      } else {
+        throw new Error("MemberService.updateMember returned false");
+      }
+    } catch (e) {
+      console.error(`[KakaoService] Update Error: ${e.toString()}`);
       return this.createSimpleResponse("죄송합니다. 시스템 오류로 등록에 실패했습니다. 잠시 후 다시 시도해주세요.");
     }
   },
@@ -43,16 +50,19 @@ const KakaoService = {
   startManualAuth(userKey) {
     const member = MemberService.getMemberByKakaoId(userKey);
     
-    // If not registered via Kakao ID, ask for name/email
+    // If not registered via Kakao ID, prompt for registration
     if (!member) {
       return this.responseWithQuickReplies(
-        "사용자 정보를 찾을 수 없습니다. 본인 확인을 위해 [이름] 혹은 [이메일]을 채팅창에 입력해주세요.",
-        [{ label: "도움말", message: "도움말" }]
+        "등록된 사용자 정보를 찾을 수 없습니다. 먼저 [사용자 등록] 메뉴를 통해 이메일 인증을 완료해주세요.",
+        [
+          { label: "👤 사용자 등록", message: "사용자 등록" },
+          { label: "❓ 도움말", message: "도움말" }
+        ]
       );
     }
 
     return this.responseWithQuickReplies(
-      `🏃 ${member.name}님, 오늘 어떤 운동을 하셨나요?`,
+      `🏃 ${member.name}님, 반갑습니다!\n오늘 어떤 운동을 하셨나요?`,
       [
         { label: "🔥 러닝", message: "러닝 인증할게" },
         { label: "💪 헬스", message: "헬스 인증할게" },
@@ -66,16 +76,16 @@ const KakaoService = {
    * Registers workout log manually.
    */
   registerManualWorkout(userKey, params) {
-    // 1. Identify member (support Kakao ID or manual name for proxy/test)
+    // 1. Identify member
     let member = MemberService.getMemberByKakaoId(userKey);
     
-    // If name parameter is provided (from chatbot entity), try to match
-    if (params.member_name) {
+    // Fallback: search by name if provided (for manual testing/proxy)
+    if (!member && params.member_name) {
       member = MemberService.getMemberByName(params.member_name);
     }
 
     if (!member) {
-      return this.createSimpleResponse("인증 대상을 찾을 수 없습니다. 이름을 정확히 입력했는지 확인해주세요.");
+      return this.createSimpleResponse("인증 대상을 찾을 수 없습니다. 먼저 사용자 등록을 완료해주세요.");
     }
 
     // 2. Extract workout details
@@ -88,7 +98,7 @@ const KakaoService = {
     const week = WorkoutWeekService.getWeekByDate(dateStr);
 
     if (!week) {
-      return this.createSimpleResponse("현재 진행 중인 운동 주차(회차) 정보가 없습니다. 관리자에게 문의하세요.");
+      return this.createSimpleResponse("현재 진행 중인 운동 주차 정보가 없습니다. 관리자에게 문의하세요.");
     }
 
     // 4. Register Log (This automatically updates counts)
@@ -125,12 +135,7 @@ const KakaoService = {
    * Orchestrates photo analysis (OCR Placeholder).
    */
   processPhoto(userKey, imageUrl) {
-    return {
-      version: "2.0",
-      template: {
-        outputs: [{ simpleText: { text: "사진을 확인했습니다. (OCR 분석 기능 준비 중입니다)" } }]
-      }
-    };
+    return this.createSimpleResponse("사진을 확인했습니다. (OCR 분석 기능은 현재 개발 중입니다)");
   },
 
   /**
@@ -140,7 +145,7 @@ const KakaoService = {
     return {
       version: "2.0",
       template: {
-        outputs: [{ simpleText: { text: text } }],
+        outputs: [{ simpleText: { text: text } }] ,
         quickReplies: replies.map(r => ({
           label: r.label,
           action: "message",
@@ -172,9 +177,9 @@ const KakaoService = {
     let text = `🔥 주삼오공 (${week.month}-${week.week_number}주차)\n`;
     text += `--------------------------\n`;
     
-    // Sort by count descending, then name
+    // Sort by count descending
     const sorted = [...activeMembers].map(m => {
-      const rec = records.find(r => r.member_id === m.id);
+      const rec = records.find(r => String(r.member_id) === String(m.id));
       return {
         name: m.name,
         count: rec ? parseInt(rec.count) : 0,
