@@ -16,6 +16,7 @@ const dashboardSummary = reactive({
 const isLoading = ref(false);
 const loadingText = ref('데이터를 불러오는 중입니다... 🚀');
 const currentView = ref('Dashboard'); // Moved from App.vue for global control
+const sharedWeekId = ref(null); // Used to pass selected week between tabs
 
 // --- Caching / Computed State for Performance ---
 const memberMap = computed(() => {
@@ -53,6 +54,7 @@ export function useStore() {
     isLoading,
     loadingText,
     currentView,
+    sharedWeekId,
     
     // Computed / Cache
     memberMap,

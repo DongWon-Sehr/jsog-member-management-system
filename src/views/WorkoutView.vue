@@ -192,7 +192,7 @@ import { useDialog } from '../composables/useDialog';
 import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
 
-const { weeks, activeMembers, workoutRecords } = useStore();
+const { weeks, activeMembers, workoutRecords, sharedWeekId } = useStore();
 const { confirm, alert } = useDialog();
 const isPlannerOpen = ref(false);
 
@@ -405,8 +405,21 @@ const toggleSuperPass = async (record) => {
     .apiUpdateWorkoutCount(record.memberId, weekData.year, weekData.month, weekData.week_number, actualDbRecord.count, newValue, actualDbRecord.note);
 };
 
-const setInitialWeek = () => {
-  if (selectedWeekId.value || validWeeks.value.length === 0) return;
+const setInitialWeek = async () => {
+  if (validWeeks.value.length === 0) return;
+
+  if (sharedWeekId.value) {
+    const targetWeek = validWeeks.value.find(w => w.id === sharedWeekId.value);
+    if (targetWeek) {
+      selectedYear.value = Number(targetWeek.year);
+      await nextTick();
+      selectedWeekId.value = targetWeek.id;
+      sharedWeekId.value = null; // Clear it after consuming
+      return;
+    }
+  }
+
+  if (selectedWeekId.value) return;
 
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -421,9 +434,11 @@ const setInitialWeek = () => {
 
   if (currentWeek) {
     selectedYear.value = Number(currentWeek.year);
+    await nextTick();
     selectedWeekId.value = currentWeek.id;
   } else {
     selectedYear.value = Number(validWeeks.value[0].year);
+    await nextTick();
     selectedWeekId.value = validWeeks.value[0].id;
   }
 };

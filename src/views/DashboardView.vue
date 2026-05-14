@@ -60,7 +60,7 @@
 
         <!-- Selected Week Workout Card -->
         <div 
-          @click="currentView = 'WorkoutRecords'"
+          @click="goToWorkoutRecords"
           class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 cursor-pointer hover:border-emerald-200 hover:shadow-md transition-all active:scale-95 group"
         >
           <div class="p-4 rounded-xl bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-inner">
@@ -91,7 +91,7 @@
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-black text-gray-800 flex items-center gap-2">
               <i class="ph-bold ph-medal text-amber-500"></i>
-              {{ selectedWeekLabel }} 랭킹 (Top 3)
+              {{ selectedWeekLabel }} 랭킹
             </h3>
           </div>
           
@@ -99,7 +99,7 @@
             <div v-if="weeklyRanking.length === 0" class="py-12 text-center text-gray-400 font-bold">
               해당 주차 인증 데이터가 없습니다.
             </div>
-            <div v-for="item in weeklyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
+            <div v-for="item in visibleWeeklyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
               <div class="flex items-center gap-4">
                 <div class="w-8 h-8 flex items-center justify-center rounded-full font-black text-sm shadow-sm" :class="getRankClass(item.rank - 1)">
                   {{ item.rank }}
@@ -112,6 +112,11 @@
               </div>
             </div>
           </div>
+          
+          <button v-if="weeklyRanking.length > 3" @click="showAllWeeklyRanking = !showAllWeeklyRanking" class="mt-4 w-full py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-500 font-bold rounded-xl transition-colors border border-gray-200 text-sm flex items-center justify-center gap-2">
+            <span>{{ showAllWeeklyRanking ? '전체 랭킹 접기' : '전체 랭킹 더보기' }}</span>
+            <i class="ph-bold" :class="showAllWeeklyRanking ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
 
         <!-- Selected Quarter Ranking -->
@@ -119,7 +124,7 @@
           <div class="flex items-center justify-between mb-6">
             <h3 class="text-lg font-black text-gray-800 flex items-center gap-2">
               <i class="ph-bold ph-trophy text-indigo-500"></i>
-              {{ selectedQuarterLabel }} 누적 랭킹 (Top 3)
+              {{ selectedQuarterLabel }} 누적 랭킹
             </h3>
           </div>
 
@@ -127,7 +132,7 @@
             <div v-if="quarterlyRanking.length === 0" class="py-12 text-center text-gray-400 font-bold">
               해당 분기 누적 데이터가 없습니다.
             </div>
-            <div v-for="item in quarterlyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
+            <div v-for="item in visibleQuarterlyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
               <div class="flex items-center gap-4">
                 <div class="w-8 h-8 flex items-center justify-center rounded-full font-black text-sm shadow-sm" :class="getRankClass(item.rank - 1)">
                   {{ item.rank }}
@@ -140,6 +145,11 @@
               </div>
             </div>
           </div>
+          
+          <button v-if="quarterlyRanking.length > 3" @click="showAllQuarterlyRanking = !showAllQuarterlyRanking" class="mt-4 w-full py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-500 font-bold rounded-xl transition-colors border border-gray-200 text-sm flex items-center justify-center gap-2">
+            <span>{{ showAllQuarterlyRanking ? '전체 랭킹 접기' : '전체 랭킹 더보기' }}</span>
+            <i class="ph-bold" :class="showAllQuarterlyRanking ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
       </div>
       <!-- Charts Section -->
@@ -197,9 +207,12 @@
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
 
-const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, workoutLogs } = useStore();
+const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, workoutLogs, sharedWeekId } = useStore();
 const isRefreshing = ref(false);
 const selectedWeekId = ref(null);
+
+const showAllWeeklyRanking = ref(false);
+const showAllQuarterlyRanking = ref(false);
 
 const perfChartCanvas = ref(null);
 const dayChartCanvas = ref(null);
@@ -254,8 +267,8 @@ const selectedWeekWorkoutCount = computed(() => {
     .reduce((sum, r) => sum + (Number(r.count) || 0), 0);
 });
 
-// Helper: Calculate joint rankings for top 3 slots
-const calculateTop3Ranks = (list) => {
+// Helper: Calculate joint rankings for all slots
+const calculateAllRanks = (list) => {
   if (list.length === 0) return [];
   const sorted = [...list].sort((a, b) => b.count - a.count);
   const ranked = [];
@@ -264,7 +277,6 @@ const calculateTop3Ranks = (list) => {
     if (i > 0 && sorted[i].count < sorted[i-1].count) {
       currentRank = i + 1;
     }
-    if (currentRank > 3) break;
     ranked.push({ ...sorted[i], rank: currentRank });
   }
   return ranked;
@@ -284,7 +296,15 @@ const weeklyRanking = computed(() => {
     return { memberId: m.id, name: m.name, count: record ? Number(record.count) : 0 };
   }).filter(i => i.count > 0);
 
-  return calculateTop3Ranks(rawCounts);
+  return calculateAllRanks(rawCounts);
+});
+
+const visibleWeeklyRanking = computed(() => {
+  if (showAllWeeklyRanking.value) {
+    return weeklyRanking.value;
+  }
+  // Show only top 3 ranks
+  return weeklyRanking.value.filter(item => item.rank <= 3);
 });
 
 const quarterlyRanking = computed(() => {
@@ -313,7 +333,15 @@ const quarterlyRanking = computed(() => {
     return { memberId: m.id, name: m.name, count: totalCount };
   }).filter(i => i.count > 0);
 
-  return calculateTop3Ranks(rawCounts);
+  return calculateAllRanks(rawCounts);
+});
+
+const visibleQuarterlyRanking = computed(() => {
+  if (showAllQuarterlyRanking.value) {
+    return quarterlyRanking.value;
+  }
+  // Show only top 3 ranks
+  return quarterlyRanking.value.filter(item => item.rank <= 3);
 });
 
 const getRankClass = (index) => {
@@ -329,6 +357,13 @@ const hasPerfData = computed(() => {
 
 const fullReload = () => {
   window.location.reload();
+};
+
+const goToWorkoutRecords = () => {
+  if (selectedWeekId.value) {
+    sharedWeekId.value = selectedWeekId.value;
+  }
+  currentView.value = 'WorkoutRecords';
 };
 
 const takeScreenshot = async () => {
@@ -570,4 +605,5 @@ watch(weeks, (newWeeks) => {
     }
   }
 }, { immediate: true });
-</script>pt>
+</script>
+pt>
