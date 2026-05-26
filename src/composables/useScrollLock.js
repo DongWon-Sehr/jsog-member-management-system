@@ -7,7 +7,6 @@ export function useScrollLock(isOpenProp) {
   const lockScroll = () => {
     if (isLocked) return;
     scrollPosition = window.scrollY || document.documentElement.scrollTop;
-    console.log('[useScrollLock] Locking scroll at', scrollPosition);
     document.body.style.setProperty('overflow', 'hidden', 'important');
     document.body.style.setProperty('position', 'fixed', 'important');
     document.body.style.setProperty('top', `-${scrollPosition}px`, 'important');
@@ -17,7 +16,6 @@ export function useScrollLock(isOpenProp) {
 
   const unlockScroll = () => {
     if (!isLocked) return;
-    console.log('[useScrollLock] Unlocking scroll, restoring to', scrollPosition);
     document.body.style.removeProperty('overflow');
     document.body.style.removeProperty('position');
     document.body.style.removeProperty('top');
@@ -29,7 +27,6 @@ export function useScrollLock(isOpenProp) {
   watch(
     () => (isRef(isOpenProp) ? isOpenProp.value : isOpenProp),
     (newVal) => {
-      console.log('[useScrollLock] Watcher triggered, newVal:', newVal);
       if (newVal) lockScroll();
       else unlockScroll();
     },
