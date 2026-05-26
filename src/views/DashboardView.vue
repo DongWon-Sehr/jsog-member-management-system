@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-0 pb-6">
     <!-- Unified Header Section -->
-    <div class="sticky top-16 z-30 bg-white">
+    <div class="sticky top-28 md:top-16 z-30 bg-white">
       <div class="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100">
         <div class="flex items-center gap-3">
           <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl shadow-sm">

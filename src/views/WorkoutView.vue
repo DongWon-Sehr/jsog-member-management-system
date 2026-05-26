@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-0 pb-6">
     <!-- Unified Header Section (Sticky) -->
-    <div class="sticky top-16 z-30 bg-white">
+    <div class="sticky top-28 md:top-16 z-30 bg-white">
       <!-- Page Title & Primary Selectors (Indigo Style) -->
       <div class="px-6 py-5 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100 gap-4">
         <div class="flex items-center gap-3">

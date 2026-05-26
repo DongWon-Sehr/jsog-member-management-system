@@ -15,7 +15,7 @@
           </div>
 
           <!-- Header (Static) -->
-          <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-indigo-50/30 shrink-0">
+          <div class="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-indigo-50/30 shrink-0">
             <div class="flex items-center gap-3">
               <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
                 <i class="ph-fill ph-notebook text-xl"></i>
@@ -32,7 +32,7 @@
           <!-- Main Scrollable Body -->
           <div class="flex-1 overflow-y-auto bg-white">
             <!-- Top Sections (Note & Add) -->
-            <div class="p-6 pb-0 space-y-6">
+            <div class="p-4 sm:p-6 pb-0 space-y-4 sm:space-y-6">
               <!-- Weekly Note Section -->
               <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
                 <h4 class="text-sm font-bold text-indigo-700 mb-2 flex items-center gap-2">
@@ -66,7 +66,7 @@
                     <label class="text-xs font-bold text-gray-500 mb-1">운동 종류</label>
                     <input v-model="newType" type="text" placeholder="런닝, 필라테스 등" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all h-[38px]">
                   </div>
-                  <div class="flex items-center gap-2">
+                  <div class="flex items-end gap-2">
                     <div class="flex flex-col flex-1">
                       <label class="text-xs font-bold text-gray-500 mb-1">운동 시간 (분)</label>
                       <input v-model="newDuration" type="number" min="1" class="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all h-[38px]">
@@ -80,7 +80,7 @@
             </div>
 
             <!-- Existing Logs List Section -->
-            <div class="p-6 space-y-3">
+            <div class="p-4 sm:p-6 space-y-3">
               <div class="flex items-center justify-between px-1">
                 <h4 class="text-sm font-bold text-gray-700 flex items-center gap-2">
                   <i class="ph-bold ph-list-dashes text-gray-400"></i>
@@ -95,7 +95,7 @@
               <!-- List Body -->
               <div class="bg-gray-50/50 rounded-2xl border border-gray-100 shadow-inner overflow-visible">
                 <!-- Table Header (Sticky) -->
-                <div class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm px-4 py-3 border-b border-gray-100 rounded-t-2xl">
+                <div class="hidden sm:block sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm px-4 py-3 border-b border-gray-100 rounded-t-2xl">
                   <div class="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-100 rounded-lg text-[10px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
                     <div class="col-span-2">날짜</div>
                     <div class="col-span-3 text-center">시간</div>
@@ -112,11 +112,11 @@
                   </div>
 
                   <div v-else v-for="log in localLogs" :key="log.id" 
-                    class="grid grid-cols-12 gap-2 px-4 py-1.5 bg-white rounded-xl border-2 shadow-sm items-center hover:border-indigo-200 transition-all group relative"
+                    class="flex flex-col gap-3 p-4 bg-white rounded-2xl border-2 shadow-sm relative transition-all hover:border-indigo-200 sm:grid sm:grid-cols-12 sm:gap-2 sm:px-4 sm:py-1.5 sm:items-center sm:rounded-xl group"
                     :class="duplicateIds.has(log.id) ? 'border-red-400 bg-red-50/30' : 'border-gray-50'"
                   >
                     <!-- Badges -->
-                    <div class="absolute left-0.5 top-0.5 z-10 flex gap-0.5">
+                    <div class="absolute left-2 top-2 sm:left-0.5 sm:top-0.5 z-10 flex gap-0.5">
                       <span v-if="duplicateIds.has(log.id)" class="flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[8px] font-black text-white shadow-sm ring-1 ring-white" title="중복 데이터">!</span>
                       <span v-if="log.isNew || log.isModified" 
                         class="flex h-4 w-4 items-center justify-center rounded-full text-[8px] font-black text-white shadow-sm ring-1 ring-white"
@@ -127,41 +127,60 @@
                     </div>
 
                     <!-- Inline Editable Fields -->
-                    <div class="col-span-2">
-                      <input 
-                        type="date" 
-                        v-model="log.local_date"
-                        @change="updateLogTimestamp(log)"
-                        class="w-full bg-transparent border-none text-[11px] font-bold text-gray-900 outline-none focus:ring-1 focus:ring-indigo-200 rounded p-0.5 transition-all"
-                      />
+                    <!-- Date & Time Group -->
+                    <div class="grid grid-cols-2 gap-2 sm:contents">
+                      <!-- Date Input -->
+                      <div class="col-span-1 sm:col-span-2 flex flex-col sm:block">
+                        <label class="text-[10px] font-bold text-gray-400 sm:hidden">날짜</label>
+                        <input 
+                          type="date" 
+                          v-model="log.local_date"
+                          @change="updateLogTimestamp(log)"
+                          class="w-full bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 rounded-xl p-2 outline-none focus:border-indigo-500 transition-all sm:bg-transparent sm:border-none sm:text-[11px] sm:rounded sm:p-0.5 sm:focus:ring-1 sm:focus:ring-indigo-200"
+                        />
+                      </div>
+
+                      <!-- Time Input -->
+                      <div class="col-span-1 sm:col-span-3 flex flex-col sm:block">
+                        <label class="text-[10px] font-bold text-gray-400 sm:hidden">시간</label>
+                        <TimeInput 
+                          v-model="log.local_time"
+                          @update:model-value="updateLogTimestamp(log)"
+                          variant="responsive-mini"
+                        />
+                      </div>
                     </div>
-                    <div class="col-span-3">
-                      <TimeInput 
-                        v-model="log.local_time"
-                        @update:model-value="updateLogTimestamp(log)"
-                        class="custom-time-input-mini"
-                      />
+
+                    <!-- Type & Duration Group -->
+                    <div class="grid grid-cols-2 gap-2 sm:contents">
+                      <!-- Workout Type -->
+                      <div class="col-span-1 sm:col-span-3 flex flex-col sm:block">
+                        <label class="text-[10px] font-bold text-gray-400 sm:hidden">운동 종류</label>
+                        <input 
+                          type="text" 
+                          v-model="log.workout_type"
+                          @change="markAsModified(log)"
+                          placeholder="종류"
+                          class="w-full bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700 rounded-xl p-2 outline-none focus:border-indigo-500 transition-all sm:bg-transparent sm:border-none sm:text-[11px] sm:rounded sm:p-0.5 sm:focus:ring-1 sm:focus:ring-indigo-200 truncate"
+                        />
+                      </div>
+
+                      <!-- Duration -->
+                      <div class="col-span-1 sm:col-span-3 flex flex-col sm:block">
+                        <label class="text-[10px] font-bold text-gray-400 sm:hidden">운동 시간 (분)</label>
+                        <input 
+                          type="number" 
+                          v-model="log.duration_minutes"
+                          @change="markAsModified(log)"
+                          class="w-full bg-gray-50 border border-gray-200 text-xs font-black text-gray-500 rounded-xl p-2 outline-none focus:border-indigo-500 transition-all sm:bg-transparent sm:border-none sm:text-[11px] sm:text-center sm:rounded sm:py-0.5 sm:focus:ring-1 sm:focus:ring-indigo-200"
+                        />
+                      </div>
                     </div>
-                    <div class="col-span-3">
-                      <input 
-                        type="text" 
-                        v-model="log.workout_type"
-                        @change="markAsModified(log)"
-                        placeholder="종류"
-                        class="w-full bg-transparent border-none text-[11px] font-bold text-gray-700 outline-none focus:ring-1 focus:ring-indigo-200 rounded p-0.5 transition-all truncate"
-                      />
-                    </div>
-                    <div class="col-span-3 text-center">
-                      <input 
-                        type="number" 
-                        v-model="log.duration_minutes"
-                        @change="markAsModified(log)"
-                        class="w-full bg-gray-50 border-none text-[11px] font-black text-gray-500 text-center outline-none focus:ring-1 focus:ring-indigo-200 rounded py-0.5 transition-all"
-                      />
-                    </div>
-                    <div class="col-span-1 text-right">
-                      <button @click="deleteLogLocal(log.id)" class="p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all">
-                        <i class="ph-bold ph-trash text-sm"></i>
+
+                    <!-- Delete Button -->
+                    <div class="absolute right-2 top-2 sm:relative sm:right-auto sm:top-auto sm:col-span-1 sm:text-right flex justify-end">
+                      <button @click="deleteLogLocal(log.id)" class="p-2 sm:p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl sm:rounded-lg opacity-100 sm:opacity-0 group-hover:opacity-100 transition-all">
+                        <i class="ph-bold ph-trash text-base sm:text-sm"></i>
                       </button>
                     </div>
                   </div>
@@ -171,7 +190,7 @@
           </div>
 
           <!-- Footer (Static) -->
-          <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+          <div class="px-4 sm:px-6 py-3.5 sm:py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
             <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
               닫기
             </button>

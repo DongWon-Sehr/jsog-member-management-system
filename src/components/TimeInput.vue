@@ -2,6 +2,13 @@
 import { ref, onMounted, watch, useAttrs } from "vue"
 // IMask is now global from CDN
 
+const props = defineProps({
+  variant: {
+    type: String,
+    default: 'normal'
+  }
+})
+
 const model = defineModel() // v-model
 const attrs = useAttrs()
 const inputRef = ref(null)
@@ -80,10 +87,12 @@ function handleDblClick() {
   <input
     ref="inputRef"
     :class="[
-      'outline-none transition-all box-border',
-      attrs.class && attrs.class.includes('custom-time-input-mini') 
-        ? 'w-full bg-transparent border-none text-[11px] font-bold text-gray-900 p-0.5 rounded focus:ring-1 focus:ring-indigo-200 text-left' 
-        : 'w-full h-[38px] bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 text-left'
+      'outline-none transition-all box-border text-left',
+      variant === 'responsive-mini'
+        ? 'w-full bg-gray-50 sm:bg-transparent border border-gray-200 sm:border-none text-xs sm:text-[11px] font-bold text-gray-900 p-2 sm:p-0.5 rounded-xl sm:rounded focus:ring-1 focus:ring-indigo-200'
+        : (variant === 'mini' || (attrs.class && attrs.class.includes('custom-time-input-mini')))
+          ? 'w-full bg-transparent border-none text-[11px] font-bold text-gray-900 p-0.5 rounded focus:ring-1 focus:ring-indigo-200' 
+          : 'w-full h-[38px] bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-900 focus:border-indigo-500'
     ]"
     placeholder="HH:mm"
     @input="handleInput"
