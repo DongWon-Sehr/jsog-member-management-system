@@ -13,5 +13,6 @@
 
 ## UI/UX Standards
 - **Indigo Theme**: All views must use the Indigo design system (headers `bg-indigo-50/30`, rounded-3xl containers).
-- **Sticky Layout**: Maintain 3-layer sticky headers (GNB > Title > List Header).
+- **Sticky Layout**: Maintain 3-layer sticky headers (GNB > Title > List Header). To avoid overlap with the taller GNB on mobile (which has horizontal tab menus), use responsive top offsets (`top-28 md:top-16` for Title).
+- **Modal Layout**: Modals containing list items (e.g. workout logs) must be responsive. Use stacked cards with inline labels on mobile, and traditional grid/table row layout on desktop (e.g., using `sm:contents` or grid-cols-12).
 - **Interactivity**: Charts must support legend-based highlighting (thick/vivid for focused, thin/dimmed for others).
