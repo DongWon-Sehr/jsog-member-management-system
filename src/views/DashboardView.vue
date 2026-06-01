@@ -19,7 +19,7 @@
               </button>
               <select v-model="selectedWeekId" class="bg-transparent text-indigo-700 font-bold outline-none cursor-pointer text-center appearance-none px-2 min-w-[120px]">
                 <option v-for="w in validWeeks" :key="w.id" :value="w.id">
-                  {{ w.year }}년 {{ w.month }}월 {{ w.week_number }}주차
+                  {{ w.year }}년 {{ w.month }}월 {{ w.week_number === 0 ? '휴식주간' : w.week_number + '주차' }}
                 </option>
               </select>
               <button @click="nextWeek" class="p-1 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors" :disabled="isRefreshing">
@@ -224,7 +224,6 @@ let typeChartInstance = null;
 // Period Selection logic
 const validWeeks = computed(() => {
   return [...weeks.value]
-    .filter(w => Number(w.week_number) !== 0)
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
 });
 
@@ -235,7 +234,8 @@ const currentWeekData = computed(() => {
 
 const selectedWeekLabel = computed(() => {
   const w = currentWeekData.value;
-  return w ? `${w.month}-${w.week_number}주차` : '미지정';
+  if (!w) return '미지정';
+  return w.week_number === 0 ? `${w.month}월 휴식주간` : `${w.month}-${w.week_number}주차`;
 });
 
 const selectedQuarterLabel = computed(() => {

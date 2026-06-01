@@ -64,7 +64,7 @@
             >
               <option value="">-- 주차 선택 --</option>
               <option v-for="week in filteredWeeks" :key="week.id" :value="week.id">
-                {{ week.month }}월 {{ week.week_number }}주차
+                {{ week.month }}월 {{ week.week_number === 0 ? '휴식주간' : week.week_number + '주차' }}
               </option>
             </select>
             <button @click="navigateWeek('next')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 주차">
@@ -109,6 +109,14 @@
         <i class="ph-bold ph-calendar-x text-orange-400 text-5xl"></i>
       </div>
       <p class="text-gray-400 font-black text-lg">주차를 먼저 선택하거나 생성해주세요.</p>
+    </div>
+
+    <div v-else-if="currentWeekData.week_number === 0" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-20 flex flex-col items-center justify-center text-center">
+      <div class="inline-flex p-5 rounded-full bg-white shadow-sm border border-gray-100 mb-4">
+        <i class="ph-bold ph-coffee text-indigo-400 text-5xl"></i>
+      </div>
+      <p class="text-gray-400 font-black text-lg">이번 주는 휴식주간입니다.</p>
+      <p class="text-gray-400 text-sm mt-2">운동 기록을 추가하거나 수정할 수 없습니다.</p>
     </div>
 
     <div v-else class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl overflow-hidden min-h-[400px]">
@@ -206,15 +214,10 @@ let isNavigating = false; // Flag to prevent watcher interference
 const isLogModalOpen = ref(false);
 const selectedMemberId = ref(null);
 
-// Filter non-rest weeks and sort
+// Filter and sort weeks chronologically
 const validWeeks = computed(() => {
-  return weeks.value
-    .filter(w => Number(w.week_number) !== 0)
-    .sort((a, b) => {
-      if (Number(b.year) !== Number(a.year)) return Number(b.year) - Number(a.year);
-      if (Number(b.month) !== Number(a.month)) return Number(b.month) - Number(a.month);
-      return Number(b.week_number) - Number(a.week_number);
-    });
+  return [...weeks.value]
+    .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
 });
 
 // Year Navigation Logic
@@ -479,11 +482,13 @@ const downloadCsv = () => {
   const week = currentWeekData.value;
   const headers = ['이름', '운동횟수', '슈퍼패스', '환급상태', '메모'];
   const rows = data.map(r => [r.name, r.count, r.superPass ? '사용' : '-', getRefundStatus(r).text, (r.note || '').replace(/,/g, ' ')]);
-  const csvContent = [`주차: ${week.year}년 ${week.month}월 ${week.week_number}주차 (${week.start_date} ~ ${week.end_date})`, headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const weekLabel = week.week_number === 0 ? '휴식주간' : `${week.week_number}주차`;
+  const csvContent = [`주차: ${week.year}년 ${week.month}월 ${weekLabel} (${week.start_date} ~ ${week.end_date})`, headers.join(','), ...rows.map(r => r.join(','))].join('\n');
   const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.setAttribute('href', URL.createObjectURL(blob));
-  link.setAttribute('download', `workout_report_${week.year}_${week.month}_W${week.week_number}.csv`);
+  const fileWeekLabel = week.week_number === 0 ? '휴식주간' : `W${week.week_number}`;
+  link.setAttribute('download', `workout_report_${week.year}_${week.month}_${fileWeekLabel}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
