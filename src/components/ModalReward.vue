@@ -52,9 +52,11 @@
             <!-- Amount -->
             <div class="space-y-1.5">
               <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">금액 (원)</label>
-              <input 
-                v-model.number="form.amount"
-                type="number" 
+              <input
+                :value="form.amount ? form.amount.toLocaleString() : ''"
+                @input="onAmountInput"
+                type="text"
+                inputmode="numeric"
                 placeholder="0"
                 class="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-gray-900 transition-all"
               />
@@ -161,6 +163,14 @@ onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
 const close = () => {
   emit('close');
+};
+
+// Display the amount with thousand separators while keeping form.amount a pure number
+const onAmountInput = (e) => {
+  const digits = e.target.value.replace(/[^\d]/g, '');
+  form.amount = digits ? Number(digits) : 0;
+  // force the field to show the comma-formatted value (and strip any invalid chars)
+  e.target.value = form.amount ? form.amount.toLocaleString() : '';
 };
 
 const save = () => {

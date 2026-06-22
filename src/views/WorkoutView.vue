@@ -85,12 +85,29 @@
       <!-- List Header (Sticky Bottom Part) -->
       <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100">
         <!-- Quick Summary Bar -->
-        <div v-if="currentWeekData" class="flex items-center gap-3 mb-4 px-2 text-sm font-black text-gray-700 tracking-tight">
-          <span>총원 {{ summaryCounts.total }}</span>
-          <span class="text-gray-300">|</span>
-          <span class="text-blue-600">환급대상 {{ summaryCounts.eligible }} <span class="text-xs font-bold opacity-75">(목표달성 {{ summaryCounts.targetReached }} / 슈퍼패스 {{ summaryCounts.superPassUsed }})</span></span>
-          <span class="text-gray-300">|</span>
-          <span class="text-red-500">미달성 {{ summaryCounts.incomplete }}</span>
+        <div v-if="currentWeekData" class="flex flex-wrap items-center gap-2 mb-4 px-2 text-sm font-black tracking-tight">
+          <button
+            @click="toggleStatusFilter('all')"
+            class="px-3 py-1.5 rounded-xl border transition-all active:scale-95 select-none"
+            :class="statusFilter === 'all' ? 'bg-gray-800 text-white border-gray-800 shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'"
+          >
+            총원 {{ summaryCounts.total }}
+          </button>
+          <button
+            @click="toggleStatusFilter('eligible')"
+            class="px-3 py-1.5 rounded-xl border transition-all active:scale-95 select-none flex items-center gap-1"
+            :class="statusFilter === 'eligible' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-white text-blue-600 border-blue-100 hover:border-blue-300'"
+          >
+            환급대상 {{ summaryCounts.eligible }}
+            <span class="text-[11px] font-bold opacity-75">(목표달성 {{ summaryCounts.targetReached }} / 슈퍼패스 {{ summaryCounts.superPassUsed }})</span>
+          </button>
+          <button
+            @click="toggleStatusFilter('incomplete')"
+            class="px-3 py-1.5 rounded-xl border transition-all active:scale-95 select-none"
+            :class="statusFilter === 'incomplete' ? 'bg-red-500 text-white border-red-500 shadow-sm' : 'bg-white text-red-500 border-red-100 hover:border-red-300'"
+          >
+            미달성 {{ summaryCounts.incomplete }}
+          </button>
         </div>
 
         <div class="hidden lg:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
@@ -347,6 +364,12 @@ const summaryCounts = computed(() => {
 
   return stats;
 });
+
+// Summary-bar chips act as a single-select toggle for statusFilter.
+// Re-clicking the active chip resets to '전체보기' ('all').
+const toggleStatusFilter = (value) => {
+  statusFilter.value = statusFilter.value === value ? 'all' : value;
+};
 
 const toggleSuperPass = async (record) => {
   const newValue = !record.superPass;
