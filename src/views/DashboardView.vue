@@ -73,8 +73,11 @@
         </div>
 
         <!-- Total Rewards Card -->
-        <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
-          <div class="p-4 rounded-xl bg-amber-50 text-amber-600 shadow-inner">
+        <div
+          @click="currentView = 'Rewards'"
+          class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4 cursor-pointer hover:border-amber-200 hover:shadow-md transition-all active:scale-95 group"
+        >
+          <div class="p-4 rounded-xl bg-amber-50 text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-inner">
             <i class="ph-bold ph-gift text-3xl"></i>
           </div>
           <div>

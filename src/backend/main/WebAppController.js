@@ -92,6 +92,10 @@ function apiAddReward(memberId, rewardDate, amount, description) {
   return _executeApi('apiAddReward', () => RewardService.addReward(memberId, rewardDate, amount, description), { memberId, rewardDate, amount, description });
 }
 
+function apiUpdateReward(rewardId, updateData) {
+  return _executeApi('apiUpdateReward', () => RewardService.updateReward(rewardId, updateData), { rewardId, updateData });
+}
+
 function apiDeleteReward(rewardId) {
   return _executeApi('apiDeleteReward', () => RewardService.deleteReward(rewardId), { rewardId });
 }

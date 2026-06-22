@@ -38,8 +38,37 @@ const RewardService = {
   },
 
   /**
+   * Updates an existing reward entry (member_id, reward_date, amount, description)
+   * @param {string} rewardId
+   * @param {Object} updateData
+   */
+  updateReward(rewardId, updateData) {
+    const data = this.sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIndex = headers.indexOf('id');
+
+    if (idIndex === -1) throw new Error(`Required columns not found in ${this.tableName} sheet`);
+
+    const fields = ['member_id', 'reward_date', 'amount', 'description'];
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idIndex] === rewardId) {
+        const rowIndex = i + 1; // 1-based index
+        fields.forEach(field => {
+          if (updateData[field] !== undefined) {
+            const colIndex = headers.indexOf(field);
+            if (colIndex !== -1) this.sheet.getRange(rowIndex, colIndex + 1).setValue(updateData[field]);
+          }
+        });
+        return true;
+      }
+    }
+    return false;
+  },
+
+  /**
    * Deletes a reward entry
-   * @param {string} rewardId 
+   * @param {string} rewardId
    */
   deleteReward(rewardId) {
     const data = this.sheet.getDataRange().getValues();

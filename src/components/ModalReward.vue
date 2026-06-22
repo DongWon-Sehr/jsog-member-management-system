@@ -18,9 +18,9 @@
           <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-indigo-50/30">
             <div class="flex items-center gap-3">
               <div class="p-2 bg-indigo-100 text-indigo-600 rounded-xl">
-                <i class="ph-bold ph-gift text-xl"></i>
+                <i class="ph-bold text-xl" :class="isEditMode ? 'ph-pencil-simple' : 'ph-gift'"></i>
               </div>
-              <h3 class="text-xl font-bold text-gray-900">리워드 지급 등록</h3>
+              <h3 class="text-xl font-bold text-gray-900">{{ isEditMode ? '리워드 정보 수정' : '리워드 지급 등록' }}</h3>
             </div>
           </div>
 
@@ -74,11 +74,14 @@
 
           <!-- Footer -->
           <div class="px-6 py-6 bg-gray-50/50 flex gap-3">
+            <button v-if="isEditMode" @click="remove" :disabled="isProcessing" class="px-4 py-3.5 bg-white border border-red-200 text-red-500 rounded-2xl font-black shadow-sm hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50" title="삭제">
+              <i class="ph-bold ph-trash text-lg"></i>
+            </button>
             <button @click="close" :disabled="isProcessing" class="flex-1 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black shadow-sm hover:bg-gray-100 transition-all active:scale-95">
               닫기
             </button>
             <button @click="save" :disabled="isProcessing || !isValid" class="flex-1 py-3.5 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50">
-              지급하기
+              {{ isEditMode ? '수정 완료' : '지급하기' }}
             </button>
           </div>
 
@@ -103,16 +106,19 @@ const props = defineProps({
 
 useScrollLock(toRef(props, 'isOpen'));
 
-const emit = defineEmits(['close', 'save']);
+const emit = defineEmits(['close', 'save', 'delete']);
 const { activeMembers } = useStore();
 const { alert } = useDialog();
 
 const form = reactive({
+  id: '',
   memberId: '',
   rewardDate: '',
   amount: 0,
   description: ''
 });
+
+const isEditMode = computed(() => !!form.id);
 
 const isValid = computed(() => {
   return form.memberId && form.rewardDate && form.amount > 0;
@@ -124,11 +130,13 @@ const handleEsc = (e) => {
 
 const resetForm = () => {
   if (props.initialData) {
+    form.id = props.initialData.id || '';
     form.memberId = props.initialData.memberId || '';
     form.rewardDate = props.initialData.rewardDate || new Date().toISOString().split('T')[0];
     form.amount = props.initialData.amount || 0;
     form.description = props.initialData.description || '';
   } else {
+    form.id = '';
     form.memberId = '';
     form.rewardDate = new Date().toISOString().split('T')[0];
     form.amount = 0;
@@ -158,6 +166,11 @@ const close = () => {
 const save = () => {
   if (!isValid.value) return;
   emit('save', { ...form });
+};
+
+const remove = () => {
+  if (!form.id) return;
+  emit('delete', form.id);
 };
 </script>
 

@@ -76,10 +76,11 @@
       </div>
 
       <div v-else class="px-6 pb-6 space-y-3 pt-1">
-        <div 
-          v-for="reward in sortedRewards" 
-          :key="reward.id" 
-          class="bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm transition-all group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4"
+        <div
+          v-for="reward in sortedRewards"
+          :key="reward.id"
+          @click="openEditModal(reward)"
+          class="bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4"
         >
           <!-- Member Name -->
           <div class="md:col-span-2 flex items-center gap-3">
@@ -104,11 +105,9 @@
             <span class="text-sm font-medium text-gray-500 truncate max-w-xs md:max-w-md">{{ reward.description || '-' }}</span>
           </div>
 
-          <!-- Actions -->
+          <!-- Caret -->
           <div class="md:col-span-1 flex items-center justify-end">
-            <button @click="handleDelete(reward.id)" class="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all opacity-100 md:opacity-0 group-hover:opacity-100">
-              <i class="ph-bold ph-trash text-lg"></i>
-            </button>
+            <i class="ph-bold ph-caret-right text-gray-300 group-hover:text-indigo-400 transition-colors"></i>
           </div>
         </div>
 
@@ -130,6 +129,7 @@
       :initial-data="prefillData"
       @close="isModalOpen = false"
       @save="handleSaveReward"
+      @delete="handleModalDelete"
     />
 
     <!-- Recommendation Modal -->
@@ -197,6 +197,17 @@ const openAddModal = () => {
   isModalOpen.value = true;
 };
 
+const openEditModal = (reward) => {
+  prefillData.value = {
+    id: reward.id,
+    memberId: reward.member_id,
+    rewardDate: reward.reward_date,
+    amount: Number(reward.amount),
+    description: reward.description || ''
+  };
+  isModalOpen.value = true;
+};
+
 const handleRecommendationSelect = (data) => {
   prefillData.value = data;
   isRecommendationOpen.value = false;
@@ -205,6 +216,35 @@ const handleRecommendationSelect = (data) => {
 
 const handleSaveReward = (formData) => {
   isProcessing.value = true;
+
+  // Edit existing reward
+  if (formData.id) {
+    const updateData = {
+      member_id: formData.memberId,
+      reward_date: formData.rewardDate,
+      amount: formData.amount,
+      description: formData.description
+    };
+    google.script.run
+      .withSuccessHandler((res) => {
+        isProcessing.value = false;
+        if (res && res.success) {
+          const idx = rewards.value.findIndex(r => r.id === formData.id);
+          if (idx !== -1) rewards.value[idx] = { ...rewards.value[idx], ...updateData };
+          isModalOpen.value = false;
+        } else {
+          alert({ title: '오류', message: '리워드 수정에 실패했습니다.', isDanger: true });
+        }
+      })
+      .withFailureHandler(() => {
+        isProcessing.value = false;
+        alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
+      })
+      .apiUpdateReward(formData.id, updateData);
+    return;
+  }
+
+  // Add new reward
   google.script.run
     .withSuccessHandler((res) => {
       isProcessing.value = false;
@@ -222,28 +262,29 @@ const handleSaveReward = (formData) => {
     .apiAddReward(formData.memberId, formData.rewardDate, formData.amount, formData.description);
 };
 
-const handleDelete = async (id) => {
+const handleModalDelete = async (id) => {
   const ok = await confirm({
     title: '지급 내역 삭제',
     message: '해당 리워드 지급 내역을 정말 삭제하시겠습니까?',
     confirmText: '삭제',
     isDanger: true
   });
-  
+
   if (!ok) return;
 
-  isLoading.value = true;
+  isProcessing.value = true;
   google.script.run
     .withSuccessHandler((res) => {
-      isLoading.value = false;
+      isProcessing.value = false;
       if (res && res.success) {
         rewards.value = rewards.value.filter(r => r.id !== id);
+        isModalOpen.value = false;
       } else {
         alert({ title: '오류', message: '삭제에 실패했습니다.', isDanger: true });
       }
     })
     .withFailureHandler(() => {
-      isLoading.value = false;
+      isProcessing.value = false;
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
     .apiDeleteReward(id);
