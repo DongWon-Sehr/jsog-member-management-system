@@ -162,10 +162,20 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         <!-- Cumulative Quarterly Performance -->
         <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col xl:col-span-2">
-          <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
-            <i class="ph-bold ph-chart-line-up text-indigo-500"></i>
-            {{ selectedQuarterLabel }} 멤버별 누적 성적
-          </h3>
+          <div class="flex items-center justify-between gap-2 mb-6">
+            <h3 class="text-lg font-black text-gray-800 flex items-center gap-2">
+              <i class="ph-bold ph-chart-line-up text-indigo-500"></i>
+              {{ selectedQuarterLabel }} 멤버별 누적 성적
+            </h3>
+            <button
+              v-if="hasPerfData"
+              @click="toggleAllSeries"
+              class="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-100 bg-white text-indigo-600 text-xs font-black hover:bg-indigo-50 transition-all active:scale-95 shadow-sm"
+            >
+              <i class="ph-bold" :class="seriesAllVisible ? 'ph-eye-slash' : 'ph-eye'"></i>
+              {{ seriesAllVisible ? '전체 해제' : '전체 선택' }}
+            </button>
+          </div>
           
           <div class="flex-1 relative min-h-[350px]">
             <canvas ref="perfChartCanvas"></canvas>
@@ -219,6 +229,7 @@ const selectedWeekId = ref(null);
 
 const showAllWeeklyRanking = ref(false);
 const showAllQuarterlyRanking = ref(false);
+const seriesAllVisible = ref(true);
 
 const perfChartCanvas = ref(null);
 const dayChartCanvas = ref(null);
@@ -461,6 +472,7 @@ const initPerfChart = () => {
   });
 
   if (perfChartInstance) perfChartInstance.destroy();
+  seriesAllVisible.value = true; // datasets are created in the highlighted state
   perfChartInstance = new Chart(perfChartCanvas.value, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
@@ -487,6 +499,8 @@ const initPerfChart = () => {
               dataset.pointRadius = 4;
             }
             ci.update();
+            // keep the 전체 선택/해제 label in sync with manual legend toggles
+            seriesAllVisible.value = ci.data.datasets.every(d => d.borderWidth === 5);
           }
         },
         tooltip: {
@@ -501,6 +515,28 @@ const initPerfChart = () => {
       }
     }
   });
+};
+
+// Select-all / deselect-all toggle for the cumulative performance chart legend
+const toggleAllSeries = () => {
+  if (!perfChartInstance) return;
+  const show = !seriesAllVisible.value; // target state for every series
+  perfChartInstance.data.datasets.forEach((dataset, index) => {
+    const baseColor = colors[index % colors.length];
+    if (show) {
+      dataset.borderWidth = 5;
+      dataset.borderColor = baseColor;
+      dataset.backgroundColor = baseColor;
+      dataset.pointRadius = 4;
+    } else {
+      dataset.borderWidth = 1.5;
+      dataset.borderColor = baseColor + '26';
+      dataset.backgroundColor = baseColor + '26';
+      dataset.pointRadius = 0;
+    }
+  });
+  perfChartInstance.update();
+  seriesAllVisible.value = show;
 };
 
 const initDayChart = () => {
