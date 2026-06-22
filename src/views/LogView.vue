@@ -73,8 +73,8 @@
           <!-- Action -->
           <div class="md:col-span-3 flex items-center gap-2">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">유형</span>
-            <span 
-              class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-tight shadow-sm border"
+            <span
+              class="px-2.5 py-1 rounded-lg text-[10px] font-black tracking-tight shadow-sm border"
               :class="getActionClass(log.action)"
             >
               {{ log.action }}
