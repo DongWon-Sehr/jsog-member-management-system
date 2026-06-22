@@ -99,12 +99,15 @@
             <div v-if="weeklyRanking.length === 0" class="py-12 text-center text-gray-400 font-bold">
               해당 주차 인증 데이터가 없습니다.
             </div>
-            <div v-for="item in visibleWeeklyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
-              <div class="flex items-center gap-4">
-                <div class="w-8 h-8 flex items-center justify-center rounded-full font-black text-sm shadow-sm" :class="getRankClass(item.rank - 1)">
+            <div v-for="item in visibleWeeklyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all gap-2">
+              <div class="flex items-center gap-3 min-w-0 flex-wrap">
+                <div class="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full font-black text-sm shadow-sm" :class="getRankClass(item.rank - 1)">
                   {{ item.rank }}
                 </div>
                 <span class="font-bold text-gray-900">{{ item.name }}</span>
+                <span v-if="item.superPass" class="inline-block px-2 leading-[18px] rounded-lg bg-violet-100 text-violet-600 text-[10px] font-black border border-violet-200 uppercase tracking-tight whitespace-nowrap">
+                  <i class="ph-fill ph-sparkle align-middle mr-0.5"></i><span class="align-middle">슈퍼패스</span>
+                </span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="text-lg font-black text-indigo-600">{{ item.count }}</span>
@@ -132,12 +135,15 @@
             <div v-if="quarterlyRanking.length === 0" class="py-12 text-center text-gray-400 font-bold">
               해당 분기 누적 데이터가 없습니다.
             </div>
-            <div v-for="item in visibleQuarterlyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all">
-              <div class="flex items-center gap-4">
-                <div class="w-8 h-8 flex items-center justify-center rounded-full font-black text-sm shadow-sm" :class="getRankClass(item.rank - 1)">
+            <div v-for="item in visibleQuarterlyRanking" :key="item.memberId" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 group hover:border-indigo-200 transition-all gap-2">
+              <div class="flex items-center gap-3 min-w-0 flex-wrap">
+                <div class="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full font-black text-sm shadow-sm" :class="getRankClass(item.rank - 1)">
                   {{ item.rank }}
                 </div>
                 <span class="font-bold text-gray-900">{{ item.name }}</span>
+                <span v-for="mth in item.superPassMonths" :key="mth" class="inline-block px-2 leading-[18px] rounded-lg bg-violet-100 text-violet-600 text-[10px] font-black border border-violet-200 tracking-tight whitespace-nowrap">
+                  <i class="ph-fill ph-sparkle align-middle mr-0.5"></i><span class="align-middle">{{ mth }}월</span>
+                </span>
               </div>
               <div class="flex items-center gap-2">
                 <span class="text-lg font-black text-indigo-600">{{ item.count }}</span>
@@ -286,15 +292,21 @@ const weeklyRanking = computed(() => {
   const w = currentWeekData.value;
   if (!w) return [];
 
-  const rawCounts = members.value.map(m => {
-    const record = workoutRecords.value.find(r => 
+  // Include active members even with 0 counts (only active members are shown)
+  const rawCounts = activeMembers.value.map(m => {
+    const record = workoutRecords.value.find(r =>
       r.member_id === m.id &&
       String(r.year) === String(w.year) &&
       String(r.month) === String(w.month) &&
       String(r.week_number) === String(w.week_number)
     );
-    return { memberId: m.id, name: m.name, count: record ? Number(record.count) : 0 };
-  }).filter(i => i.count > 0);
+    return {
+      memberId: m.id,
+      name: m.name,
+      count: record ? Number(record.count) : 0,
+      superPass: record ? (record.super_pass === true || String(record.super_pass).toUpperCase() === 'TRUE') : false
+    };
+  });
 
   return calculateAllRanks(rawCounts);
 });
@@ -321,16 +333,26 @@ const quarterlyRanking = computed(() => {
 
   const rawCounts = members.value.map(m => {
     let totalCount = 0;
+    const superPassMonths = new Set();
     quarterWeeks.forEach(w => {
-      const record = workoutRecords.value.find(r => 
+      const record = workoutRecords.value.find(r =>
         r.member_id === m.id &&
         String(r.year) === String(w.year) &&
         String(r.month) === String(w.month) &&
         String(r.week_number) === String(w.week_number)
       );
-      if (record) totalCount += (Number(record.count) || 0);
+      if (record) {
+        totalCount += (Number(record.count) || 0);
+        const sp = record.super_pass === true || String(record.super_pass).toUpperCase() === 'TRUE';
+        if (sp) superPassMonths.add(Number(w.month));
+      }
     });
-    return { memberId: m.id, name: m.name, count: totalCount };
+    return {
+      memberId: m.id,
+      name: m.name,
+      count: totalCount,
+      superPassMonths: [...superPassMonths].sort((a, b) => a - b)
+    };
   }).filter(i => i.count > 0);
 
   return calculateAllRanks(rawCounts);
@@ -576,10 +598,18 @@ onMounted(() => {
   // Set default selected week to today's week
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const currentWeek = weeks.value.find(w => todayStr >= w.start_date && todayStr <= w.end_date);
+  console.log('[DEBUG-onMounted] todayStr is:', todayStr, 'weeks.value.length:', weeks.value.length);
+  const currentWeek = weeks.value.find(w => {
+    if (!w.start_date || !w.end_date) return false;
+    const start = String(w.start_date).split(' ')[0].split('T')[0];
+    const end = String(w.end_date).split(' ')[0].split('T')[0];
+    return todayStr >= start && todayStr <= end;
+  });
   if (currentWeek) {
+    console.log('[DEBUG-onMounted] Setting selectedWeekId to currentWeek:', currentWeek.id);
     selectedWeekId.value = currentWeek.id;
   } else if (validWeeks.value.length > 0) {
+    console.log('[DEBUG-onMounted] currentWeek is undefined. Falling back to validWeeks[0]:', validWeeks.value[0]);
     selectedWeekId.value = validWeeks.value[0].id;
   }
 
@@ -594,13 +624,35 @@ watch([selectedWeekId, workoutRecords, activeMembers, workoutLogs], () => {
 
 // Also watch weeks to ensure selectedWeekId is set once data is loaded
 watch(weeks, (newWeeks) => {
+  console.log('[DEBUG] watch(weeks) triggered. newWeeks.length:', newWeeks.length, 'selectedWeekId:', selectedWeekId.value);
   if (newWeeks.length > 0 && !selectedWeekId.value) {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const currentWeek = newWeeks.find(w => todayStr >= w.start_date && todayStr <= w.end_date);
+    console.log('[DEBUG] todayStr is:', todayStr);
+    
+    let matchFound = false;
+    const currentWeek = newWeeks.find(w => {
+      if (!w.start_date || !w.end_date) return false;
+      const start = String(w.start_date).split(' ')[0].split('T')[0];
+      const end = String(w.end_date).split(' ')[0].split('T')[0];
+      
+      // We log only one of the checks to avoid spamming the console too much, maybe the one that is closest to today
+      if (start.startsWith('2026-06') || end.startsWith('2026-06')) {
+         console.log(`[DEBUG] Check week ID ${w.id}: start=${start}, end=${end}, isMatch? ${todayStr >= start && todayStr <= end}`);
+      }
+      
+      const isMatch = todayStr >= start && todayStr <= end;
+      if (isMatch) matchFound = true;
+      return isMatch;
+    });
+    
+    console.log('[DEBUG] Match found?', matchFound, currentWeek);
+    
     if (currentWeek) {
+      console.log('[DEBUG] Setting selectedWeekId to currentWeek:', currentWeek.id);
       selectedWeekId.value = currentWeek.id;
     } else {
+      console.log('[DEBUG] currentWeek is undefined. Falling back to validWeeks[0]:', validWeeks.value[0]);
       selectedWeekId.value = validWeeks.value[0]?.id;
     }
   }
