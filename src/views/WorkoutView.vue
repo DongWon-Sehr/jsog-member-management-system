@@ -428,6 +428,11 @@ const toggleSuperPass = async (record) => {
         alert({ title: '오류', message: '저장에 실패했습니다.', isDanger: true });
       }
     })
+    .withFailureHandler((err) => {
+      console.error('Superpass toggle failed:', err);
+      workoutRecords.value = prevRecords;
+      alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
+    })
     .apiUpdateWorkoutCount(record.memberId, weekData.year, weekData.month, weekData.week_number, actualDbRecord.count, newValue, actualDbRecord.note);
 };
 

@@ -8,12 +8,6 @@
         <!-- Modal Content -->
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
           
-          <!-- Processing Overlay -->
-          <div v-if="isProcessing" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-3xl">
-            <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-5xl mb-4"></i>
-            <span class="text-indigo-800 font-bold">저장 중...</span>
-          </div>
-
           <!-- Header (Static) -->
           <div class="flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 bg-indigo-50/30 shrink-0">
             <div class="flex items-center gap-3">
@@ -113,7 +107,10 @@
 
                   <div v-else v-for="log in localLogs" :key="log.id" 
                     class="flex flex-col gap-3 p-4 bg-white rounded-2xl border-2 shadow-sm relative transition-all hover:border-indigo-200 sm:grid sm:grid-cols-12 sm:gap-2 sm:px-4 sm:py-1.5 sm:items-center sm:rounded-xl group"
-                    :class="duplicateIds.has(log.id) ? 'border-red-400 bg-red-50/30' : 'border-gray-50'"
+                    :class="[
+                      duplicateIds.has(log.id) ? 'border-red-400 bg-red-50/30' : 'border-gray-50',
+                      { 'animate-highlight': recentlyAddedIds.includes(log.id) }
+                    ]"
                   >
                     <!-- Badges -->
                     <div class="absolute left-2 top-2 sm:left-0.5 sm:top-0.5 z-10 flex gap-0.5">
@@ -191,7 +188,7 @@
 
           <!-- Footer (Static) -->
           <div class="px-4 sm:px-6 py-3.5 sm:py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 shrink-0">
-            <button @click="close" :disabled="isProcessing" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
+            <button @click="close" class="px-6 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-all disabled:opacity-50 text-sm">
               닫기
             </button>
             <button @click="saveBatch" :disabled="isProcessing || !hasChanges || hasDuplicates" class="px-8 py-2.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50 text-sm">
@@ -231,6 +228,7 @@ const localLogs = ref([]);
 const deletedIds = ref([]);
 const localWeeklyNote = ref('');
 const initialWeeklyNote = ref('');
+const recentlyAddedIds = ref([]);
 
 // Form states
 const newDate = ref('');
@@ -271,7 +269,7 @@ const duplicateIds = computed(() => {
 const hasDuplicates = computed(() => duplicateIds.value.size > 0);
 
 const handleEsc = (e) => {
-  if (e.key === 'Escape' && props.isOpen && !isProcessing.value) close();
+  if (e.key === 'Escape' && props.isOpen) close();
 };
 
 onMounted(() => window.addEventListener('keydown', handleEsc));
@@ -383,7 +381,6 @@ watch(() => workoutLogs.value, () => {
 }, { deep: true });
 
 const close = () => {
-  if (isProcessing.value) return;
   emit('close');
 };
 
@@ -402,6 +399,11 @@ const addLogLocal = () => {
     isNew: true,
     isModified: false
   });
+
+  recentlyAddedIds.value.push(tempId);
+  setTimeout(() => {
+    recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
+  }, 2000);
 
   const now = new Date();
   const pad = n => n < 10 ? '0'+n : n;
@@ -425,7 +427,13 @@ const deleteLogLocal = (id) => {
 };
 
 const saveBatch = () => {
-  const logsToAdd = localLogs.value.filter(l => l.isNew).map(l => ({
+  const prevLogs = JSON.parse(JSON.stringify(workoutLogs.value));
+  const prevRecords = JSON.parse(JSON.stringify(workoutRecords.value));
+
+  const logsToAddLocal = localLogs.value.filter(l => l.isNew);
+  const tempIds = logsToAddLocal.map(l => l.id);
+
+  const logsToAdd = logsToAddLocal.map(l => ({
     workout_date: l.workout_date,
     workout_type: l.workout_type,
     duration_minutes: l.duration_minutes
@@ -439,48 +447,84 @@ const saveBatch = () => {
   const idsToDelete = deletedIds.value;
   const weeklyNote = localWeeklyNote.value;
 
+  // Optimistic UI updates
+  // 1. Update global logs list
+  let updatedLogs = workoutLogs.value.filter(l => !idsToDelete.includes(l.id));
+  logsToUpdate.forEach(u => {
+    const idx = updatedLogs.findIndex(l => l.id === u.id);
+    if (idx > -1) updatedLogs[idx] = { ...updatedLogs[idx], ...u };
+  });
+  const timestamp = new Date().toISOString();
+  logsToAddLocal.forEach(l => {
+    updatedLogs.push({
+      id: l.id,
+      member_id: props.memberId,
+      workout_date: l.workout_date,
+      workout_type: l.workout_type,
+      duration_minutes: l.duration_minutes,
+      created_at: timestamp
+    });
+  });
+  workoutLogs.value = updatedLogs;
+
+  // 2. Update global records summary
+  const recordIndex = workoutRecords.value.findIndex(r => 
+    String(r.member_id) === String(props.memberId) &&
+    String(r.year) === String(props.weekData.year) &&
+    String(r.month) === String(props.weekData.month) &&
+    String(r.week_number) === String(props.weekData.week_number)
+  );
+
+  const netChange = logsToAdd.length - idsToDelete.length;
+  if (recordIndex > -1) {
+    workoutRecords.value[recordIndex].count = Math.max(0, (Number(workoutRecords.value[recordIndex].count) || 0) + netChange);
+    workoutRecords.value[recordIndex].note = weeklyNote;
+  } else {
+    workoutRecords.value.push({
+      member_id: props.memberId,
+      year: props.weekData.year,
+      month: props.weekData.month,
+      week_number: props.weekData.week_number,
+      count: Math.max(0, netChange),
+      super_pass: false,
+      note: weeklyNote
+    });
+  }
+
   isProcessing.value = true;
+  emit('close');
 
   google.script.run
     .withSuccessHandler((res) => {
       isProcessing.value = false;
       if (res && res.success) {
-        workoutLogs.value = workoutLogs.value.filter(l => !idsToDelete.includes(l.id));
-        logsToUpdate.forEach(u => {
-          const idx = workoutLogs.value.findIndex(l => l.id === u.id);
-          if (idx > -1) workoutLogs.value[idx] = { ...workoutLogs.value[idx], ...u };
-        });
-        if (res.data.added) workoutLogs.value.push(...res.data.added);
-        
-        const recordIndex = workoutRecords.value.findIndex(r => 
-          String(r.member_id) === String(props.memberId) &&
-          String(r.year) === String(props.weekData.year) &&
-          String(r.month) === String(props.weekData.month) &&
-          String(r.week_number) === String(props.weekData.week_number)
-        );
-
-        const netChange = logsToAdd.length - idsToDelete.length;
-        if (recordIndex > -1) {
-          workoutRecords.value[recordIndex].count = Math.max(0, (Number(workoutRecords.value[recordIndex].count) || 0) + netChange);
-          workoutRecords.value[recordIndex].note = weeklyNote;
-        } else {
-          workoutRecords.value.push({
-            member_id: props.memberId,
-            year: props.weekData.year,
-            month: props.weekData.month,
-            week_number: props.weekData.week_number,
-            count: Math.max(0, netChange),
-            super_pass: false,
-            note: weeklyNote
+        // Swap temp IDs with permanent server-assigned IDs
+        if (res.data.added) {
+          const finalLogs = [...workoutLogs.value];
+          res.data.added.forEach((serverLog, index) => {
+            const tempId = tempIds[index];
+            const idx = finalLogs.findIndex(l => l.id === tempId);
+            if (idx > -1) {
+              finalLogs[idx] = serverLog;
+            }
           });
+          workoutLogs.value = finalLogs;
         }
-        close();
+        syncLocalState();
       } else {
+        // Rollback
+        workoutLogs.value = prevLogs;
+        workoutRecords.value = prevRecords;
+        syncLocalState();
         alert({ title: '오류', message: '저장에 실패했습니다: ' + (res?.message || '알 수 없는 오류'), isDanger: true });
       }
     })
     .withFailureHandler((err) => {
       isProcessing.value = false;
+      // Rollback
+      workoutLogs.value = prevLogs;
+      workoutRecords.value = prevRecords;
+      syncLocalState();
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
     .apiBatchSaveWorkoutLogs(props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number, logsToAdd, logsToUpdate, idsToDelete, weeklyNote);
