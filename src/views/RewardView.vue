@@ -80,7 +80,7 @@
           v-for="reward in sortedRewards"
           :key="reward.id"
           @click="openEditModal(reward)"
-          class="bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4"
+          :class="['bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4', { 'animate-highlight': recentlyAddedIds.includes(reward.id) }]"
         >
           <!-- Member Name -->
           <div class="md:col-span-2 flex items-center gap-3">
@@ -158,6 +158,7 @@ const isModalOpen = ref(false);
 const isRecommendationOpen = ref(false);
 const prefillData = ref(null);
 const searchQuery = ref('');
+const recentlyAddedIds = ref([]);
 
 const getMemberName = (id) => memberMap.value[id]?.name || '알 수 없음';
 
@@ -219,47 +220,87 @@ const handleSaveReward = (formData) => {
 
   // Edit existing reward
   if (formData.id) {
+    const idx = rewards.value.findIndex(r => r.id === formData.id);
+    if (idx === -1) {
+      isProcessing.value = false;
+      return;
+    }
+    const oldReward = { ...rewards.value[idx] };
     const updateData = {
       member_id: formData.memberId,
       reward_date: formData.rewardDate,
       amount: formData.amount,
       description: formData.description
     };
+    
+    // Optimistic Update
+    rewards.value[idx] = { ...rewards.value[idx], ...updateData };
+
     google.script.run
       .withSuccessHandler((res) => {
         isProcessing.value = false;
-        if (res && res.success) {
-          const idx = rewards.value.findIndex(r => r.id === formData.id);
-          if (idx !== -1) rewards.value[idx] = { ...rewards.value[idx], ...updateData };
-          isModalOpen.value = false;
-        } else {
+        if (!res || !res.success) {
+          rewards.value[idx] = oldReward;
           alert({ title: '오류', message: '리워드 수정에 실패했습니다.', isDanger: true });
         }
       })
       .withFailureHandler(() => {
         isProcessing.value = false;
+        rewards.value[idx] = oldReward;
         alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
       })
       .apiUpdateReward(formData.id, updateData);
+    isModalOpen.value = false;
     return;
   }
 
   // Add new reward
+  const tempId = 'temp-' + Date.now();
+  const tempReward = {
+    id: tempId,
+    member_id: formData.memberId,
+    reward_date: formData.rewardDate,
+    amount: Number(formData.amount),
+    description: formData.description || '',
+    created_at: new Date().toISOString()
+  };
+  
+  rewards.value.unshift(tempReward);
+  recentlyAddedIds.value.push(tempId);
+  setTimeout(() => {
+    recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
+  }, 2000);
+
   google.script.run
     .withSuccessHandler((res) => {
       isProcessing.value = false;
       if (res && res.success) {
-        rewards.value.unshift(res.data);
-        isModalOpen.value = false;
+        const idx = rewards.value.findIndex(r => r.id === tempId);
+        if (idx !== -1) {
+          rewards.value[idx] = res.data;
+          
+          const hIdx = recentlyAddedIds.value.indexOf(tempId);
+          if (hIdx > -1) {
+            recentlyAddedIds.value[hIdx] = res.data.id;
+            setTimeout(() => {
+              recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== res.data.id);
+            }, 2000);
+          }
+        }
       } else {
+        rewards.value = rewards.value.filter(r => r.id !== tempId);
+        recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
         alert({ title: '오류', message: '리워드 지급 등록에 실패했습니다.', isDanger: true });
       }
     })
     .withFailureHandler(() => {
       isProcessing.value = false;
+      rewards.value = rewards.value.filter(r => r.id !== tempId);
+      recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
     .apiAddReward(formData.memberId, formData.rewardDate, formData.amount, formData.description);
+  isModalOpen.value = false;
 };
 
 const handleModalDelete = async (id) => {
@@ -272,19 +313,19 @@ const handleModalDelete = async (id) => {
 
   if (!ok) return;
 
-  isProcessing.value = true;
+  const oldRewards = [...rewards.value];
+  rewards.value = rewards.value.filter(r => r.id !== id);
+  isModalOpen.value = false;
+
   google.script.run
     .withSuccessHandler((res) => {
-      isProcessing.value = false;
-      if (res && res.success) {
-        rewards.value = rewards.value.filter(r => r.id !== id);
-        isModalOpen.value = false;
-      } else {
+      if (!res || !res.success) {
+        rewards.value = oldRewards;
         alert({ title: '오류', message: '삭제에 실패했습니다.', isDanger: true });
       }
     })
     .withFailureHandler(() => {
-      isProcessing.value = false;
+      rewards.value = oldRewards;
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
     .apiDeleteReward(id);

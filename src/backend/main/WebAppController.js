@@ -130,3 +130,44 @@ function apiGetDashboardSummary() {
     };
   });
 }
+
+// System API for Combined Initial Loading
+function apiLoadInitialData() {
+  return _executeApi('apiLoadInitialData', () => {
+    const allMembers = MemberService.getAllMembers();
+    const activeMembers = MemberService.getActiveMembers();
+    const allRewards = RewardService.getAllRewards();
+    const allWeeks = WorkoutWeekService.getAllWeeks();
+    const allWorkoutRecords = WorkoutService.getAllRecords();
+    const allWorkoutLogs = WorkoutLogService.getAllLogs();
+    const recentLogs = SystemLogService.getRecentLogs(50);
+    
+    const now = new Date();
+    const dateStr = Utilities.formatDate(now, "GMT+9", "yyyy-MM-dd");
+    const currentWeek = WorkoutWeekService.getWeekByDate(dateStr);
+    
+    let weeklyCount = 0;
+    if (currentWeek) {
+      const records = WorkoutService.getRecordsByWeek(currentWeek.year, currentWeek.month, currentWeek.week_number);
+      weeklyCount = records.reduce((sum, r) => sum + (parseInt(r.count) || 0), 0);
+    }
+    const totalPrize = allRewards.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+    const dashboardSummary = {
+      activeMemberCount: activeMembers.length,
+      weeklyWorkoutCount: weeklyCount,
+      totalPrizeAmount: totalPrize,
+      currentWeekLabel: currentWeek ? `${currentWeek.month}월 ${currentWeek.week_number}주차` : '미지정'
+    };
+
+    return {
+      members: allMembers,
+      activeMembers: activeMembers,
+      rewards: allRewards,
+      weeks: allWeeks,
+      workoutRecords: allWorkoutRecords,
+      workoutLogs: allWorkoutLogs,
+      recentLogs: recentLogs,
+      dashboardSummary: dashboardSummary
+    };
+  });
+}

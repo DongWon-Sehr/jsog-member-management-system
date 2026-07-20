@@ -89,90 +89,34 @@ const loadData = async () => {
   isLoading.value = true;
   startLoadingAnimation();
 
-  const allMembersPromise = new Promise((resolve) => {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.success) members.value = res.data;
-        resolve();
-      })
-      .apiGetAllMembers();
-  });
+  if (typeof google === 'undefined' || !google.script || !google.script.run) {
+    console.warn("GAS environment not detected. Initializing with mock data.");
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    stopLoadingAnimation();
+    isLoading.value = false;
+    return;
+  }
 
-  const activeMembersPromise = new Promise((resolve) => {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.success) activeMembers.value = res.data;
-        resolve();
-      })
-      .apiGetActiveMembers();
-  });
-
-  const rewardsPromise = new Promise((resolve) => {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.success) rewards.value = res.data;
-        resolve();
-      })
-      .apiGetAllRewards();
-  });
-
-  const summaryPromise = new Promise((resolve) => {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.success) Object.assign(dashboardSummary, res.data);
-        resolve();
-      })
-      .apiGetDashboardSummary();
-  });
-
-  const weeksPromise = new Promise((resolve) => {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.success) weeks.value = res.data;
-        resolve();
-      })
-      .apiGetAllWeeks();
-  });
-
-  const recordsPromise = new Promise((resolve) => {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.success) workoutRecords.value = res.data;
-        resolve();
-      })
-      .apiGetAllWorkoutRecords();
-  });
-
-  const logsPromise = new Promise((resolve) => {
+  await new Promise((resolve) => {
     google.script.run
       .withSuccessHandler((res) => {
         if (res && res.success) {
-          workoutLogs.value = res.data;
+          members.value = res.data.members || [];
+          rewards.value = res.data.rewards || [];
+          Object.assign(dashboardSummary, res.data.dashboardSummary);
+          weeks.value = res.data.weeks || [];
+          workoutRecords.value = res.data.workoutRecords || [];
+          workoutLogs.value = res.data.workoutLogs || [];
+          systemLogs.value = res.data.recentLogs || [];
         }
         resolve();
       })
-      .apiGetAllWorkoutLogs();
-  });
-
-  const systemLogsPromise = new Promise((resolve) => {
-    google.script.run
-      .withSuccessHandler((res) => {
-        if (res && res.success) systemLogs.value = res.data;
+      .withFailureHandler((err) => {
+        console.error("Failed to load initial data:", err);
         resolve();
       })
-      .apiGetRecentLogs(50);
+      .apiLoadInitialData();
   });
-
-  await Promise.all([
-    allMembersPromise,
-    activeMembersPromise,
-    rewardsPromise,
-    summaryPromise,
-    weeksPromise,
-    recordsPromise,
-    logsPromise,
-    systemLogsPromise
-  ]);
 
   stopLoadingAnimation();
   isLoading.value = false;

@@ -2,7 +2,9 @@ import { ref, reactive, computed } from 'vue';
 
 // --- Global Reactive State ---
 const members = ref([]);
-const activeMembers = ref([]);
+const activeMembers = computed(() =>
+  members.value.filter(m => m.enabled === true || String(m.enabled).toUpperCase() === 'TRUE')
+);
 const rewards = ref([]);
 const weeks = ref([]);
 const workoutRecords = ref([]);

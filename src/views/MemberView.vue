@@ -50,7 +50,7 @@
           v-for="member in filteredMembers" 
           :key="member.id" 
           @click="openEditModal(member)"
-          class="bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4"
+          :class="['bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4', { 'animate-highlight': recentlyAddedIds.includes(member.id) }]"
         >
           <!-- Name -->
           <div class="md:col-span-3 flex items-center gap-3">
@@ -105,14 +105,17 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { useStore } from '../composables/useStore';
+import { useDialog } from '../composables/useDialog';
 import ModalMember from '../components/ModalMember.vue';
 
 const { members } = useStore();
+const { alert } = useDialog();
 
 const showDisabled = ref(false);
 const searchQuery = ref('');
 const isModalOpen = ref(false);
 const selectedMember = ref(null);
+const recentlyAddedIds = ref([]);
 
 // Filter logic
 const filteredMembers = computed(() => {
@@ -193,33 +196,66 @@ const handleSaveMember = (formData) => {
       members.value[idx] = { ...members.value[idx], ...formData };
       
       google.script.run
+        .withSuccessHandler(res => {
+          if (!res || !res.success) {
+            console.error('Edit failed:', res?.message);
+            members.value[idx] = oldMember;
+            alert({ title: '오류', message: '회원 정보 수정에 실패했습니다.', isDanger: true });
+          }
+        })
         .withFailureHandler(err => {
           console.error('Edit failed:', err);
           members.value[idx] = oldMember;
+          alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
         })
-        .apiUpdateMember(formData.id, { name: formData.name, email: formData.email });
-      
-      const statusAction = formData.enabled ? 'apiReactivateMember' : 'apiDeactivateMember';
-      google.script.run[statusAction](formData.id);
+        .apiUpdateMember(formData.id, { name: formData.name, email: formData.email, enabled: formData.enabled });
+      closeModal();
     }
   } else {
+    const tempId = 'temp-' + Date.now();
     const tempMember = {
       ...formData,
-      id: 'temp-' + Date.now(),
+      id: tempId,
       created_at: new Date().toISOString()
     };
     members.value.unshift(tempMember);
+    recentlyAddedIds.value.push(tempId);
+    
+    // Auto-remove highlight for temp ID after 2 seconds
+    setTimeout(() => {
+      recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
+    }, 2000);
     
     google.script.run
       .withSuccessHandler(res => {
         if (res && res.success) {
-          const idx = members.value.findIndex(m => m.id === tempMember.id);
-          if (idx !== -1) members.value[idx] = res.data;
+          const idx = members.value.findIndex(m => m.id === tempId);
+          if (idx !== -1) {
+            members.value[idx] = res.data;
+            
+            // Seamlessly transfer highlight from tempId to real ID if still active
+            const hIdx = recentlyAddedIds.value.indexOf(tempId);
+            if (hIdx > -1) {
+              recentlyAddedIds.value[hIdx] = res.data.id;
+              setTimeout(() => {
+                recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== res.data.id);
+              }, 2000);
+            }
+          }
+        } else {
+          members.value = members.value.filter(m => m.id !== tempId);
+          recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
+          alert({ title: '오류', message: '회원 등록에 실패했습니다.', isDanger: true });
         }
       })
+      .withFailureHandler(err => {
+        console.error('Add failed:', err);
+        members.value = members.value.filter(m => m.id !== tempId);
+        recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
+        alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
+      })
       .apiAddMember(formData.name, formData.email);
+    closeModal();
   }
-
-  closeModal();
 };
 </script>

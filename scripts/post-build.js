@@ -71,6 +71,21 @@ async function run() {
     
     <!-- html2canvas for screenshots -->
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+    <!-- Custom CSS styles -->
+    <style>
+      @keyframes highlight-fade {
+        0% {
+          background-color: rgba(253, 224, 71, 0.5);
+        }
+        100% {
+          background-color: #ffffff;
+        }
+      }
+      .animate-highlight {
+        animation: highlight-fade 2s ease-out forwards;
+      }
+    </style>
   </head>
   <body class="bg-gray-50 text-gray-800 min-h-screen">
     <div id="app" class="min-h-screen flex flex-col relative" data-app-url="<?!= BASE_WEBAPP_URL ?>">
