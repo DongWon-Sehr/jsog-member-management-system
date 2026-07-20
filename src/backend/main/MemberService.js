@@ -128,6 +128,10 @@ const MemberService = {
         if (updateData.kakao_plus_id !== undefined) {
           this.sheet.getRange(rowIndex, headers.indexOf('kakao_plus_id') + 1).setValue(updateData.kakao_plus_id);
         }
+        if (updateData.enabled !== undefined) {
+          const enabledVal = updateData.enabled === true || String(updateData.enabled).toUpperCase() === 'TRUE' || String(updateData.enabled) === 'true';
+          this.sheet.getRange(rowIndex, headers.indexOf('enabled') + 1).setValue(enabledVal);
+        }
         
         // Always update timestamp
         this.sheet.getRange(rowIndex, updatedAtIndex + 1).setValue(Util.getCurrentTimestamp());

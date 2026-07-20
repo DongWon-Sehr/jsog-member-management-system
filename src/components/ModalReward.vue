@@ -8,12 +8,6 @@
         <!-- Modal Content -->
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden transform transition-all duration-300 scale-100 opacity-100">
           
-          <!-- Processing Overlay -->
-          <div v-if="isProcessing" class="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center rounded-3xl">
-            <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-5xl mb-4"></i>
-            <span class="text-indigo-800 font-bold">저장 중...</span>
-          </div>
-
           <!-- Header -->
           <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 bg-indigo-50/30">
             <div class="flex items-center gap-3">
@@ -79,7 +73,7 @@
             <button v-if="isEditMode" @click="remove" :disabled="isProcessing" class="px-4 py-3.5 bg-white border border-red-200 text-red-500 rounded-2xl font-black shadow-sm hover:bg-red-50 transition-all active:scale-95 disabled:opacity-50" title="삭제">
               <i class="ph-bold ph-trash text-lg"></i>
             </button>
-            <button @click="close" :disabled="isProcessing" class="flex-1 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black shadow-sm hover:bg-gray-100 transition-all active:scale-95">
+            <button @click="close" class="flex-1 py-3.5 bg-white border border-gray-200 text-gray-600 rounded-2xl font-black shadow-sm hover:bg-gray-100 transition-all active:scale-95">
               닫기
             </button>
             <button @click="save" :disabled="isProcessing || !isValid" class="flex-1 py-3.5 bg-indigo-600 text-white rounded-2xl font-black shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50">
@@ -127,7 +121,7 @@ const isValid = computed(() => {
 });
 
 const handleEsc = (e) => {
-  if (e.key === 'Escape' && props.isOpen && !props.isProcessing) close();
+  if (e.key === 'Escape' && props.isOpen) close();
 };
 
 const resetForm = () => {

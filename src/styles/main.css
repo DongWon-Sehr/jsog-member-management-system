@@ -18,3 +18,16 @@ body {
 #app {
   width: 100%;
 }
+
+@keyframes highlight-fade {
+  0% {
+    background-color: rgba(253, 224, 71, 0.5); /* pale yellow (yellow-300 with opacity) */
+  }
+  100% {
+    background-color: #ffffff;
+  }
+}
+.animate-highlight {
+  animation: highlight-fade 2s ease-out forwards;
+}
+
