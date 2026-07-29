@@ -463,3 +463,149 @@ function run_removeDuplicateWorkoutWeeks() {
   
   console.log("=== run_removeDuplicateWorkoutWeeks End ===");
 }
+
+/**
+ * Repairs workout_records.count values that drifted away from the actual workout_logs rows.
+ *
+ * A count could previously be applied to the week the modal was opened for even when the log
+ * itself was dated in another week, leaving one week inflated and the other short. This
+ * recomputes every count from the logs.
+ *
+ * Scope: every week starting on or after `fromDate`. Weeks before it are left untouched because
+ * their counts are imported history with no logs behind them - recomputing those would zero them.
+ * `fromDate` defaults to the start of the earliest week that contains a log.
+ *
+ * Note this must include in-scope weeks that hold *no* logs: a week inflated by a log that was
+ * actually dated in another week ends up with zero logs of its own, and that is exactly the row
+ * that needs to be reset to 0.
+ *
+ * Run `run_recalculateWorkoutCounts` first to review the report, then
+ * `run_applyRecalculatedWorkoutCounts` to write the changes.
+ *
+ * @param {string} [fromDate] - Optional 'YYYY-MM-DD' lower bound on the weeks to recalculate
+ */
+function run_recalculateWorkoutCounts(fromDate) {
+  _recalculateWorkoutCounts(false, fromDate);
+}
+
+function run_applyRecalculatedWorkoutCounts(fromDate) {
+  _recalculateWorkoutCounts(true, fromDate);
+}
+
+function _recalculateWorkoutCounts(apply, fromDate) {
+  const mode = apply ? 'APPLY' : 'DRY-RUN';
+  console.log(`=== _recalculateWorkoutCounts Start (${mode}) ===`);
+
+  const sheet = Util.getSheet('workout_records');
+  if (!sheet) {
+    console.error("Sheet 'workout_records' not found.");
+    return;
+  }
+
+  const weeks = WorkoutWeekService.getAllWeeks();
+  const logs = WorkoutLogService.getAllLogs();
+  const toDateString = value => WorkoutLogService.toDateString(value);
+
+  // Tally logs into the week that actually contains their date.
+  const tally = {};        // composite key -> { memberId, year, month, weekNumber, count }
+  const weeksWithLogs = {}; // 'year_month_week' -> true
+  let orphanLogs = 0;
+
+  logs.forEach(log => {
+    const logDate = toDateString(log.workout_date);
+    const week = weeks.find(w => logDate >= toDateString(w.start_date) && logDate <= toDateString(w.end_date));
+
+    if (!week) {
+      orphanLogs++;
+      console.warn(`No week covers ${logDate} (log ${log.id}) - ignored`);
+      return;
+    }
+
+    const weekKey = `${week.year}_${week.month}_${week.week_number}`;
+    weeksWithLogs[weekKey] = true;
+
+    const key = `${weekKey}|${log.member_id}`;
+    if (!tally[key]) {
+      tally[key] = { memberId: log.member_id, year: week.year, month: week.month, weekNumber: week.week_number, count: 0 };
+    }
+    tally[key].count++;
+  });
+
+  // Determine which weeks are log-managed (and therefore safe to recompute to their true count,
+  // including down to 0). Everything before the boundary is treated as imported history.
+  let boundary = fromDate ? toDateString(fromDate) : null;
+  if (!boundary) {
+    weeks.forEach(week => {
+      if (!weeksWithLogs[`${week.year}_${week.month}_${week.week_number}`]) return;
+      const start = toDateString(week.start_date);
+      if (!boundary || start < boundary) boundary = start;
+    });
+  }
+
+  if (!boundary) {
+    console.log('No logs found in workout_logs - nothing to recalculate.');
+    console.log(`=== _recalculateWorkoutCounts End (${mode}) ===`);
+    return;
+  }
+
+  const inScope = {};
+  let skippedWeeks = 0;
+  weeks.forEach(week => {
+    if (toDateString(week.start_date) >= boundary) inScope[`${week.year}_${week.month}_${week.week_number}`] = true;
+    else skippedWeeks++;
+  });
+
+  console.log(`Scope: weeks starting on or after ${boundary} (${fromDate ? 'explicit fromDate' : 'earliest week containing a log'}). ${skippedWeeks} earlier week(s) left untouched.`);
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idx = {
+    member_id: headers.indexOf('member_id'),
+    year: headers.indexOf('year'),
+    month: headers.indexOf('month'),
+    week_number: headers.indexOf('week_number'),
+    count: headers.indexOf('count'),
+    updated_at: headers.indexOf('updated_at')
+  };
+
+  const timestamp = Util.getCurrentTimestamp();
+  const seen = {};
+  let fixed = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const weekKey = `${data[i][idx.year]}_${data[i][idx.month]}_${data[i][idx.week_number]}`;
+    const key = `${weekKey}|${data[i][idx.member_id]}`;
+    seen[key] = true;
+
+    // Out-of-scope weeks hold imported history; recomputing them would wipe the counts.
+    if (!inScope[weekKey]) continue;
+
+    const expected = tally[key] ? tally[key].count : 0;
+    const current = Number(data[i][idx.count]) || 0;
+    if (expected === current) continue;
+
+    console.log(`${apply ? 'Fixing' : 'Would fix'} ${key}: ${current} -> ${expected}`);
+    if (apply) {
+      sheet.getRange(i + 1, idx.count + 1).setValue(expected);
+      sheet.getRange(i + 1, idx.updated_at + 1).setValue(timestamp);
+    }
+    fixed++;
+  }
+
+  // Members with logs in a week but no record row yet.
+  let created = 0;
+  Object.keys(tally).forEach(key => {
+    if (seen[key]) return;
+    const t = tally[key];
+    if (!inScope[`${t.year}_${t.month}_${t.weekNumber}`]) return;
+    console.log(`${apply ? 'Creating' : 'Would create'} ${key}: count ${t.count}`);
+    if (apply) {
+      WorkoutService.updateWorkoutCount(t.memberId, t.year, t.month, t.weekNumber, t.count, false, '');
+    }
+    created++;
+  });
+
+  console.log(`${mode} complete: ${fixed} rows ${apply ? 'fixed' : 'to fix'}, ${created} rows ${apply ? 'created' : 'to create'}, ${orphanLogs} logs outside any configured week.`);
+  if (!apply) console.log('Run run_applyRecalculatedWorkoutCounts() to write these changes.');
+  console.log(`=== _recalculateWorkoutCounts End (${mode}) ===`);
+}
