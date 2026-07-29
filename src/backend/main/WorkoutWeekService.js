@@ -20,6 +20,21 @@ const WorkoutWeekService = {
   },
 
   /**
+   * Finds the operational week matching a composite key (year-month-week_number)
+   * @param {number} year
+   * @param {number} month
+   * @param {number} weekNumber
+   * @returns {Object|null} The week object or null if not found
+   */
+  getWeek(year, month, weekNumber) {
+    return this.getAllWeeks().find(week =>
+      String(week.year) === String(year) &&
+      String(week.month) === String(month) &&
+      String(week.week_number) === String(weekNumber)
+    ) || null;
+  },
+
+  /**
    * Finds the operational week that contains the given date
    * @param {string} dateString - Date string in 'YYYY-MM-DD' format
    * @returns {Object|null} The week object or null if not found
