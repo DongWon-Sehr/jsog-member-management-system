@@ -50,7 +50,9 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
                   <div class="flex flex-col">
                     <label class="text-xs font-bold text-gray-500 mb-1">날짜</label>
-                    <input v-model="newDate" type="date" required class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-500 transition-all h-[38px]">
+                    <select v-model="newDate" class="bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-900 outline-none focus:border-indigo-500 transition-all h-[38px] cursor-pointer">
+                      <option v-for="d in weekDates" :key="d.value" :value="d.value">{{ d.label }}</option>
+                    </select>
                   </div>
                   <div class="flex flex-col">
                     <label class="text-xs font-bold text-gray-500 mb-1">시간</label>
@@ -129,12 +131,13 @@
                       <!-- Date Input -->
                       <div class="col-span-1 sm:col-span-2 flex flex-col sm:block">
                         <label class="text-[10px] font-bold text-gray-400 sm:hidden">날짜</label>
-                        <input 
-                          type="date" 
+                        <select
                           v-model="log.local_date"
                           @change="updateLogTimestamp(log)"
-                          class="w-full bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 rounded-xl p-2 outline-none focus:border-indigo-500 transition-all sm:bg-transparent sm:border-none sm:text-[11px] sm:rounded sm:p-0.5 sm:focus:ring-1 sm:focus:ring-indigo-200"
-                        />
+                          class="w-full bg-gray-50 border border-gray-200 text-xs font-bold text-gray-900 rounded-xl p-2 outline-none focus:border-indigo-500 transition-all cursor-pointer sm:bg-transparent sm:border-none sm:text-[11px] sm:rounded sm:p-0.5 sm:focus:ring-1 sm:focus:ring-indigo-200"
+                        >
+                          <option v-for="d in weekDates" :key="d.value" :value="d.value">{{ d.label }}</option>
+                        </select>
                       </div>
 
                       <!-- Time Input -->
@@ -299,6 +302,40 @@ const parseToLocalParts = (input) => {
   };
 };
 
+const weekRange = computed(() => {
+  if (!props.weekData) return { start: '', end: '' };
+  return {
+    start: parseToLocalParts(props.weekData.start_date).date,
+    end: parseToLocalParts(props.weekData.end_date).date
+  };
+});
+
+const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+
+// The modal edits one week at a time while the weekly count is stored per (year, month, week).
+// A log dated outside this week would be saved under a different week while inflating this
+// week's count, so the date field offers only this week's days - a wrong date is not selectable.
+const weekDates = computed(() => {
+  const { start, end } = weekRange.value;
+  if (!start || !end) return [];
+
+  const pad = n => n < 10 ? '0'+n : n;
+  const cursor = new Date(`${start}T00:00:00`);
+  const last = new Date(`${end}T00:00:00`);
+  if (isNaN(cursor.getTime()) || isNaN(last.getTime())) return [];
+
+  const dates = [];
+  // Guard against a malformed week range spinning forever.
+  while (cursor <= last && dates.length < 31) {
+    dates.push({
+      value: `${cursor.getFullYear()}-${pad(cursor.getMonth()+1)}-${pad(cursor.getDate())}`,
+      label: `${pad(cursor.getMonth()+1)}/${pad(cursor.getDate())} (${WEEKDAY_LABELS[cursor.getDay()]})`
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+});
+
 const syncLocalState = () => {
   if (!props.weekData || !props.memberId) {
     localLogs.value = [];
@@ -350,8 +387,7 @@ const setDefaultValues = () => {
     const pad = n => n < 10 ? '0'+n : n;
     const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
     
-    const startDate = props.weekData.start_date.split(' ')[0].split('T')[0];
-    const endDate = props.weekData.end_date.split(' ')[0].split('T')[0];
+    const { start: startDate, end: endDate } = weekRange.value;
     
     let defaultDate = todayStr;
     if (todayStr < startDate) defaultDate = startDate;
@@ -475,9 +511,11 @@ const saveBatch = () => {
     String(r.week_number) === String(props.weekData.week_number)
   );
 
-  const netChange = logsToAdd.length - idsToDelete.length;
+  // localLogs holds exactly this member's logs for this week (all validated in-range), so its
+  // length is the authoritative count. Mirrors how the server recomputes it.
+  const weekLogCount = localLogs.value.length;
   if (recordIndex > -1) {
-    workoutRecords.value[recordIndex].count = Math.max(0, (Number(workoutRecords.value[recordIndex].count) || 0) + netChange);
+    workoutRecords.value[recordIndex].count = weekLogCount;
     workoutRecords.value[recordIndex].note = weeklyNote;
   } else {
     workoutRecords.value.push({
@@ -485,7 +523,7 @@ const saveBatch = () => {
       year: props.weekData.year,
       month: props.weekData.month,
       week_number: props.weekData.week_number,
-      count: Math.max(0, netChange),
+      count: weekLogCount,
       super_pass: false,
       note: weeklyNote
     });
