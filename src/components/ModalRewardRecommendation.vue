@@ -87,6 +87,7 @@ import { toRef } from 'vue';
 import { useScrollLock } from '../composables/useScrollLock';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
+import { isRestWeek } from '../composables/weekUtils';
 
 const props = defineProps({
   isOpen: Boolean
@@ -118,10 +119,11 @@ const calculateRecommendations = () => {
   const quarter = parseInt(qStr);
   const targetYear = parseInt(year);
 
-  // Find weeks in this quarter
+  // Find weeks in this quarter. Rest weeks are excluded: nobody can score in them, so counting
+  // them would deflate everyone's success rate.
   const quarterWeeks = weeks.value.filter(w => {
     const q = Math.ceil(Number(w.month) / 3);
-    return Number(w.year) === targetYear && q === quarter;
+    return Number(w.year) === targetYear && q === quarter && !isRestWeek(w);
   });
 
   const totalWeeks = quarterWeeks.length;

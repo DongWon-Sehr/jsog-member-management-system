@@ -64,7 +64,7 @@
             >
               <option value="">-- 주차 선택 --</option>
               <option v-for="week in filteredWeeks" :key="week.id" :value="week.id">
-                {{ week.month }}월 {{ week.week_number === 0 ? '휴식주간' : week.week_number + '주차' }}
+                {{ formatWeekLabel(week) }}
               </option>
             </select>
             <button @click="navigateWeek('next')" class="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="다음 주차">
@@ -128,7 +128,7 @@
       <p class="text-gray-400 font-black text-lg">주차를 먼저 선택하거나 생성해주세요.</p>
     </div>
 
-    <div v-else-if="currentWeekData.week_number === 0" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-20 flex flex-col items-center justify-center text-center">
+    <div v-else-if="isRestWeek(currentWeekData)" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-20 flex flex-col items-center justify-center text-center">
       <div class="inline-flex p-5 rounded-full bg-white shadow-sm border border-gray-100 mb-4">
         <i class="ph-bold ph-coffee text-indigo-400 text-5xl"></i>
       </div>
@@ -214,6 +214,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { isRestWeek, formatWeekLabel, formatWeekNumberLabel } from '../composables/weekUtils';
 import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
 
@@ -450,7 +451,9 @@ const setInitialWeek = async () => {
     }
   }
 
-  if (selectedWeekId.value) return;
+  // Only keep the current selection if that week still exists. A planner save can drop or replace
+  // rows, and a dangling id would leave the view stuck on an empty week with no way back.
+  if (selectedWeekId.value && validWeeks.value.some(w => w.id === selectedWeekId.value)) return;
 
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -510,12 +513,12 @@ const downloadCsv = () => {
   const week = currentWeekData.value;
   const headers = ['이름', '운동횟수', '슈퍼패스', '환급상태', '메모'];
   const rows = data.map(r => [r.name, r.count, r.superPass ? '사용' : '-', getRefundStatus(r).text, (r.note || '').replace(/,/g, ' ')]);
-  const weekLabel = week.week_number === 0 ? '휴식주간' : `${week.week_number}주차`;
+  const weekLabel = formatWeekNumberLabel(week);
   const csvContent = [`주차: ${week.year}년 ${week.month}월 ${weekLabel} (${week.start_date} ~ ${week.end_date})`, headers.join(','), ...rows.map(r => r.join(','))].join('\n');
   const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.setAttribute('href', URL.createObjectURL(blob));
-  const fileWeekLabel = week.week_number === 0 ? '휴식주간' : `W${week.week_number}`;
+  const fileWeekLabel = isRestWeek(week) ? '휴식주간' : `W${week.week_number}`;
   link.setAttribute('download', `workout_report_${week.year}_${week.month}_${fileWeekLabel}.csv`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);

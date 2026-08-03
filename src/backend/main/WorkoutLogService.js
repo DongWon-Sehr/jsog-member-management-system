@@ -16,11 +16,7 @@ const WorkoutLogService = {
    * Normalizes a sheet/client value into a 'YYYY-MM-DD' string
    */
   toDateString(value) {
-    if (value instanceof Date) {
-      const pad = n => (n < 10 ? '0' + n : n);
-      return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
-    }
-    return String(value || '').trim().split(' ')[0].split('T')[0];
+    return Util.toDateString(value);
   },
 
   /**
@@ -51,10 +47,17 @@ const WorkoutLogService = {
    * @param {string} weeklyNote - Note for the specific week
    */
   batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote) {
+    // Records hang off (year, month, week_number), and rest weeks carry no number. Saving logs
+    // against an unassigned week used to pass silently - `0` is falsy, so the count sync below was
+    // skipped and the logs drifted away from the counts. Refuse it loudly instead.
+    if (!year || !month || !Util.hasWeekNumber(weekNumber)) {
+      throw new Error('[주차 지정 오류] 운동 주차가 지정되지 않은 주에는 운동 기록을 저장할 수 없습니다. 휴식주간이 아닌지 확인해주세요.');
+    }
+
     // The weekly count is keyed by (year, month, week_number) while each log is keyed by its
     // own date. If a log lands outside the target week both keys drift apart: the log shows up
     // under a different week while this week's count is inflated. Reject it before writing.
-    const week = (year && month && weekNumber) ? WorkoutWeekService.getWeek(year, month, weekNumber) : null;
+    const week = WorkoutWeekService.getWeek(year, month, weekNumber);
 
     if (week) {
       const weekStart = this.toDateString(week.start_date);
@@ -124,26 +127,24 @@ const WorkoutLogService = {
     }
 
     // 4. Sync count and update note
-    if (year && month && weekNumber) {
-      // Get current record info (we need superPass, and count for the no-week fallback)
-      const records = WorkoutService.getRecordsByWeek(year, month, weekNumber);
-      const existing = records.find(r => r.member_id === memberId);
-      const superPass = existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false;
+    // Get current record info (we need superPass, and count for the no-week fallback)
+    const records = WorkoutService.getRecordsByWeek(year, month, weekNumber);
+    const existing = records.find(r => r.member_id === memberId);
+    const superPass = existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false;
 
-      let newCount;
-      if (week) {
-        // Derive the count from the logs that actually fall inside the week rather than from a
-        // running delta, so a count that has already drifted is repaired on the next save.
-        SpreadsheetApp.flush();
-        newCount = this.countLogsInRange(memberId, this.toDateString(week.start_date), this.toDateString(week.end_date));
-      } else {
-        // No week definition to anchor the range on: keep the previous delta behaviour.
-        const netChange = (logsToAdd ? logsToAdd.length : 0) - (logIdsToDelete ? logIdsToDelete.length : 0);
-        newCount = Math.max(0, (existing ? Number(existing.count) : 0) + netChange);
-      }
-
-      WorkoutService.updateWorkoutCount(memberId, year, month, weekNumber, newCount, superPass, weeklyNote);
+    let newCount;
+    if (week) {
+      // Derive the count from the logs that actually fall inside the week rather than from a
+      // running delta, so a count that has already drifted is repaired on the next save.
+      SpreadsheetApp.flush();
+      newCount = this.countLogsInRange(memberId, this.toDateString(week.start_date), this.toDateString(week.end_date));
+    } else {
+      // No week definition to anchor the range on: keep the previous delta behaviour.
+      const netChange = (logsToAdd ? logsToAdd.length : 0) - (logIdsToDelete ? logIdsToDelete.length : 0);
+      newCount = Math.max(0, (existing ? Number(existing.count) : 0) + netChange);
     }
+
+    WorkoutService.updateWorkoutCount(memberId, year, month, weekNumber, newCount, superPass, weeklyNote);
 
     return { added: createdLogs, deletedCount: logIdsToDelete ? logIdsToDelete.length : 0 };
   },
@@ -175,9 +176,12 @@ const WorkoutLogService = {
     
     this.sheet.appendRow(rowData);
 
-    // Sync count (+1)
-    if (year && month && weekNumber) {
+    // Sync count (+1). A rest week has no week number to hang a record on, so the log is stored
+    // without a count. Callers are expected to reject rest weeks before getting here.
+    if (year && month && Util.hasWeekNumber(weekNumber)) {
       WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, 1);
+    } else {
+      console.warn(`[WorkoutLogService] Log ${newLog.id} stored without a count sync: no workout week number (year=${year}, month=${month}, week=${weekNumber})`);
     }
 
     return newLog;
@@ -204,7 +208,7 @@ const WorkoutLogService = {
         this.sheet.deleteRow(i + 1);
         
         // Sync count (-1)
-        if (memberId && year && month && weekNumber) {
+        if (memberId && year && month && Util.hasWeekNumber(weekNumber)) {
           WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, -1);
         }
         

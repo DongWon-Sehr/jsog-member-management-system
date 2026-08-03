@@ -21,6 +21,39 @@ const Util = {
   },
 
   /**
+   * Normalizes a sheet/client value into a 'YYYY-MM-DD' string
+   */
+  toDateString(value) {
+    if (value instanceof Date) {
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+    }
+    return String(value === null || value === undefined ? '' : value).trim().split(' ')[0].split('T')[0];
+  },
+
+  /**
+   * Coerces a sheet/client value into a real boolean.
+   * Sheets hands back native booleans for BOOLEAN columns, but columns appended to an existing
+   * sheet keep no type, so the same field can arrive as 'TRUE', 'true' or ''.
+   */
+  toBoolean(value) {
+    if (value === true) return true;
+    if (value === false || value === null || value === undefined) return false;
+    const normalized = String(value).trim().toUpperCase();
+    return normalized === 'TRUE' || normalized === '1' || normalized === 'Y';
+  },
+
+  /**
+   * True when a week number is an actual workout-week label rather than "unassigned".
+   * `0` means unassigned (rest weeks carry no number), and plain truthiness cannot express that
+   * because `0` is falsy in JS - every caller must go through this helper.
+   */
+  hasWeekNumber(weekNumber) {
+    if (weekNumber === null || weekNumber === undefined || weekNumber === '') return false;
+    return Number(weekNumber) > 0;
+  },
+
+  /**
    * Converts sheet data into an array of objects based on schema definition.
    */
   sheetToObjects(sheet, tableName) {

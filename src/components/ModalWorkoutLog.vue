@@ -17,7 +17,7 @@
               <div>
                 <h3 class="text-xl font-bold text-gray-900">{{ memberName }} 님의 운동 기록</h3>
                 <p class="text-sm font-medium text-gray-500">
-                  {{ weekData?.month }}월 {{ weekData?.week_number }}주차 ({{ weekData?.start_date }} ~ {{ weekData?.end_date }})
+                  {{ formatWeekLabel(weekData) }} ({{ weekData?.start_date }} ~ {{ weekData?.end_date }})
                 </p>
               </div>
             </div>
@@ -211,6 +211,7 @@ import { useScrollLock } from '../composables/useScrollLock';
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { formatWeekLabel } from '../composables/weekUtils';
 import TimeInput from './TimeInput.vue';
 
 const props = defineProps({
