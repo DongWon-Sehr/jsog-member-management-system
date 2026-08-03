@@ -22,7 +22,7 @@
           </nav>
         </div>
         <div class="flex items-center gap-2 sm:gap-4">
-          <span class="text-xs text-gray-400 font-mono hidden sm:inline-block">V1.0.2</span>
+          <span class="text-xs text-gray-400 font-mono hidden sm:inline-block">v{{ appVersion }}</span>
 
           <div class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center border border-gray-200 shadow-inner">
             <i class="ph-bold ph-user text-gray-400"></i>
@@ -51,6 +51,9 @@ import { ref } from 'vue';
 import { useStore } from '../composables/useStore';
 
 const { currentView } = useStore();
+
+// Injected from package.json at build time by vite.config.js
+const appVersion = __APP_VERSION__;
 
 const navigation = [
   { name: '대시보드', id: 'Dashboard' },
