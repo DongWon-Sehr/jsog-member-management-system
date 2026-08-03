@@ -150,6 +150,7 @@ import { useScrollLock } from '../composables/useScrollLock';
 import { ref, reactive, watch, onMounted, onUnmounted, computed } from 'vue';
 import { useDialog } from '../composables/useDialog';
 import { useStore } from '../composables/useStore';
+import { isRestWeek } from '../composables/weekUtils';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -201,8 +202,8 @@ const stats = computed(() => {
     const [year, qPart] = label.split(' Q');
     const quarter = parseInt(qPart);
     const targetYear = parseInt(year);
-    qMap[label].totalWeeks = weeks.value.filter(w => 
-      Number(w.year) === targetYear && Math.ceil(Number(w.month) / 3) === quarter && Number(w.week_number) !== 0
+    qMap[label].totalWeeks = weeks.value.filter(w =>
+      Number(w.year) === targetYear && Math.ceil(Number(w.month) / 3) === quarter && !isRestWeek(w)
     ).length;
   });
 

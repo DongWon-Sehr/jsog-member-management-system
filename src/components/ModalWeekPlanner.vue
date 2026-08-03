@@ -49,7 +49,7 @@
             <div class="px-6 pb-6 space-y-3">
               <div v-for="(row, index) in plannerMatrix" :key="row.start_date" 
                    class="bg-white p-4 sm:px-4 sm:py-3 rounded-2xl border border-gray-100 shadow-sm transition-all hover:border-indigo-200 relative z-0"
-                   :class="{ 'opacity-70 bg-gray-50': row.isRestWeek }">
+                   :class="{ 'opacity-70 bg-gray-50': row.is_rest_week }">
                 
                 <div class="flex flex-col sm:grid sm:grid-cols-12 sm:items-center gap-4 sm:gap-4">
                   <!-- Date Range -->
@@ -59,12 +59,18 @@
                     </span>
                   </div>
 
+                  <!-- Duplicate label warning -->
+                  <div v-if="!row.is_rest_week && duplicateLabels.has(labelKey(row))" class="col-span-12 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl order-last">
+                    <i class="ph-fill ph-warning-circle text-red-500"></i>
+                    <span class="text-xs font-bold text-red-600">{{ row.year }}년 {{ row.month }}월 {{ row.week_number }}주차가 다른 주와 중복됩니다.</span>
+                  </div>
+
                   <!-- Rest Week Checkbox -->
                   <div class="col-span-2 flex items-center sm:justify-center">
                     <label class="flex items-center gap-2 cursor-pointer group">
                       <div class="relative flex items-center justify-center w-5 h-5">
-                        <input 
-                          v-model="row.isRestWeek"
+                        <input
+                          v-model="row.is_rest_week"
                           @change="handleRestWeekChange(row)"
                           type="checkbox" 
                           class="peer w-full h-full m-0 cursor-pointer appearance-none rounded border-2 border-gray-300 checked:bg-indigo-600 checked:border-indigo-600 transition-all"
@@ -75,36 +81,39 @@
                     </label>
                   </div>
 
-                  <!-- Inputs (Hidden/Dimmed if Rest Week) -->
-                  <div v-if="row.isRestWeek" class="col-span-6 flex items-center justify-center py-1 bg-gray-100 rounded-lg shadow-inner">
-                    <span class="text-sm font-bold text-gray-400 flex items-center gap-2">
-                      <i class="ph-fill ph-coffee"></i> 휴식 주간 (운동 제외)
+                  <!-- Year and month stay editable on a rest week: the dashboard still labels it
+                       as "N월 휴식주간", and a week straddling two months needs a manual call. -->
+                  <div class="col-span-2">
+                    <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">기준 연도</div>
+                    <input v-model.number="row.year" type="number" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all" />
+                  </div>
+                  <div class="col-span-2">
+                    <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 월</div>
+                    <div class="relative">
+                      <input v-model.number="row.month" type="number" min="1" max="12" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all pr-4" />
+                      <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                        <span class="text-xs text-gray-400 font-bold">월</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Only the workout week number is withheld on a rest week -->
+                  <div v-if="row.is_rest_week" class="col-span-2 flex items-center justify-center py-2 bg-gray-100 rounded-xl shadow-inner">
+                    <span class="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                      <i class="ph-fill ph-coffee"></i> 휴식
                     </span>
                   </div>
-                  <template v-else>
-                    <div class="col-span-2">
-                      <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">기준 연도</div>
-                      <input v-model.number="row.year" type="number" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all" />
-                    </div>
-                    <div class="col-span-2">
-                      <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 월</div>
-                      <div class="relative">
-                        <input v-model.number="row.month" type="number" min="1" max="12" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all pr-4" />
-                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                          <span class="text-xs text-gray-400 font-bold">월</span>
-                        </div>
+                  <div v-else class="col-span-2">
+                    <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 주차</div>
+                    <div class="relative">
+                      <input v-model.number="row.week_number" type="number" min="1" max="6"
+                             class="w-full text-center py-2 border rounded-xl outline-none font-black transition-all pr-6 shadow-inner"
+                             :class="duplicateLabels.has(labelKey(row)) ? 'bg-red-50 border-red-300 text-red-600 focus:border-red-500' : 'bg-indigo-50 border-transparent text-indigo-700 focus:border-indigo-500'" />
+                      <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                        <span class="text-[10px] font-black" :class="duplicateLabels.has(labelKey(row)) ? 'text-red-400' : 'text-indigo-400'">주차</span>
                       </div>
                     </div>
-                    <div class="col-span-2">
-                      <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 주차</div>
-                      <div class="relative">
-                        <input v-model.number="row.week_number" type="number" min="1" max="6" class="w-full text-center py-2 bg-indigo-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-black text-indigo-700 transition-all pr-6 shadow-inner" />
-                        <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                          <span class="text-[10px] text-indigo-400 font-black">주차</span>
-                        </div>
-                      </div>
-                    </div>
-                  </template>
+                  </div>
                 </div>
               </div>
             </div>
@@ -112,9 +121,13 @@
           </div>
 
           <!-- Footer -->
-          <div class="px-6 py-5 border-t border-gray-50 bg-white rounded-b-3xl flex justify-end gap-3 shrink-0">
+          <div class="px-6 py-5 border-t border-gray-50 bg-white rounded-b-3xl flex items-center justify-end gap-3 shrink-0">
+            <div v-if="hasBlockingIssue" class="mr-auto flex items-center gap-2 text-red-600">
+              <i class="ph-fill ph-warning-circle"></i>
+              <span class="text-xs font-bold">주차 번호가 중복되거나 비어 있어 저장할 수 없습니다.</span>
+            </div>
             <button @click="close" class="px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-black shadow-sm hover:bg-gray-50 transition-all active:scale-95">닫기</button>
-            <button @click="saveBatch" :disabled="isSaving" class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+            <button @click="saveBatch" :disabled="isSaving || hasBlockingIssue" class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               <i v-if="isSaving" class="ph-bold ph-spinner animate-spin"></i>
               {{ isSaving ? '저장 중...' : '일괄 저장하기' }}
             </button>
@@ -132,6 +145,7 @@ import { useScrollLock } from '../composables/useScrollLock';
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { isRestWeek } from '../composables/weekUtils';
 
 const props = defineProps({
   isOpen: Boolean
@@ -176,26 +190,61 @@ const formatDateShort = (dateStr) => {
   return `${m}.${d}`;
 };
 
+// The (year, month, week_number) label is the join key for workout_records, so it has to be
+// unique - but only among workout weeks. Rest weeks are excluded: they hold no records and their
+// week_number is just a preserved value.
+const labelKey = (row) => `${row.year}-${row.month}-${row.week_number}`;
+
+const duplicateLabels = computed(() => {
+  const seen = new Set();
+  const duplicates = new Set();
+
+  plannerMatrix.value.forEach(row => {
+    if (row.is_rest_week) return;
+    const key = labelKey(row);
+    if (seen.has(key)) duplicates.add(key);
+    else seen.add(key);
+  });
+
+  return duplicates;
+});
+
+const unnumberedRows = computed(() =>
+  plannerMatrix.value.filter(row => !row.is_rest_week && !(Number(row.week_number) > 0))
+);
+
+const hasBlockingIssue = computed(() => duplicateLabels.value.size > 0 || unnumberedRows.value.length > 0);
+
+// Smallest week number not yet taken within the same (year, month)
+const nextFreeWeekNumber = (rows, target) => {
+  const taken = new Set(
+    rows
+      .filter(row => row !== target && !row.is_rest_week && Number(row.year) === Number(target.year) && Number(row.month) === Number(target.month))
+      .map(row => Number(row.week_number))
+  );
+
+  let candidate = 1;
+  while (taken.has(candidate)) candidate++;
+  return candidate;
+};
+
 // Generate Matrix Logic
 const generateMatrix = (year) => {
   const matrix = [];
-  
+
   // 1. Find Jan 1st
   const jan1 = new Date(year, 0, 1);
-  
+
   // 2. Find the Monday before or on Jan 1st
   let dayOfWeek = jan1.getDay(); // 0 is Sunday, 1 is Monday
   let diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  
+
   const startDate = new Date(jan1);
   startDate.setDate(startDate.getDate() - diffToMonday);
 
-  // Month week tracker to generate smart default week numbers (1, 2, 3...)
-  const monthWeekCounts = {};
-
   // 3. Loop by adding 7 days until we hit Jan 1st of the next year
   const nextYearJan1 = new Date(year + 1, 0, 1);
-  
+
   let currentStart = new Date(startDate);
 
   while (currentStart < nextYearJan1) {
@@ -213,6 +262,11 @@ const generateMatrix = (year) => {
       return dbStart === startStr;
     });
 
+    // Thursday decides which month a week leans towards by default; the admin overrides it
+    // whenever a week straddling two months belongs to the other one.
+    const thursday = new Date(currentStart);
+    thursday.setDate(thursday.getDate() + 3);
+
     if (existingRecord) {
       // Use DB data
       matrix.push({
@@ -221,27 +275,20 @@ const generateMatrix = (year) => {
         end_date: endStr,
         year: Number(existingRecord.year),
         month: Number(existingRecord.month),
-        week_number: Number(existingRecord.week_number),
-        isRestWeek: Number(existingRecord.week_number) === 0
+        week_number: Number(existingRecord.week_number) || 0,
+        is_rest_week: isRestWeek(existingRecord),
+        needsDefaultNumber: false
       });
     } else {
-      // Smart Default Calculation based on Thursday
-      const thursday = new Date(currentStart);
-      thursday.setDate(thursday.getDate() + 3);
-      
-      const defaultYear = thursday.getFullYear();
-      const defaultMonth = thursday.getMonth() + 1;
-      
-      monthWeekCounts[defaultMonth] = (monthWeekCounts[defaultMonth] || 0) + 1;
-      const defaultWeekNum = monthWeekCounts[defaultMonth];
-
       matrix.push({
         start_date: startStr,
         end_date: endStr,
-        year: defaultYear,
-        month: defaultMonth,
-        week_number: defaultWeekNum,
-        isRestWeek: false
+        year: thursday.getFullYear(),
+        month: thursday.getMonth() + 1,
+        week_number: 0,
+        is_rest_week: false,
+        // Numbered in a second pass, once the weeks already saved for that month are known
+        needsDefaultNumber: true
       });
     }
 
@@ -249,20 +296,22 @@ const generateMatrix = (year) => {
     currentStart.setDate(currentStart.getDate() + 7);
   }
 
+  matrix.forEach(row => {
+    if (!row.needsDefaultNumber) return;
+    row.week_number = nextFreeWeekNumber(matrix, row);
+    row.needsDefaultNumber = false;
+  });
+
   plannerMatrix.value = matrix;
 };
 
 // Handle Rest Week Toggle
 const handleRestWeekChange = (row) => {
-  if (row.isRestWeek) {
-    row.week_number = 0; // Set to 0 for rest week internally
-  } else {
-    // If unchecked, try to restore a smart default for the week number to avoid keeping 0
-    const thursday = new Date(row.start_date);
-    thursday.setDate(thursday.getDate() + 3);
-    row.month = thursday.getMonth() + 1;
-    row.year = thursday.getFullYear();
-    row.week_number = 1; // Basic fallback, admin will adjust
+  // The number is deliberately kept while the week is marked as rest, so unchecking restores the
+  // admin's original choice instead of resetting to a guess. A number is only invented when the
+  // row never had one (0 = never assigned, e.g. rows migrated from the old schema).
+  if (!row.is_rest_week && !(Number(row.week_number) > 0)) {
+    row.week_number = nextFreeWeekNumber(plannerMatrix.value, row);
   }
 };
 
@@ -282,31 +331,60 @@ const close = () => {
   emit('close');
 };
 
-const saveBatch = () => {
+const saveBatch = async () => {
+  if (duplicateLabels.value.size > 0) {
+    await alert({
+      title: '주차 번호 중복',
+      message: `같은 연도·월에 동일한 주차 번호가 지정된 주가 있습니다: ${[...duplicateLabels.value].join(', ')}\n운동 기록이 어느 주차의 것인지 구분할 수 없으므로 먼저 수정해주세요.`,
+      isDanger: true
+    });
+    return;
+  }
+
+  if (unnumberedRows.value.length > 0) {
+    await alert({
+      title: '주차 번호 누락',
+      message: `주차 번호가 지정되지 않은 운동주간이 ${unnumberedRows.value.length}개 있습니다. (${unnumberedRows.value[0].start_date} 등)\n휴식주간으로 두거나 번호를 입력해주세요.`,
+      isDanger: true
+    });
+    return;
+  }
+
   isSaving.value = true;
 
-  // Prepare payload
+  // Prepare payload. A rest week keeps its week_number so the choice survives a rest toggle;
+  // the server ignores it for lookups because is_rest_week is what marks the week.
   const payload = plannerMatrix.value.map(row => ({
     year: row.year,
     month: row.month,
-    week_number: row.isRestWeek ? 0 : row.week_number,
+    week_number: Number(row.week_number) > 0 ? Number(row.week_number) : 0,
     start_date: row.start_date,
-    end_date: row.end_date
+    end_date: row.end_date,
+    is_rest_week: !!row.is_rest_week
   }));
 
   google.script.run
     .withSuccessHandler((res) => {
-      isSaving.value = false;
       if (res && res.success) {
         // Refresh local store data blindly to reflect new truths
-        google.script.run.withSuccessHandler(r => {
-          if (r.success) {
-            weeks.value = r.data;
-            // Modal remains open after saving
-          }
-        }).apiGetAllWeeks();
+        google.script.run
+          .withSuccessHandler(r => {
+            isSaving.value = false;
+            if (r.success) {
+              weeks.value = r.data;
+              // Rebuild from what the server actually stored, so a rejected or adjusted row is
+              // visible here instead of only living in local state. Modal remains open.
+              generateMatrix(selectedYear.value);
+            }
+          })
+          .withFailureHandler(err => {
+            isSaving.value = false;
+            console.error(err);
+          })
+          .apiGetAllWeeks();
       } else {
-        alert({ title: '오류', message: '저장 중 오류가 발생했습니다.', isDanger: true });
+        isSaving.value = false;
+        alert({ title: '오류', message: (res && res.message) || '저장 중 오류가 발생했습니다.', isDanger: true });
       }
     })
     .withFailureHandler((err) => {

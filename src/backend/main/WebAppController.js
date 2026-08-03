@@ -113,12 +113,14 @@ function apiGetDashboardSummary() {
     const dateStr = Utilities.formatDate(now, "GMT+9", "yyyy-MM-dd");
     const currentWeek = WorkoutWeekService.getWeekByDate(dateStr);
     
+    // A rest week holds no records, so its count stays at 0 rather than picking up whatever sits
+    // under the unassigned week number.
     let weeklyCount = 0;
-    if (currentWeek) {
+    if (currentWeek && !WorkoutWeekService.isRestWeek(currentWeek)) {
       const records = WorkoutService.getRecordsByWeek(currentWeek.year, currentWeek.month, currentWeek.week_number);
       weeklyCount = records.reduce((sum, r) => sum + (parseInt(r.count) || 0), 0);
     }
-    
+
     const rewards = RewardService.getAllRewards();
     const totalPrize = rewards.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
@@ -126,7 +128,7 @@ function apiGetDashboardSummary() {
       activeMemberCount: activeMembers.length,
       weeklyWorkoutCount: weeklyCount,
       totalPrizeAmount: totalPrize,
-      currentWeekLabel: currentWeek ? `${currentWeek.month}월 ${currentWeek.week_number}주차` : '미지정'
+      currentWeekLabel: WorkoutWeekService.formatWeekLabel(currentWeek)
     };
   });
 }
@@ -147,7 +149,7 @@ function apiLoadInitialData() {
     const currentWeek = WorkoutWeekService.getWeekByDate(dateStr);
     
     let weeklyCount = 0;
-    if (currentWeek) {
+    if (currentWeek && !WorkoutWeekService.isRestWeek(currentWeek)) {
       const records = WorkoutService.getRecordsByWeek(currentWeek.year, currentWeek.month, currentWeek.week_number);
       weeklyCount = records.reduce((sum, r) => sum + (parseInt(r.count) || 0), 0);
     }
@@ -156,7 +158,7 @@ function apiLoadInitialData() {
       activeMemberCount: activeMembers.length,
       weeklyWorkoutCount: weeklyCount,
       totalPrizeAmount: totalPrize,
-      currentWeekLabel: currentWeek ? `${currentWeek.month}월 ${currentWeek.week_number}주차` : '미지정'
+      currentWeekLabel: WorkoutWeekService.formatWeekLabel(currentWeek)
     };
 
     return {

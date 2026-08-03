@@ -1,4 +1,4 @@
-# Gemini Rules for JSOG Member Management System (V1.2.0)
+# Gemini Rules for JSOG Member Management System (v1.2.0)
 
 ## Core Technical Standards
 - **Build Requirement**: ALWAYS run `npm run build` after any code change. This triggers the `post-build.js` script which extracts Vue templates for GAS compatibility. **NEVER run `clasp push` or deploy the application.** The user will manually review the code and deploy it themselves.

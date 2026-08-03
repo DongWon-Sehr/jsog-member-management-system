@@ -101,6 +101,13 @@ const KakaoService = {
       return this.createSimpleResponse("현재 진행 중인 운동 주차 정보가 없습니다. 관리자에게 문의하세요.");
     }
 
+    // A rest week holds no workout records, so an authentication here would leave a log with no
+    // count attached to it. Turn it away instead of half-recording it.
+    if (WorkoutWeekService.isRestWeek(week)) {
+      const restEnd = Util.toDateString(week.end_date);
+      return this.createSimpleResponse(`☕ 이번 주(${Util.toDateString(week.start_date)} ~ ${restEnd})는 휴식주간이라 운동 인증을 받지 않습니다.\n다음 운동주차에 다시 인증해주세요!`);
+    }
+
     // 4. Register Log (This automatically updates counts)
     try {
       WorkoutLogService.addWorkoutLog(
