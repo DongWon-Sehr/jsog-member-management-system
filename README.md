@@ -1,4 +1,4 @@
-# JSOG Member Management System (v1.0.4)
+# JSOG Member Management System (v1.0.5)
 
 Admin web app and KakaoTalk chatbot backend for **주삼오공**, an online workout-accountability group. Members log workouts through a Kakao chatbot; admins review weekly results, run quarterly rankings and manage reward payouts from a single-page admin console.
 
