@@ -403,10 +403,14 @@ function run_migrateWorkoutRecords2026() {
 }
 
 /**
- * Migration script to remove duplicate workout weeks.
- * Keeps the first occurrence and removes others based on (year, month, week_number).
+ * @deprecated Dedupes on (year, month, week_number), which is no longer the identity of a week -
+ * a week is identified by its start_date. Worse, it keeps the *first* occurrence, so on a
+ * renumbered week it deletes the corrected row and keeps the stale one.
+ * Use run_migrateWorkoutWeeksRestFlag() / run_applyWorkoutWeeksRestFlagMigration() instead.
  */
 function run_removeDuplicateWorkoutWeeks() {
+  console.warn('[Deprecated] run_removeDuplicateWorkoutWeeks dedupes on the wrong key. Use run_applyWorkoutWeeksRestFlagMigration() instead.');
+  return;
   console.log("=== run_removeDuplicateWorkoutWeeks Start ===");
   const sheet = Util.getSheet('workout_weeks');
   if (!sheet) {
@@ -608,4 +612,187 @@ function _recalculateWorkoutCounts(apply, fromDate) {
   console.log(`${mode} complete: ${fixed} rows ${apply ? 'fixed' : 'to fix'}, ${created} rows ${apply ? 'created' : 'to create'}, ${orphanLogs} logs outside any configured week.`);
   if (!apply) console.log('Run run_applyRecalculatedWorkoutCounts() to write these changes.');
   console.log(`=== _recalculateWorkoutCounts End (${mode}) ===`);
+}
+
+/**
+ * Migrates workout_weeks onto the is_rest_week schema. Dry run - reports only.
+ *
+ * Run run_applyWorkoutWeeksRestFlagMigration() to write the changes.
+ */
+function run_migrateWorkoutWeeksRestFlag() {
+  _migrateWorkoutWeeksRestFlag(false);
+}
+
+/**
+ * Applies the workout_weeks is_rest_week migration.
+ *
+ * Steps:
+ *  1. MigrationService.setup() appends the is_rest_week column to the existing sheet
+ *  2. Rows sharing a start_date are collapsed - these are duplicates left behind by the old
+ *     (year, month, week_number) upsert, which appended a new row whenever a week was renumbered
+ *     instead of updating the existing one. The most recently created row wins, because that is
+ *     the one the admin saved last.
+ *  3. is_rest_week is backfilled from the legacy encoding (week_number === 0 meant "rest week").
+ *     Only empty cells are filled, so re-running is safe: once the planner starts preserving a
+ *     rest week's number, week_number no longer implies anything about rest status.
+ *
+ * workout_records are deliberately left alone. No week is renumbered here, so every existing
+ * (year, month, week_number) join keeps pointing at the same week.
+ */
+function run_applyWorkoutWeeksRestFlagMigration() {
+  _migrateWorkoutWeeksRestFlag(true);
+}
+
+/**
+ * Sortable timestamp for a created_at cell, which may be a Date, a string, or empty
+ */
+function _weekCreatedAtValue(value) {
+  if (value instanceof Date) return value.getTime();
+  const parsed = Date.parse(String(value || '').replace(' ', 'T'));
+  return isNaN(parsed) ? 0 : parsed;
+}
+
+function _migrateWorkoutWeeksRestFlag(apply) {
+  const mode = apply ? 'APPLY' : 'DRY RUN';
+  console.log(`=== _migrateWorkoutWeeksRestFlag Start (${mode}) ===`);
+
+  if (apply) {
+    // Appends is_rest_week to the existing sheet when it is missing
+    MigrationService.setup();
+  }
+
+  const sheet = Util.getSheet('workout_weeks');
+  if (!sheet) {
+    console.error("Sheet 'workout_weeks' not found.");
+    return;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    console.log('No data found to process.');
+    console.log(`=== _migrateWorkoutWeeksRestFlag End (${mode}) ===`);
+    return;
+  }
+
+  const headers = data[0];
+  const startIdx = headers.indexOf('start_date');
+  const weekIdx = headers.indexOf('week_number');
+  const yearIdx = headers.indexOf('year');
+  const monthIdx = headers.indexOf('month');
+  const createdIdx = headers.indexOf('created_at');
+
+  if (startIdx === -1 || weekIdx === -1 || yearIdx === -1 || monthIdx === -1) {
+    console.error('Required columns (year, month, week_number, start_date) not found.');
+    return;
+  }
+
+  const isBlankRow = row => row.every(cell => cell === '' || cell === null);
+  const describe = row => `${row[yearIdx]}-${row[monthIdx]}-${row[weekIdx]}`;
+
+  // --- Step 1: collapse rows that share a start_date ---
+  const groupsByStart = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (isBlankRow(row)) continue;
+
+    const startDate = Util.toDateString(row[startIdx]);
+    if (!startDate) {
+      console.warn(`Row ${i + 1}: no start_date, left untouched.`);
+      continue;
+    }
+    if (!groupsByStart[startDate]) groupsByStart[startDate] = [];
+    groupsByStart[startDate].push({ rowNumber: i + 1, row: row });
+  }
+
+  const rowsToDelete = [];
+  Object.keys(groupsByStart).sort().forEach(startDate => {
+    const group = groupsByStart[startDate];
+    if (group.length === 1) return;
+
+    const ordered = group.slice().sort((a, b) => {
+      const timeA = createdIdx === -1 ? 0 : _weekCreatedAtValue(a.row[createdIdx]);
+      const timeB = createdIdx === -1 ? 0 : _weekCreatedAtValue(b.row[createdIdx]);
+      if (timeA !== timeB) return timeA - timeB;
+      return a.rowNumber - b.rowNumber;
+    });
+
+    const keeper = ordered[ordered.length - 1];
+    ordered.slice(0, -1).forEach(duplicate => {
+      console.log(`${apply ? 'Deleting' : 'Would delete'} duplicate for ${startDate}: row ${duplicate.rowNumber} (${describe(duplicate.row)}) - keeping row ${keeper.rowNumber} (${describe(keeper.row)})`);
+      rowsToDelete.push(duplicate.rowNumber);
+    });
+  });
+
+  if (apply && rowsToDelete.length > 0) {
+    // Bottom-up so earlier row numbers stay valid
+    rowsToDelete.sort((a, b) => b - a).forEach(rowNumber => sheet.deleteRow(rowNumber));
+  }
+  console.log(`Duplicates: ${rowsToDelete.length} row(s) ${apply ? 'deleted' : 'to delete'}.`);
+
+  // --- Step 2: backfill is_rest_week ---
+  const refreshed = sheet.getDataRange().getValues();
+  const restIdx = refreshed[0].indexOf('is_rest_week');
+
+  if (restIdx === -1) {
+    console.log("'is_rest_week' column not present yet - the apply run adds it via MigrationService.setup().");
+  } else if (refreshed.length > 1) {
+    const column = [];
+    let filledRest = 0;
+    let filledWorkout = 0;
+    let alreadySet = 0;
+
+    for (let i = 1; i < refreshed.length; i++) {
+      const row = refreshed[i];
+      if (isBlankRow(row)) {
+        column.push(['']);
+        continue;
+      }
+
+      const current = row[restIdx];
+      if (current !== '' && current !== null && current !== undefined) {
+        // Already migrated. Never recompute from week_number: a migrated rest week keeps the
+        // number the admin assigned, so week_number no longer encodes rest status.
+        column.push([Util.toBoolean(current)]);
+        alreadySet++;
+        continue;
+      }
+
+      const isRest = Number(row[weekIdx]) === 0;
+      column.push([isRest]);
+      if (isRest) filledRest++; else filledWorkout++;
+    }
+
+    if (apply) {
+      sheet.getRange(2, restIdx + 1, column.length, 1).setValues(column);
+    }
+    console.log(`is_rest_week: ${filledRest} rest + ${filledWorkout} workout week(s) ${apply ? 'backfilled' : 'to backfill'}, ${alreadySet} already set.`);
+  }
+
+  // --- Step 3: report label collisions the planner will now refuse to save ---
+  const finalData = sheet.getDataRange().getValues();
+  const finalRestIdx = finalData[0].indexOf('is_rest_week');
+  const seenLabels = {};
+  let collisions = 0;
+
+  for (let i = 1; i < finalData.length; i++) {
+    const row = finalData[i];
+    if (isBlankRow(row)) continue;
+
+    const isRest = finalRestIdx === -1
+      ? Number(row[weekIdx]) === 0
+      : Util.toBoolean(row[finalRestIdx]);
+    if (isRest) continue;
+
+    const label = describe(row);
+    if (seenLabels[label]) {
+      console.warn(`Label collision: ${label} is used by ${seenLabels[label]} and ${Util.toDateString(row[startIdx])}. Fix it in the planner - saving is blocked until it is unique.`);
+      collisions++;
+    } else {
+      seenLabels[label] = Util.toDateString(row[startIdx]);
+    }
+  }
+  console.log(`Label check: ${collisions} colliding (year, month, week_number) label(s) among workout weeks.`);
+
+  if (!apply) console.log('Run run_applyWorkoutWeeksRestFlagMigration() to write these changes.');
+  console.log(`=== _migrateWorkoutWeeksRestFlag End (${mode}) ===`);
 }

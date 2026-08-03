@@ -47,6 +47,11 @@ const MigrationService = {
       { name: 'action', type: 'TEXT' },
       { name: 'details', type: 'TEXT' }
     ],
+    // A week's identity is its start_date, not (year, month, week_number): the latter three are
+    // labels the admin assigns by hand and may edit at any time.
+    // `is_rest_week` is the single source of truth for rest weeks. `week_number` on a rest week is
+    // a preserved value with no join meaning (0 means "never assigned"), kept so that toggling
+    // rest off restores the number the admin originally picked.
     workout_weeks: [
       { name: 'id', type: 'TEXT' },
       { name: 'year', type: 'DOUBLE' },
@@ -54,7 +59,8 @@ const MigrationService = {
       { name: 'week_number', type: 'DOUBLE' },
       { name: 'start_date', type: 'DATE' },
       { name: 'end_date', type: 'DATE' },
-      { name: 'created_at', type: 'DATE_TIME' }
+      { name: 'created_at', type: 'DATE_TIME' },
+      { name: 'is_rest_week', type: 'BOOLEAN' }
     ]
   },
 

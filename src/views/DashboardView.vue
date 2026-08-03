@@ -19,7 +19,7 @@
               </button>
               <select v-model="selectedWeekId" class="bg-transparent text-indigo-700 font-bold outline-none cursor-pointer text-center appearance-none px-2 min-w-[120px]">
                 <option v-for="w in validWeeks" :key="w.id" :value="w.id">
-                  {{ w.year }}년 {{ w.month }}월 {{ w.week_number === 0 ? '휴식주간' : w.week_number + '주차' }}
+                  {{ w.year }}년 {{ w.month }}월 {{ isRestWeek(w) ? '휴식주간' : w.week_number + '주차' }}
                 </option>
               </select>
               <button @click="nextWeek" class="p-1 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-colors" :disabled="isRefreshing">
@@ -225,6 +225,7 @@
 <script setup>
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
+import { isRestWeek } from '../composables/weekUtils';
 
 const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, workoutLogs, sharedWeekId } = useStore();
 const isRefreshing = ref(false);
@@ -255,7 +256,7 @@ const currentWeekData = computed(() => {
 const selectedWeekLabel = computed(() => {
   const w = currentWeekData.value;
   if (!w) return '미지정';
-  return w.week_number === 0 ? `${w.month}월 휴식주간` : `${w.month}-${w.week_number}주차`;
+  return isRestWeek(w) ? `${w.month}월 휴식주간` : `${w.month}-${w.week_number}주차`;
 });
 
 const selectedQuarterLabel = computed(() => {
@@ -340,7 +341,7 @@ const quarterlyRanking = computed(() => {
   const currentQuarter = Math.ceil(Number(wRef.month) / 3);
   const quarterWeeks = weeks.value.filter(w => {
     const q = Math.ceil(Number(w.month) / 3);
-    return Number(w.year) === Number(wRef.year) && q === currentQuarter && Number(w.week_number) !== 0 && w.start_date <= wRef.end_date;
+    return Number(w.year) === Number(wRef.year) && q === currentQuarter && !isRestWeek(w) && w.start_date <= wRef.end_date;
   });
 
   if (quarterWeeks.length === 0) return [];
@@ -431,7 +432,7 @@ const initPerfChart = () => {
   const quarterWeeks = weeks.value
     .filter(w => {
       const q = Math.ceil(Number(w.month) / 3);
-      return Number(w.year) === Number(wRef.year) && q === currentQuarter && Number(w.week_number) !== 0 && w.start_date <= wRef.end_date;
+      return Number(w.year) === Number(wRef.year) && q === currentQuarter && !isRestWeek(w) && w.start_date <= wRef.end_date;
     })
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
 
