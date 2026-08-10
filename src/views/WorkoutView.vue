@@ -219,12 +219,11 @@ import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
 import { downloadCsvFile } from '../composables/useCsv';
 
-const { weeks, activeMembers, membersOfWeek, workoutRecords, sharedWeekId } = useStore();
+const { weeks, activeMembers, membersOfWeek, workoutRecords, selectedWeekId } = useStore();
 const { confirm, alert } = useDialog();
 const isPlannerOpen = ref(false);
 
 const selectedYear = ref(new Date().getFullYear());
-const selectedWeekId = ref('');
 const searchQuery = ref('');
 const statusFilter = ref('all'); // all, eligible, incomplete
 let isNavigating = false; // Flag to prevent watcher interference
@@ -441,20 +440,19 @@ const toggleSuperPass = async (record) => {
 const setInitialWeek = async () => {
   if (validWeeks.value.length === 0) return;
 
-  if (sharedWeekId.value) {
-    const targetWeek = validWeeks.value.find(w => w.id === sharedWeekId.value);
-    if (targetWeek) {
-      selectedYear.value = Number(targetWeek.year);
+  // The selection is shared with the dashboard, so it may point at a week from another year -
+  // the year selector has to follow it, otherwise the week list would not contain it.
+  // Only keep it if that week still exists: a planner save can drop or replace rows, and a
+  // dangling id would leave the view stuck on an empty week with no way back.
+  const shared = validWeeks.value.find(w => w.id === selectedWeekId.value);
+  if (shared) {
+    if (selectedYear.value !== Number(shared.year)) {
+      selectedYear.value = Number(shared.year);
       await nextTick();
-      selectedWeekId.value = targetWeek.id;
-      sharedWeekId.value = null; // Clear it after consuming
-      return;
+      selectedWeekId.value = shared.id;
     }
+    return;
   }
-
-  // Only keep the current selection if that week still exists. A planner save can drop or replace
-  // rows, and a dangling id would leave the view stuck on an empty week with no way back.
-  if (selectedWeekId.value && validWeeks.value.some(w => w.id === selectedWeekId.value)) return;
 
   const today = new Date();
   today.setHours(0,0,0,0);
