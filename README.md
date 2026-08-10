@@ -1,4 +1,4 @@
-# JSOG Member Management System (v1.1.0)
+# JSOG Member Management System (v1.1.1)
 
 Admin web app and KakaoTalk chatbot backend for **주삼오공**, an online workout-accountability group. Members log workouts through a Kakao chatbot; admins review weekly results, run quarterly rankings and manage reward payouts from a single-page admin console.
 
@@ -94,6 +94,18 @@ The form therefore leans on the text instead: paste a string that names the bank
 the list is left exactly as typed. Only two banks are inferred from the number itself, where the
 prefix is effectively fixed: `3333…` 카카오뱅크 and `1000…` 토스뱅크. Every path only fills an empty
 field and is always editable.
+
+### List layout
+
+The member, reward and log tabs share one grid convention: **every column is centre-aligned** on
+desktop (header and body together — changing only the header leaves the two out of line) and
+left-aligned on mobile, where each row becomes a stacked card with a label to the left of each value.
+Long text columns need `min-w-0` for `truncate` to take effect inside the grid.
+
+The refund-account cell gives the bank badge a fixed `68px` width — wide enough for the longest bank
+name — so the account numbers all start at the same x instead of stepping in and out with the length
+of the bank name. A row with an account but no bank still renders the badge (as `-`) to hold the
+column.
 
 ### Deployed CSS
 
