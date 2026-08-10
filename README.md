@@ -25,7 +25,8 @@ src/
   views/           Dashboard, Workout, Member, Reward, Log tabs
   composables/     Global store, dialogs, scroll lock, week helpers
 scripts/
-  post-build.js    Extracts Vue templates into per-component HTML for GAS
+  post-build.js        Extracts Vue templates into per-component HTML for GAS
+  parse-kakao-chat.js  Turns a KakaoTalk chat export into ChatImportData.js
 docs/              Functional specification and user guide (Korean)
 dist/              Build output — this is what clasp pushes
 ```
@@ -82,6 +83,69 @@ Run these from the Apps Script editor. Dry-run variants only write to the log.
 | `run_applyWorkoutWeeksRestFlagMigration()` | Apply the above — adds the column, collapses rows sharing a `start_date` (keeping the most recently created), and backfills the flag from the legacy `week_number === 0` encoding. Idempotent, and leaves `workout_records` joins intact |
 | `run_recalculateWorkoutCounts(fromDate)` | Dry run: recompute weekly counts from the actual logs |
 | `run_applyRecalculatedWorkoutCounts(fromDate)` | Apply the above. Updates `count` only, preserving `super_pass` and `note`. Idempotent |
+| `run_importChatHistory()` | Dry run: backfill weeks, records, logs and rewards from the KakaoTalk chat history |
+| `run_applyChatHistoryImport()` | Apply the above. Fill-only — see below |
+| `run_migrateRewardsLogTypes()` | Dry run: retype `rewards_log.reward_date` to DATE and `amount` to CURRENCY |
+| `run_applyRewardsLogTypesMigration()` | Apply the above — rewrites the values, sets the number formats and retypes the Table columns. Aborts without writing if any value cannot be converted (a period label like `2026-Q1`, an amount like `미정`). Blanks stay blank. Idempotent |
+
+### Importing the chat history
+
+The group's first two years live only in the KakaoTalk chat, as the weekly leaderboard message that
+everyone copy-pastes back with their own number bumped. `scripts/parse-kakao-chat.js` reads a chat
+export (drop the CSV in `migration/`, which is gitignored) and writes
+`src/backend/main/ChatImportData.js`, a generated file holding one entry per week:
+
+```bash
+node scripts/parse-kakao-chat.js          # → src/backend/main/ChatImportData.js
+```
+
+A week is identified by its start date, snapped to the Monday of its week — the header is typed by
+hand and sometimes names the Sunday before. Its `(month, week_number)` label is decided by majority
+vote across that week's postings, and its counts come from the posting marked **(최종)/(마감)**, the
+admin's close-out, falling back to the last posting for the 8 weeks that were never closed. A 14-day
+hole in the sequence is a rest week: no leaderboard is posted for one, and every hole in the export
+lines up with a 보너스 휴식 주간 announced in the chat.
+
+Individual workout logs are reconstructed from the same postings. Every posting is a copy of the
+previous one with a single number bumped, so **a member's number going up is a certification**, and
+the posting's timestamp dates it. The activity and duration come from that member's certification
+message just before the bump (`헬스 1시간`), matched once and only once — a workout described again
+after the fact must not become a second log. Spellings are normalised against a vocabulary
+(`트밀`/`런데이`/`○○런` → 러닝, `PT`/`웨이트`/`등`/`천국의계단` → 헬스, `새태`/`밤테` → 테니스,
+`4.7km` → 러닝), while `SNPE`, `F45` and `점핑` stay under their own names. A certification with no
+message becomes `기타(알수없음)` 30분, and a message naming an activity without a duration gets the
+same 30 minutes. Photos are ignored entirely — they carry no readable information.
+
+**The leaderboard count is the authority**: each member-week gets exactly `count` logs, padded with
+`기타(알수없음)` when a bump predates the week's first posting and trimmed (least-evidenced first)
+when a number was raised and later corrected down. Every log is dated at midnight and clamped into
+the week's span, because the chat records when a certification was *posted*, never when the workout
+happened, and a Sunday-night workout is routinely posted after midnight.
+
+`run_importChatHistory()` / `run_applyChatHistoryImport()` in `DataMigration.js` then load it into
+the sheet — `ChatImportData.js` stays a separate file only because it is generated and 84 KB of
+data. The import is
+**fill-only**: the chat is a recollection, the sheet is the record. A `start_date` the sheet already
+has is left untouched, labels included, and records are appended per (member, week) only where that
+member has no record yet — onto the label *the sheet* gives the week, so a week the admin renumbered
+keeps its numbering. A week whose chat label collides with one already in the sheet is skipped with a
+warning rather than duplicated, since that label is the join key for `workout_records`. Both runs are
+idempotent, and the dry run reports every row the apply run would write.
+
+Rewards are the one part not derived from the chat by machine: each quarterly award is a free-form
+announcement with no fixed shape and there are only eight, so they are a curated table in
+`parse-kakao-chat.js` (kept there, not in the generated file, so regenerating cannot lose them). They
+are matched on (member, `reward_date`). **`amount` is imported empty on purpose** — the prize is
+bought out of the pooled unrefunded deposits and its value is never once stated in the chat, so any
+number would be invented; fill it in from the reward tab. The dashboard sums amounts with
+`parseFloat(...) || 0`, so an empty cell simply does not contribute.
+
+Logs follow the same rule with one extra guard. A member-week that already holds *any* log inside its
+span is skipped whole — the chatbot or an earlier run owns it, and adding to it would double-count.
+And because `workout_records.count` is recomputed from the logs whenever the week is edited or
+`run_applyRecalculatedWorkoutCounts()` runs, logs are only written when their number matches the
+count the sheet actually holds; a mismatch is reported and skipped rather than left to silently
+rewrite that count later.
 
 `run_removeDuplicateWorkoutWeeks()` is **deprecated and disabled**: it deduplicated on `(year, month, week_number)`, which is not a week's identity, and kept the first occurrence — on a renumbered week that meant deleting the corrected row and keeping the stale one.
 
