@@ -1,4 +1,4 @@
-# JSOG Member Management System (v1.0.5)
+# JSOG Member Management System (v1.1.0)
 
 Admin web app and KakaoTalk chatbot backend for **주삼오공**, an online workout-accountability group. Members log workouts through a Kakao chatbot; admins review weekly results, run quarterly rankings and manage reward payouts from a single-page admin console.
 
@@ -60,6 +60,8 @@ Then publish a new web app version from the Apps Script editor. Note that the ed
 
 Six sheets, defined and kept in sync by `MigrationService.SCHEMA`: `member`, `workout_records`, `workout_logs`, `workout_weeks`, `rewards_log`, `logs`. Running `run_setupDatabase()` creates missing sheets as native Tables and appends any missing columns to existing ones.
 
+`run_setupDatabase()` only ever *adds* — it appends missing column names to an existing sheet's header row but never changes a column's type, so a type migration needs its own script (see `run_applyRewardsLogTypesMigration()`). Note also that Sheets refuses `setNumberFormat()` on a column of a native Table: the column type is what drives the display, so retyping comes first and the values are written after.
+
 ### Weeks (`workout_weeks`)
 
 This table drives almost every calculation in the system, and three rules govern it:
@@ -71,6 +73,40 @@ This table drives almost every calculation in the system, and three rules govern
 **`(year, month, week_number)` is the join key for `workout_records`, and must be unique among non-rest weeks only** — that set is exactly the set of weeks that can hold records.
 
 Saving the planner rewrites every row whose `start_date` falls inside the submitted span, rather than upserting row by row: the composite key the old code matched on was the very thing the admin was editing, so renumbering a week left the stale row behind as a duplicate. The rewrite carries `id` and `created_at` over from the row with the same `start_date`, leaves rows outside the span untouched, keeps the sheet sorted by `start_date`, and validates the whole payload before touching the sheet — duplicate labels, missing week numbers, and rows inside the span that the planner did not produce all abort the save with no partial write.
+
+### Members (`member`)
+
+`joined_at` is the day the member joined the group, kept apart from `created_at`, which is only when
+the row was written — the list, the CSV and the modal all read `joined_at` and fall back to
+`created_at`. It is also the sort key: `useStore` exposes `sortedMembers` (ascending `joined_at`,
+then name), and `activeMembers` derives from it, so every screen shares one order instead of
+following the sheet's row order.
+
+`bank_type` / `bank_account` hold the refund account. The column is TEXT but the UI keeps only
+digits, stripping hyphens and spaces on input, paste and save.
+
+There is no authoritative way to derive a bank from an account number — a bank is identified by a
+separate bank code, not by the number, and account formats overlap across banks (우리 `1002…` sits
+right next to 토스뱅크 `1000…`), so a loose prefix rule would confidently fill in the wrong bank.
+The form therefore leans on the text instead: paste a string that names the bank into *either* field
+(`우리 1002-123-456789`) and it splits out the bank and the digits, recognising aliases (`KB`, `카뱅`,
+`woori`, `toss`). A typed name is normalised on blur (`우리은행` → `우리`), and a name that is not in
+the list is left exactly as typed. Only two banks are inferred from the number itself, where the
+prefix is effectively fixed: `3333…` 카카오뱅크 and `1000…` 토스뱅크. Every path only fills an empty
+field and is always editable.
+
+### Deployed CSS
+
+`post-build.js` rewrites `index.html` from its own template and **discards Vite's CSS bundle**;
+Tailwind is loaded from the Play CDN, which generates utilities from the DOM at runtime. Two
+consequences worth knowing before styling anything global:
+
+- **`App.vue`'s `<style>` block never reaches `dist/`.** Rules that must survive the build belong in
+  the inline `<style>` of the template inside `post-build.js` (they are mirrored in `App.vue` so
+  `npm run dev` looks the same — keep the two in sync).
+- Utility-driven animation is unreliable for anything that appears in the first seconds, before the
+  CDN has booted. That is why the loading overlay's spinner never actually spun, and why the
+  overlay now carries plain CSS instead of `animate-*` classes.
 
 ## Operational scripts
 
