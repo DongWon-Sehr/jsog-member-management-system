@@ -11,7 +11,10 @@ const MigrationService = {
       { name: 'kakao_plus_id', type: 'TEXT' },
       { name: 'created_at', type: 'DATE_TIME' },
       { name: 'updated_at', type: 'DATE_TIME' },
-      { name: 'enabled', type: 'BOOLEAN' }
+      { name: 'enabled', type: 'BOOLEAN' },
+      { name: 'joined_at', type: 'DATE' },
+      { name: 'bank_type', type: 'TEXT' },
+      { name: 'bank_account', type: 'TEXT' }
     ],
     workout_records: [
       { name: 'id', type: 'TEXT' },

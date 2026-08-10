@@ -152,6 +152,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
 const { systemLogs: logs } = useStore();
 const { alert } = useDialog();
@@ -214,22 +215,10 @@ const downloadCsv = () => {
   const rows = data.map(l => [
     l.timestamp,
     l.action,
-    (l.details || '').replace(/,/g, ' ').replace(/\n/g, ' ')
+    l.details || ''
   ]);
 
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(r => r.join(','))
-  ].join('\n');
-
-  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.setAttribute('href', URL.createObjectURL(blob));
-  link.setAttribute('download', `system_logs_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadCsvFile(`system_logs_${todayStamp()}.csv`, headers, rows);
 };
 
 const getActionClass = (action) => {

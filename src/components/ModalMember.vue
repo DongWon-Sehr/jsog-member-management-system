@@ -66,6 +66,50 @@
                 </div>
               </div>
 
+              <div class="space-y-1.5">
+                <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">가입일</label>
+                <div class="relative group">
+                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="ph-fill ph-calendar-blank text-gray-300 group-focus-within:text-indigo-500 transition-colors"></i>
+                  </div>
+                  <input
+                    v-model="form.joinedAt"
+                    type="date"
+                    class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-gray-900 shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">환급 계좌 (선택)</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="relative group">
+                    <input
+                      v-model="form.bankType"
+                      type="text"
+                      list="bank-list"
+                      placeholder="은행"
+                      class="w-full px-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-gray-900 shadow-inner"
+                    />
+                    <datalist id="bank-list">
+                      <option v-for="bank in BANKS" :key="bank" :value="bank"></option>
+                    </datalist>
+                  </div>
+                  <div class="relative group col-span-2">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i class="ph-fill ph-credit-card text-gray-300 group-focus-within:text-indigo-500 transition-colors"></i>
+                    </div>
+                    <input
+                      v-model="form.bankAccount"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="계좌번호"
+                      class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-gray-900 shadow-inner"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <!-- Status Toggle (Only in Edit Mode) -->
               <div v-if="isEditMode" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
                 <div class="flex flex-col justify-center">
@@ -169,8 +213,16 @@ const form = reactive({
   id: '',
   name: '',
   email: '',
+  joinedAt: '',
+  bankType: '',
+  bankAccount: '',
   enabled: true
 });
+
+const today = () => new Date().toISOString().split('T')[0];
+
+const BANKS = ['카카오뱅크', '토스뱅크', '케이뱅크', '국민', '신한', '우리', '하나', '농협', '기업',
+  'SC제일', '씨티', '새마을금고', '우체국', '부산', '대구', '경남', '광주', '전북', '제주', '수협', '산업'];
 
 // Stats Calculation for Activity Tab
 const stats = computed(() => {
@@ -234,12 +286,18 @@ watch(() => props.memberData, (newVal) => {
     form.id = newVal.id;
     form.name = newVal.name;
     form.email = newVal.email || '';
+    form.joinedAt = (newVal.joined_at || newVal.created_at || '').split(' ')[0].split('T')[0];
+    form.bankType = newVal.bank_type || '';
+    form.bankAccount = newVal.bank_account || '';
     form.enabled = newVal.enabled === true || newVal.enabled === 'TRUE' || newVal.enabled === 'true';
   } else {
     isEditMode.value = false;
     form.id = '';
     form.name = '';
     form.email = '';
+    form.joinedAt = today();
+    form.bankType = '';
+    form.bankAccount = '';
     form.enabled = true;
   }
 }, { immediate: true });

@@ -148,6 +148,7 @@ import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
 import ModalReward from '../components/ModalReward.vue';
 import ModalRewardRecommendation from '../components/ModalRewardRecommendation.vue';
+import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
 const { memberMap, rewards } = useStore();
 const { alert, confirm } = useDialog();
@@ -340,22 +341,9 @@ const downloadCsv = () => {
     getMemberName(r.member_id),
     r.reward_date,
     r.amount,
-    (r.description || '').replace(/,/g, ' ')
+    r.description || ''
   ]);
 
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(r => r.join(','))
-  ].join('\n');
-
-  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `rewards_history_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadCsvFile(`rewards_history_${todayStamp()}.csv`, headers, rows);
 };
 </script>

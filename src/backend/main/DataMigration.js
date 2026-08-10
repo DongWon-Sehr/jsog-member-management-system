@@ -797,23 +797,6 @@ function _migrateWorkoutWeeksRestFlag(apply) {
   console.log(`=== _migrateWorkoutWeeksRestFlag End (${mode}) ===`);
 }
 
-/**
- * Backfills the sheet from the KakaoTalk chat history (CHAT_IMPORT_WEEKS in ChatImportData.js).
- *
- * Fill-only, never overwrite. The chat is a recollection, the sheet is the record: anything the
- * sheet already holds wins, and this script only writes what is missing.
- *
- * - workout_weeks: a week whose `start_date` is already in the sheet is left exactly as it is,
- *   labels included. Only start dates the sheet has never seen are appended.
- * - workout_records: appended per (member, week) only when that member has no record for the
- *   week yet. The join key is the label of the week *as the sheet has it*, so records land on the
- *   admin's numbering, not on the chat's.
- * - Rest weeks hold no records, so they contribute a week row only.
- *
- * Run run_importChatHistory() first - it writes nothing and reports exactly what the apply run
- * would do. Then run_applyChatHistoryImport() to write it.
- */
-
 function run_importChatHistory() {
   _importChatHistory(false);
 }
@@ -822,10 +805,6 @@ function run_applyChatHistoryImport() {
   _importChatHistory(true);
 }
 
-/**
- * The chat writes short names ('동원'); the sheet stores them with an emoji prefix ('🐟동원').
- * Emoji are the only thing that differs, so the Hangul part is the join key.
- */
 function _hangulOnly(name) {
   return String(name === null || name === undefined ? '' : name).replace(/[^가-힣]/g, '');
 }
@@ -848,12 +827,10 @@ function _importChatHistory(apply) {
   if (!logsSheet) throw new Error('workout_logs sheet not found');
   if (!rewardsSheet) throw new Error('rewards_log sheet not found');
 
-  // --- Members -------------------------------------------------------------
   const membersByName = {};
   MemberService.getAllMembers().forEach(member => {
     const key = _hangulOnly(member.name);
     if (!key) return;
-    // A duplicated short name would silently attach records to the wrong person.
     if (membersByName[key]) {
       console.warn(`Two members share the short name '${key}': '${membersByName[key].name}' and '${member.name}'. Their records are skipped.`);
       membersByName[key] = null;
@@ -864,10 +841,9 @@ function _importChatHistory(apply) {
 
   const unknownNames = {};
 
-  // --- Existing weeks, keyed by start_date (a week's identity) --------------
   const weekHeaders = weeksSheet.getRange(1, 1, 1, weeksSheet.getLastColumn()).getValues()[0];
-  const existingWeeks = {};   // start_date -> { year, month, week_number, is_rest_week }
-  const claimedLabels = {};   // 'y-m-w' -> start_date, among non-rest weeks only
+  const existingWeeks = {};
+  const claimedLabels = {};
 
   WorkoutWeekService.getAllWeeks().forEach(week => {
     const startDate = Util.toDateString(week.start_date);
@@ -878,7 +854,6 @@ function _importChatHistory(apply) {
     }
   });
 
-  // --- Existing records, keyed by (member, week label) ----------------------
   const recordHeaders = recordsSheet.getRange(1, 1, 1, recordsSheet.getLastColumn()).getValues()[0];
   const existingRecords = {};
   Util.sheetToObjects(recordsSheet, 'workout_records').forEach(record => {
@@ -886,16 +861,12 @@ function _importChatHistory(apply) {
       Number(record.count);
   });
 
-  // --- Existing logs, counted per (member, date) ----------------------------
-  // A log is keyed by its own date, not by a week label, so "already imported" is decided by
-  // whether the member has any log inside the week's span.
   const logHeaders = logsSheet.getRange(1, 1, 1, logsSheet.getLastColumn()).getValues()[0];
   const existingLogDates = {};
   Util.sheetToObjects(logsSheet, 'workout_logs').forEach(log => {
     existingLogDates[`${log.member_id}|${Util.toDateString(log.workout_date)}`] = true;
   });
 
-  // --- Plan ----------------------------------------------------------------
   const timestamp = Util.getCurrentTimestamp();
   const newWeekRows = [];
   const newRecordRows = [];
@@ -914,7 +885,6 @@ function _importChatHistory(apply) {
 
     if (existing) {
       weeksSkipped++;
-      // The sheet's labels win: the admin may have renumbered the week since.
       if (!existing.is_rest_week && Util.hasWeekNumber(existing.week_number)) {
         label = { year: Number(existing.year), month: Number(existing.month), weekNumber: Number(existing.week_number) };
       } else {
@@ -931,8 +901,6 @@ function _importChatHistory(apply) {
         return;
       }
       if (claimedLabels[labelKey]) {
-        // (year, month, week_number) is the join key for records and the planner refuses to save
-        // a duplicate. Importing one would poison every later save of that span.
         console.warn(`${startDate}: label ${labelKey} is already used by ${claimedLabels[labelKey]}. Fix the numbering in the planner - skipped.`);
         weeksBlocked++;
         return;
@@ -974,22 +942,14 @@ function _importChatHistory(apply) {
         console.log(`  ${startDate} ${member.name}: ${apply ? 'adding' : 'would add'} count ${record.count}${record.super_pass ? ' (슈퍼패스)' : ''}${record.note ? ` "${record.note}"` : ''}`);
       }
 
-      // --- Logs for this member-week ---------------------------------------
       const span = _datesInSpan(startDate, week.end_date);
 
-      // Any log already inside the span - on any day of it, not just the days the chat produced -
-      // means this week was logged some other way (the chatbot, or a previous run). Adding to it
-      // would double-count against the weekly total.
       const hasLogs = span.some(date => existingLogDates[`${member.id}|${date}`]);
       if (hasLogs) {
         logsSkipped += (week.logs || []).filter(log => log.name === record.name).length;
         return;
       }
 
-      // The sheet wins on how many workouts a week held: its counts were typed in by hand at the
-      // time, while the chat is a reconstruction. workout_records.count is also recomputed from the
-      // logs whenever the week is edited or run_applyRecalculatedWorkoutCounts runs, so the logs
-      // must add up to exactly that count or they would silently rewrite it later.
       const chatLogs = (week.logs || []).filter(log => log.name === record.name);
       const logs = _fitLogsToCount(
         chatLogs,
@@ -1016,9 +976,26 @@ function _importChatHistory(apply) {
     });
   });
 
-  // --- Rewards -------------------------------------------------------------
-  // Keyed by (member, reward_date): the same member can win more than one quarter, and a quarter
-  // has one winner, so that pair is the identity of an award.
+  const newJoinDates = [];
+  let joinDatesSkipped = 0;
+
+  (typeof CHAT_IMPORT_MEMBERS === 'undefined' ? [] : CHAT_IMPORT_MEMBERS).forEach(entry => {
+    const member = membersByName[_hangulOnly(entry.name)];
+    if (!member) {
+      unknownNames[entry.name] = (unknownNames[entry.name] || 0) + 1;
+      return;
+    }
+
+    const current = Util.toDateString(member.joined_at);
+    if (current) {
+      joinDatesSkipped++;
+      return;
+    }
+
+    newJoinDates.push({ id: member.id, name: member.name, joined_at: entry.joined_at });
+    console.log(`  ${member.name}: ${apply ? 'setting' : 'would set'} joined_at ${entry.joined_at}`);
+  });
+
   const rewardHeaders = rewardsSheet.getRange(1, 1, 1, rewardsSheet.getLastColumn()).getValues()[0];
   const existingRewards = {};
   Util.sheetToObjects(rewardsSheet, 'rewards_log').forEach(reward => {
@@ -1046,8 +1023,6 @@ function _importChatHistory(apply) {
       id: Util.generateUUID(),
       member_id: member.id,
       reward_date: reward.reward_date,
-      // Never stated in the chat. Left empty rather than guessed - the dashboard sums it with
-      // parseFloat(...) || 0, so an empty cell simply does not contribute.
       amount: reward.amount,
       description: reward.description,
       created_at: timestamp
@@ -1059,7 +1034,6 @@ function _importChatHistory(apply) {
     console.warn(`No member matches the chat name '${name}' (${unknownNames[name]} record(s) skipped). Register them first if their history matters.`);
   });
 
-  // --- Write ---------------------------------------------------------------
   if (apply) {
     if (newWeekRows.length > 0) {
       const rows = newWeekRows.map(week => weekHeaders.map(header => {
@@ -1068,16 +1042,12 @@ function _importChatHistory(apply) {
         return week[header] !== undefined ? week[header] : '';
       }));
       weeksSheet.getRange(weeksSheet.getLastRow() + 1, 1, rows.length, weekHeaders.length).setValues(rows);
-      // Rows are appended at the bottom, so a backfilled 2024 week would land after 2026 without this.
       _sortRows(weeksSheet, weekHeaders, ['start_date']);
     }
 
     if (newRecordRows.length > 0) {
       const rows = newRecordRows.map(record => recordHeaders.map(header => record[header] !== undefined ? record[header] : ''));
       recordsSheet.getRange(recordsSheet.getLastRow() + 1, 1, rows.length, recordHeaders.length).setValues(rows);
-      // No lookup depends on row order - every read filters on (member_id, year, month, week_number) -
-      // but the sheet is read by hand, so keep it grouped by week. member_id only breaks ties, so
-      // the order is at least stable between runs.
       _sortRows(recordsSheet, recordHeaders, ['year', 'month', 'week_number', 'member_id']);
     }
 
@@ -1086,6 +1056,10 @@ function _importChatHistory(apply) {
       logsSheet.getRange(logsSheet.getLastRow() + 1, 1, rows.length, logHeaders.length).setValues(rows);
       _sortRows(logsSheet, logHeaders, ['workout_date', 'member_id']);
     }
+
+    newJoinDates.forEach(entry => {
+      MemberService.updateMember(entry.id, { joined_at: entry.joined_at });
+    });
 
     if (newRewardRows.length > 0) {
       const rows = newRewardRows.map(reward => rewardHeaders.map(header => reward[header] !== undefined ? reward[header] : ''));
@@ -1101,24 +1075,12 @@ function _importChatHistory(apply) {
   console.log(`Records: ${newRecordRows.length} ${apply ? 'added' : 'to add'}, ${recordsSkipped} already in the sheet.`);
   console.log(`Logs:    ${newLogRows.length} ${apply ? 'added' : 'to add'} (${unknownLogs} ${CHAT_IMPORT_UNKNOWN_TYPE}), ${logsSkipped} already logged.`);
   console.log(`         fitted to the sheet's counts: ${logsPadded} padded, ${logsDropped} dropped.`);
+  console.log(`Members: ${newJoinDates.length} joined_at ${apply ? 'set' : 'to set'}, ${joinDatesSkipped} already had one.`);
   console.log(`Rewards: ${newRewardRows.length} ${apply ? 'added' : 'to add'} with no amount (fill them in from the reward tab), ${rewardsSkipped} already in the sheet.`);
   if (!apply) console.log('Nothing was written. Run run_applyChatHistoryImport() to write these changes.');
   console.log(`=== _importChatHistory End (${mode}) ===`);
 }
 
-/**
- * Retypes rewards_log: `reward_date` TEXT → DATE and `amount` DOUBLE → CURRENCY.
- *
- * Both columns used to accept anything, so a period label ('2026-Q1') could sit next to a date
- * ('2026-04-19') and sort as text. Changing MigrationService.SCHEMA alone is not enough: an
- * existing sheet keeps whatever type its column already had, and the values stay text until they
- * are rewritten - so this converts the values, sets a number format, and retypes the Table column.
- *
- * Nothing is written unless *every* value converts. A label like '2026-Q1' has no single day it
- * belongs to, so the migration refuses to guess and lists the rows for you to fix by hand (pick
- * the payout date in the reward tab) before running it again. Blank cells stay blank - an award
- * whose amount was never recorded is not an amount of zero.
- */
 function run_migrateRewardsLogTypes() {
   _migrateRewardsLogTypes(false);
 }
@@ -1189,10 +1151,6 @@ function _migrateRewardsLogTypes(apply) {
   }
 
   if (apply) {
-    // Retype first, then write. A Date written into a column still declared TEXT would be stored
-    // as text, and the number format is not ours to set: Sheets refuses setNumberFormat on a typed
-    // column ("You can't set the number format of cells in a typed column") because the column
-    // type is what drives the display.
     _setTableColumnTypes(sheet, plans.map(plan => ({ name: plan.column.name, type: plan.column.type })));
     SpreadsheetApp.flush();
 
@@ -1207,21 +1165,15 @@ function _migrateRewardsLogTypes(apply) {
   console.log(`=== _migrateRewardsLogTypes End (${mode}) ===`);
 }
 
-/**
- * Parsers return { value, changed } for something storable, or null to reject the cell.
- * Both keep blanks blank: an unrecorded value is not zero and not the epoch.
- */
 function _parseAmount(value) {
   if (value === '' || value === null || value === undefined) return { value: '', changed: false };
   if (typeof value === 'number') return { value: value, changed: false };
 
-  // '232,592' or '₩232,592' - what a human types into a text column
   const text = String(value).replace(/[₩,\s]/g, '');
   if (!/^-?\d+(\.\d+)?$/.test(text)) return null;
   return { value: Number(text), changed: true };
 }
 
-/** Accepts the shapes a sheet or a human actually produces; anything else is rejected on purpose. */
 function _parseRewardDate(value) {
   if (value === '' || value === null || value === undefined) return { value: '', changed: false };
   if (Object.prototype.toString.call(value) === '[object Date]') return { value: value, changed: false };
@@ -1232,7 +1184,6 @@ function _parseRewardDate(value) {
   let date = match ? _asDate(match[1], match[2], match[3]) : null;
 
   if (!date) {
-    // Sheets' own US rendering of a date cell, e.g. '5/13/2026'
     match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
     date = match ? _asDate(match[3], match[1], match[2]) : null;
   }
@@ -1248,14 +1199,6 @@ function _asDate(year, month, day) {
   return valid ? date : null;
 }
 
-/**
- * Retypes columns of a sheet's native Table. Sheets keeps the column type on the Table, not on the
- * cells, so converting the values alone leaves the column still declared as TEXT.
- *
- * @param {Sheet} sheet
- * @param {Array<{name: string, type: string}>} changes - type is a Sheets ColumnType
- *   (DOUBLE, CURRENCY, PERCENT, DATE, TIME, DATE_TIME, TEXT, BOOLEAN, ...)
- */
 function _setTableColumnTypes(sheet, changes) {
   const spreadsheet = Util.getSpreadsheet();
 
@@ -1289,21 +1232,6 @@ function _setTableColumnTypes(sheet, changes) {
   }
 }
 
-/**
- * Trims or pads the chat's logs for one member-week so that there are exactly `count` of them.
- *
- * The sheet's count is the truth - it was entered by hand while the week was running - so where the
- * chat reconstruction disagrees, the chat gives way. Trimming drops the least-evidenced logs first
- * (the ones the chat could not name an activity for, latest first), so the ones backed by a real
- * '헬스 1시간' message survive. Padding adds 기타(알수없음) 30분 on the days of the week that have
- * no log yet, which keeps one workout per day for as long as there are days to spare.
- *
- * @param {Array} logs - the chat's logs for this member-week
- * @param {number} count - workout_records.count as the sheet holds it
- * @param {Array<string>} span - every 'YYYY-MM-DD' of the week
- * @param {string} label - '2024-12-09 👻찬미', for the log line
- * @param {boolean} apply
- */
 function _fitLogsToCount(logs, count, span, label, apply) {
   if (logs.length === count) return logs;
 
@@ -1316,8 +1244,8 @@ function _fitLogsToCount(logs, count, span, label, apply) {
     const ordered = logs.slice().sort((a, b) => {
       const unknownA = a.workout_type === CHAT_IMPORT_UNKNOWN_TYPE ? 1 : 0;
       const unknownB = b.workout_type === CHAT_IMPORT_UNKNOWN_TYPE ? 1 : 0;
-      if (unknownA !== unknownB) return unknownB - unknownA;        // unknowns go first
-      return b.workout_date.localeCompare(a.workout_date);          // then the latest
+      if (unknownA !== unknownB) return unknownB - unknownA;
+      return b.workout_date.localeCompare(a.workout_date);
     });
     const dropped = ordered.slice(0, logs.length - count);
     const kept = logs.filter(log => dropped.indexOf(log) === -1);
@@ -1332,7 +1260,6 @@ function _fitLogsToCount(logs, count, span, label, apply) {
   const free = span.filter(date => !used[date]);
   let cursor = 0;
   while (padded.length < count) {
-    // Days run out only when the count is above 7; then it doubles up from the start of the week.
     const date = free.length > 0 ? free[cursor % free.length] : span[cursor % span.length];
     cursor++;
     padded.push({
@@ -1348,7 +1275,6 @@ function _fitLogsToCount(logs, count, span, label, apply) {
   return padded;
 }
 
-/** Every 'YYYY-MM-DD' from start to end inclusive. */
 function _datesInSpan(startDate, endDate) {
   const dates = [];
   const cursor = new Date(`${startDate}T00:00:00`);
@@ -1360,11 +1286,6 @@ function _datesInSpan(startDate, endDate) {
   return dates;
 }
 
-/**
- * Sorts the sheet body (everything below the header) by the given columns, ascending.
- * Blank trailing rows sort to the bottom, so an empty row left by the table setup stays out of
- * the way. Missing columns are ignored rather than throwing - sorting is cosmetic.
- */
 function _sortRows(sheet, headers, columnNames) {
   const spec = columnNames
     .map(name => headers.indexOf(name) + 1)

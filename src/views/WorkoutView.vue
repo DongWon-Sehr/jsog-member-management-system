@@ -217,6 +217,7 @@ import { useDialog } from '../composables/useDialog';
 import { isRestWeek, formatWeekLabel, formatWeekNumberLabel } from '../composables/weekUtils';
 import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
+import { downloadCsvFile } from '../composables/useCsv';
 
 const { weeks, activeMembers, workoutRecords, sharedWeekId } = useStore();
 const { confirm, alert } = useDialog();
@@ -512,18 +513,16 @@ const downloadCsv = () => {
   const data = memberRecords.value;
   const week = currentWeekData.value;
   const headers = ['이름', '운동횟수', '슈퍼패스', '환급상태', '메모'];
-  const rows = data.map(r => [r.name, r.count, r.superPass ? '사용' : '-', getRefundStatus(r).text, (r.note || '').replace(/,/g, ' ')]);
+  const rows = data.map(r => [r.name, r.count, r.superPass ? '사용' : '-', getRefundStatus(r).text, r.note || '']);
   const weekLabel = formatWeekNumberLabel(week);
-  const csvContent = [`주차: ${week.year}년 ${week.month}월 ${weekLabel} (${week.start_date} ~ ${week.end_date})`, headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.setAttribute('href', URL.createObjectURL(blob));
   const fileWeekLabel = isRestWeek(week) ? '휴식주간' : `W${week.week_number}`;
-  link.setAttribute('download', `workout_report_${week.year}_${week.month}_${fileWeekLabel}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+
+  downloadCsvFile(
+    `workout_report_${week.year}_${week.month}_${fileWeekLabel}.csv`,
+    headers,
+    rows,
+    [`주차: ${week.year}년 ${week.month}월 ${weekLabel} (${week.start_date} ~ ${week.end_date})`]
+  );
 };
 
 const formatMdDate = (dateStr) => {

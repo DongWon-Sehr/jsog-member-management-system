@@ -2,8 +2,22 @@ import { ref, reactive, computed } from 'vue';
 
 // --- Global Reactive State ---
 const members = ref([]);
+
+const joinedAtOf = (member) => {
+  const value = member.joined_at || member.created_at || '';
+  return String(value).split(' ')[0].split('T')[0] || '9999-12-31';
+};
+
+const byJoinedAt = (a, b) => {
+  const dateA = joinedAtOf(a);
+  const dateB = joinedAtOf(b);
+  if (dateA !== dateB) return dateA < dateB ? -1 : 1;
+  return String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+};
+
+const sortedMembers = computed(() => [...members.value].sort(byJoinedAt));
 const activeMembers = computed(() =>
-  members.value.filter(m => m.enabled === true || String(m.enabled).toUpperCase() === 'TRUE')
+  sortedMembers.value.filter(m => m.enabled === true || String(m.enabled).toUpperCase() === 'TRUE')
 );
 const rewards = ref([]);
 const weeks = ref([]);
@@ -46,6 +60,7 @@ export function useStore() {
   return {
     // State
     members,
+    sortedMembers,
     activeMembers,
     rewards,
     weeks,

@@ -16,8 +16,8 @@ function apiGetMemberById(memberId) {
   return _executeApi('apiGetMemberById', () => MemberService.getMemberById(memberId), { memberId });
 }
 
-function apiAddMember(name, email) {
-  return _executeApi('apiAddMember', () => MemberService.addMember(name, email), { name, email });
+function apiAddMember(name, email, details) {
+  return _executeApi('apiAddMember', () => MemberService.addMember(name, email, details), { name, email, details });
 }
 
 function apiUpdateMember(memberId, updateData) {
