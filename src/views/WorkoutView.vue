@@ -217,13 +217,13 @@ import { useDialog } from '../composables/useDialog';
 import { isRestWeek, formatWeekLabel, formatWeekNumberLabel } from '../composables/weekUtils';
 import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
+import { downloadCsvFile } from '../composables/useCsv';
 
-const { weeks, activeMembers, workoutRecords, sharedWeekId } = useStore();
+const { weeks, activeMembers, membersOfWeek, workoutRecords, selectedWeekId } = useStore();
 const { confirm, alert } = useDialog();
 const isPlannerOpen = ref(false);
 
 const selectedYear = ref(new Date().getFullYear());
-const selectedWeekId = ref('');
 const searchQuery = ref('');
 const statusFilter = ref('all'); // all, eligible, incomplete
 let isNavigating = false; // Flag to prevent watcher interference
@@ -309,7 +309,7 @@ const memberRecords = computed(() => {
     String(r.week_number) === String(weekData.week_number)
   );
   
-  return activeMembers.value
+  return membersOfWeek(weekData)
     .map(member => {
       const existing = dbRecords.find(r => r.member_id === member.id);
       return {
@@ -346,7 +346,7 @@ const summaryCounts = computed(() => {
     String(r.week_number) === String(weekData.week_number)
   );
 
-  const stats = activeMembers.value.reduce((acc, m) => {
+  const stats = membersOfWeek(weekData).reduce((acc, m) => {
     const existing = dbRecords.find(r => r.member_id === m.id);
     const count = existing ? Number(existing.count) : 0;
     const sp = existing ? (existing.super_pass === true || String(existing.super_pass).toUpperCase() === 'TRUE') : false;
@@ -440,20 +440,19 @@ const toggleSuperPass = async (record) => {
 const setInitialWeek = async () => {
   if (validWeeks.value.length === 0) return;
 
-  if (sharedWeekId.value) {
-    const targetWeek = validWeeks.value.find(w => w.id === sharedWeekId.value);
-    if (targetWeek) {
-      selectedYear.value = Number(targetWeek.year);
+  // The selection is shared with the dashboard, so it may point at a week from another year -
+  // the year selector has to follow it, otherwise the week list would not contain it.
+  // Only keep it if that week still exists: a planner save can drop or replace rows, and a
+  // dangling id would leave the view stuck on an empty week with no way back.
+  const shared = validWeeks.value.find(w => w.id === selectedWeekId.value);
+  if (shared) {
+    if (selectedYear.value !== Number(shared.year)) {
+      selectedYear.value = Number(shared.year);
       await nextTick();
-      selectedWeekId.value = targetWeek.id;
-      sharedWeekId.value = null; // Clear it after consuming
-      return;
+      selectedWeekId.value = shared.id;
     }
+    return;
   }
-
-  // Only keep the current selection if that week still exists. A planner save can drop or replace
-  // rows, and a dangling id would leave the view stuck on an empty week with no way back.
-  if (selectedWeekId.value && validWeeks.value.some(w => w.id === selectedWeekId.value)) return;
 
   const today = new Date();
   today.setHours(0,0,0,0);
@@ -512,18 +511,16 @@ const downloadCsv = () => {
   const data = memberRecords.value;
   const week = currentWeekData.value;
   const headers = ['이름', '운동횟수', '슈퍼패스', '환급상태', '메모'];
-  const rows = data.map(r => [r.name, r.count, r.superPass ? '사용' : '-', getRefundStatus(r).text, (r.note || '').replace(/,/g, ' ')]);
+  const rows = data.map(r => [r.name, r.count, r.superPass ? '사용' : '-', getRefundStatus(r).text, r.note || '']);
   const weekLabel = formatWeekNumberLabel(week);
-  const csvContent = [`주차: ${week.year}년 ${week.month}월 ${weekLabel} (${week.start_date} ~ ${week.end_date})`, headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.setAttribute('href', URL.createObjectURL(blob));
   const fileWeekLabel = isRestWeek(week) ? '휴식주간' : `W${week.week_number}`;
-  link.setAttribute('download', `workout_report_${week.year}_${week.month}_${fileWeekLabel}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+
+  downloadCsvFile(
+    `workout_report_${week.year}_${week.month}_${fileWeekLabel}.csv`,
+    headers,
+    rows,
+    [`주차: ${week.year}년 ${week.month}월 ${weekLabel} (${week.start_date} ~ ${week.end_date})`]
+  );
 };
 
 const formatMdDate = (dateStr) => {

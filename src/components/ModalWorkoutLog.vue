@@ -33,12 +33,35 @@
                   <i class="ph-bold ph-note-pencil"></i>
                   이번 주차 메모
                 </h4>
-                <input 
+                <input
                   v-model="localWeeklyNote"
-                  type="text" 
+                  type="text"
                   placeholder="부상, 개인사정 등 이번 주차 특이사항"
                   class="w-full bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-indigo-500 transition-all shadow-sm"
                 />
+
+                <div class="mt-3 pt-3 border-t border-indigo-100 flex items-center justify-between gap-3">
+                  <div class="flex flex-col justify-center min-w-0">
+                    <p class="text-sm font-bold text-indigo-700 flex items-center gap-2">
+                      <i class="ph-bold ph-sparkle"></i>
+                      슈퍼패스 적용
+                    </p>
+                    <p class="text-xs font-medium" :class="superPassBlockedReason ? 'text-red-500' : 'text-indigo-400'">
+                      {{ superPassBlockedReason || (localSuperPass ? '이번 주차에 사용 처리됩니다' : '월 1회, 1회 이상 인증 시 사용 가능') }}
+                    </p>
+                  </div>
+                  <button
+                    @click="toggleLocalSuperPass"
+                    :disabled="!!superPassBlockedReason && !localSuperPass"
+                    class="relative block h-7 w-12 flex-shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none ring-offset-2 focus:ring-2 ring-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed"
+                    :class="localSuperPass ? 'bg-indigo-600' : 'bg-gray-300'"
+                  >
+                    <span
+                      class="absolute top-1 pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-all duration-200 ease-in-out"
+                      :class="localSuperPass ? 'left-6' : 'left-1'"
+                    ></span>
+                  </button>
+                </div>
               </div>
 
               <!-- Add New Log Form -->
@@ -232,6 +255,8 @@ const localLogs = ref([]);
 const deletedIds = ref([]);
 const localWeeklyNote = ref('');
 const initialWeeklyNote = ref('');
+const localSuperPass = ref(false);
+const initialSuperPass = ref(false);
 const recentlyAddedIds = ref([]);
 
 // Form states
@@ -242,10 +267,37 @@ const newDuration = ref(30);
 
 const memberName = computed(() => memberMap.value[props.memberId]?.name || '회원');
 
+const superPassBlockedReason = computed(() => {
+  if (!props.weekData) return '';
+
+  if (localLogs.value.length === 0) {
+    return '인증 1회 이상부터 사용할 수 있습니다';
+  }
+
+  const usedElsewhere = workoutRecords.value.find(r =>
+    String(r.member_id) === String(props.memberId) &&
+    String(r.year) === String(props.weekData.year) &&
+    String(r.month) === String(props.weekData.month) &&
+    String(r.week_number) !== String(props.weekData.week_number) &&
+    (r.super_pass === true || String(r.super_pass).toUpperCase() === 'TRUE')
+  );
+  if (usedElsewhere) {
+    return `${props.weekData.month}-${usedElsewhere.week_number}주차에 이미 사용했습니다`;
+  }
+
+  return '';
+});
+
+const toggleLocalSuperPass = () => {
+  if (!localSuperPass.value && superPassBlockedReason.value) return;
+  localSuperPass.value = !localSuperPass.value;
+};
+
 const hasChanges = computed(() => {
   return localLogs.value.some(l => l.isNew || l.isModified) || 
          deletedIds.value.length > 0 || 
-         localWeeklyNote.value !== initialWeeklyNote.value;
+         localWeeklyNote.value !== initialWeeklyNote.value ||
+         localSuperPass.value !== initialSuperPass.value;
 });
 
 // Duplicate Detection
@@ -341,6 +393,8 @@ const syncLocalState = () => {
   if (!props.weekData || !props.memberId) {
     localLogs.value = [];
     localWeeklyNote.value = '';
+    localSuperPass.value = false;
+    initialSuperPass.value = false;
     initialWeeklyNote.value = '';
     return;
   }
@@ -379,6 +433,13 @@ const syncLocalState = () => {
   const note = record ? (record.note || '') : '';
   localWeeklyNote.value = note;
   initialWeeklyNote.value = note;
+
+  const superPass = record
+    ? (record.super_pass === true || String(record.super_pass).toUpperCase() === 'TRUE')
+    : false;
+  localSuperPass.value = superPass;
+  initialSuperPass.value = superPass;
+
   deletedIds.value = [];
 };
 
@@ -515,9 +576,11 @@ const saveBatch = () => {
   // localLogs holds exactly this member's logs for this week (all validated in-range), so its
   // length is the authoritative count. Mirrors how the server recomputes it.
   const weekLogCount = localLogs.value.length;
+  const superPass = localSuperPass.value;
   if (recordIndex > -1) {
     workoutRecords.value[recordIndex].count = weekLogCount;
     workoutRecords.value[recordIndex].note = weeklyNote;
+    workoutRecords.value[recordIndex].super_pass = superPass;
   } else {
     workoutRecords.value.push({
       member_id: props.memberId,
@@ -525,7 +588,7 @@ const saveBatch = () => {
       month: props.weekData.month,
       week_number: props.weekData.week_number,
       count: weekLogCount,
-      super_pass: false,
+      super_pass: superPass,
       note: weeklyNote
     });
   }
@@ -566,7 +629,7 @@ const saveBatch = () => {
       syncLocalState();
       alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
     })
-    .apiBatchSaveWorkoutLogs(props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number, logsToAdd, logsToUpdate, idsToDelete, weeklyNote);
+    .apiBatchSaveWorkoutLogs(props.memberId, props.weekData.year, props.weekData.month, props.weekData.week_number, logsToAdd, logsToUpdate, idsToDelete, weeklyNote, superPass);
 };
 </script>
 

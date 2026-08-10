@@ -66,6 +66,54 @@
                 </div>
               </div>
 
+              <div class="space-y-1.5">
+                <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">가입일</label>
+                <div class="relative group">
+                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <i class="ph-fill ph-calendar-blank text-gray-300 group-focus-within:text-indigo-500 transition-colors"></i>
+                  </div>
+                  <input
+                    v-model="form.joinedAt"
+                    type="date"
+                    class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-gray-900 shadow-inner"
+                  />
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">환급 계좌 (선택)</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="relative group">
+                    <input
+                      v-model="form.bankType"
+                      @paste="onBankPaste"
+                      @blur="normalizeBankType"
+                      type="text"
+                      list="bank-list"
+                      placeholder="은행"
+                      class="w-full px-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-gray-900 shadow-inner"
+                    />
+                    <datalist id="bank-list">
+                      <option v-for="bank in BANKS" :key="bank" :value="bank"></option>
+                    </datalist>
+                  </div>
+                  <div class="relative group col-span-2">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <i class="ph-fill ph-credit-card text-gray-300 group-focus-within:text-indigo-500 transition-colors"></i>
+                    </div>
+                    <input
+                      :value="form.bankAccount"
+                      @input="onAccountInput"
+                      @paste="onAccountPaste"
+                      type="text"
+                      inputmode="numeric"
+                      placeholder="계좌번호 (숫자만)"
+                      class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-gray-900 shadow-inner"
+                    />
+                  </div>
+                </div>
+              </div>
+
               <!-- Status Toggle (Only in Edit Mode) -->
               <div v-if="isEditMode" class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
                 <div class="flex flex-col justify-center">
@@ -169,8 +217,94 @@ const form = reactive({
   id: '',
   name: '',
   email: '',
+  joinedAt: '',
+  bankType: '',
+  bankAccount: '',
   enabled: true
 });
+
+const today = () => new Date().toISOString().split('T')[0];
+
+const BANKS = ['카카오뱅크', '토스뱅크', '케이뱅크', '국민', '신한', '우리', '하나', '농협', '기업',
+  'SC제일', '씨티', '새마을금고', '우체국', '부산', '대구', '경남', '광주', '전북', '제주', '수협', '산업'];
+
+const BANK_ALIASES = {
+  '카카오뱅크': ['카카오뱅크', '카뱅', 'kakaobank'],
+  '토스뱅크': ['토스뱅크', '토스', 'toss'],
+  '케이뱅크': ['케이뱅크', 'k뱅크', 'kbank'],
+  '국민': ['국민', 'kb'],
+  '신한': ['신한', 'shinhan'],
+  '우리': ['우리', 'woori'],
+  '하나': ['하나', 'keb', 'hana'],
+  '농협': ['농협', 'nh'],
+  '기업': ['기업', 'ibk'],
+  'SC제일': ['sc제일', 'sc'],
+  '씨티': ['씨티', 'citi'],
+  '새마을금고': ['새마을'],
+  '우체국': ['우체국'],
+  '부산': ['부산'], '대구': ['대구'], '경남': ['경남'], '광주': ['광주'],
+  '전북': ['전북'], '제주': ['제주'], '수협': ['수협'], '산업': ['산업', 'kdb']
+};
+
+const ACCOUNT_PREFIXES = [
+  { prefix: '3333', bank: '카카오뱅크' },
+  { prefix: '1000', bank: '토스뱅크' }
+];
+
+const bankFromText = (text) => {
+  const compact = String(text).toLowerCase().replace(/\s/g, '');
+  for (const [bank, aliases] of Object.entries(BANK_ALIASES)) {
+    if (aliases.some(alias => compact.includes(alias))) return bank;
+  }
+  return '';
+};
+
+const bankFromAccount = (digits) => {
+  const match = ACCOUNT_PREFIXES.find(entry => digits.startsWith(entry.prefix));
+  return match ? match.bank : '';
+};
+
+const onAccountInput = (event) => {
+  const input = event.target;
+  const raw = input.value;
+  const digits = raw.replace(/\D/g, '');
+
+  form.bankAccount = digits;
+
+  if (raw !== digits) {
+    const caret = input.selectionStart === null ? raw.length : input.selectionStart;
+    const kept = raw.slice(0, caret).replace(/\D/g, '').length;
+    input.value = digits;
+    input.setSelectionRange(kept, kept);
+  }
+
+  if (!form.bankType) form.bankType = bankFromAccount(digits);
+};
+
+const clipboardText = (event) =>
+  (event.clipboardData || window.clipboardData || { getData: () => '' }).getData('text') || '';
+
+const onAccountPaste = (event) => {
+  const bank = bankFromText(clipboardText(event));
+  if (bank && !form.bankType) form.bankType = bank;
+};
+
+const onBankPaste = (event) => {
+  const text = clipboardText(event);
+  const bank = bankFromText(text);
+  const digits = text.replace(/\D/g, '');
+
+  if (!bank && digits.length < 8) return;
+
+  event.preventDefault();
+  form.bankType = bank || form.bankType;
+  if (digits.length >= 8) form.bankAccount = digits;
+};
+
+const normalizeBankType = () => {
+  const bank = bankFromText(form.bankType);
+  if (bank) form.bankType = bank;
+};
 
 // Stats Calculation for Activity Tab
 const stats = computed(() => {
@@ -234,12 +368,18 @@ watch(() => props.memberData, (newVal) => {
     form.id = newVal.id;
     form.name = newVal.name;
     form.email = newVal.email || '';
+    form.joinedAt = (newVal.joined_at || newVal.created_at || '').split(' ')[0].split('T')[0];
+    form.bankType = newVal.bank_type || '';
+    form.bankAccount = newVal.bank_account || '';
     form.enabled = newVal.enabled === true || newVal.enabled === 'TRUE' || newVal.enabled === 'true';
   } else {
     isEditMode.value = false;
     form.id = '';
     form.name = '';
     form.email = '';
+    form.joinedAt = today();
+    form.bankType = '';
+    form.bankAccount = '';
     form.enabled = true;
   }
 }, { immediate: true });
@@ -253,7 +393,7 @@ const save = () => {
     alert({ message: '이름을 입력해주세요.', isDanger: true });
     return;
   }
-  emit('save', { ...form });
+  emit('save', { ...form, bankAccount: String(form.bankAccount || '').replace(/\D/g, '') });
 };
 </script>
 

@@ -2,9 +2,34 @@ import { ref, reactive, computed } from 'vue';
 
 // --- Global Reactive State ---
 const members = ref([]);
+
+const joinedAtOf = (member) => {
+  const value = member.joined_at || member.created_at || '';
+  return String(value).split(' ')[0].split('T')[0] || '9999-12-31';
+};
+
+const byJoinedAt = (a, b) => {
+  const dateA = joinedAtOf(a);
+  const dateB = joinedAtOf(b);
+  if (dateA !== dateB) return dateA < dateB ? -1 : 1;
+  return String(a.name || '').localeCompare(String(b.name || ''), 'ko');
+};
+
+const sortedMembers = computed(() => [...members.value].sort(byJoinedAt));
 const activeMembers = computed(() =>
-  members.value.filter(m => m.enabled === true || String(m.enabled).toUpperCase() === 'TRUE')
+  sortedMembers.value.filter(m => m.enabled === true || String(m.enabled).toUpperCase() === 'TRUE')
 );
+
+const hasJoinedBy = (member, date) => {
+  if (!date) return true;
+  const joined = member.joined_at || member.created_at || '';
+  if (!joined) return true;
+  return String(joined).split(' ')[0].split('T')[0] <= String(date).split(' ')[0].split('T')[0];
+};
+
+const membersJoinedBy = (date) => activeMembers.value.filter(m => hasJoinedBy(m, date));
+
+const membersOfWeek = (week) => membersJoinedBy(week ? week.end_date : null);
 const rewards = ref([]);
 const weeks = ref([]);
 const workoutRecords = ref([]);
@@ -18,7 +43,7 @@ const dashboardSummary = reactive({
 const isLoading = ref(false);
 const loadingText = ref('데이터를 불러오는 중입니다... 🚀');
 const currentView = ref('Dashboard'); // Moved from App.vue for global control
-const sharedWeekId = ref(null); // Used to pass selected week between tabs
+const selectedWeekId = ref(null);
 
 // --- Caching / Computed State for Performance ---
 const memberMap = computed(() => {
@@ -46,7 +71,11 @@ export function useStore() {
   return {
     // State
     members,
+    sortedMembers,
     activeMembers,
+    hasJoinedBy,
+    membersJoinedBy,
+    membersOfWeek,
     rewards,
     weeks,
     workoutRecords,
@@ -56,7 +85,7 @@ export function useStore() {
     isLoading,
     loadingText,
     currentView,
-    sharedWeekId,
+    selectedWeekId,
     
     // Computed / Cache
     memberMap,

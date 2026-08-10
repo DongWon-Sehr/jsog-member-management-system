@@ -16,8 +16,8 @@ function apiGetMemberById(memberId) {
   return _executeApi('apiGetMemberById', () => MemberService.getMemberById(memberId), { memberId });
 }
 
-function apiAddMember(name, email) {
-  return _executeApi('apiAddMember', () => MemberService.addMember(name, email), { name, email });
+function apiAddMember(name, email, details) {
+  return _executeApi('apiAddMember', () => MemberService.addMember(name, email, details), { name, email, details });
 }
 
 function apiUpdateMember(memberId, updateData) {
@@ -75,8 +75,8 @@ function apiDeleteWorkoutLog(logId, memberId, year, month, weekNumber) {
   return _executeApi('apiDeleteWorkoutLog', () => WorkoutLogService.deleteWorkoutLog(logId, memberId, year, month, weekNumber), { logId, memberId, year, month, weekNumber });
 }
 
-function apiBatchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote) {
-  return _executeApi('apiBatchSaveWorkoutLogs', () => WorkoutLogService.batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote), { memberId, year, month, weekNumber, addCount: logsToAdd.length, updateCount: logsToUpdate.length, deleteCount: logIdsToDelete.length, hasNote: !!weeklyNote });
+function apiBatchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote, superPass) {
+  return _executeApi('apiBatchSaveWorkoutLogs', () => WorkoutLogService.batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote, superPass), { memberId, year, month, weekNumber, addCount: logsToAdd.length, updateCount: logsToUpdate.length, deleteCount: logIdsToDelete.length, hasNote: !!weeklyNote, superPass });
 }
 
 // Reward API

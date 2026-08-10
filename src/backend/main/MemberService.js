@@ -84,7 +84,8 @@ const MemberService = {
   /**
    * Adds a new member
    */
-  addMember(name, email) {
+  addMember(name, email, extra) {
+    const details = extra || {};
     const newMember = {
       id: Util.generateUUID(),
       name: name,
@@ -92,7 +93,10 @@ const MemberService = {
       kakao_plus_id: '',
       created_at: Util.getCurrentTimestamp(),
       updated_at: Util.getCurrentTimestamp(),
-      enabled: true
+      enabled: true,
+      joined_at: details.joined_at || Util.toDateString(new Date()),
+      bank_type: details.bank_type || '',
+      bank_account: details.bank_account || ''
     };
 
     // Create array matching the header order
@@ -104,7 +108,7 @@ const MemberService = {
   },
 
   /**
-   * Updates an existing member's information (name, email, kakao_plus_id)
+   * Updates an existing member's information (name, email, kakao_plus_id, joined_at, bank details)
    */
   updateMember(memberId, updateData) {
     const data = this.sheet.getDataRange().getValues();
@@ -128,6 +132,15 @@ const MemberService = {
         if (updateData.kakao_plus_id !== undefined) {
           this.sheet.getRange(rowIndex, headers.indexOf('kakao_plus_id') + 1).setValue(updateData.kakao_plus_id);
         }
+        ['joined_at', 'bank_type', 'bank_account'].forEach(field => {
+          if (updateData[field] === undefined) return;
+          const columnIndex = headers.indexOf(field);
+          if (columnIndex === -1) {
+            console.warn(`[MemberService] '${field}' column is missing - run run_setupDatabase(). Value not saved.`);
+            return;
+          }
+          this.sheet.getRange(rowIndex, columnIndex + 1).setValue(updateData[field]);
+        });
         if (updateData.enabled !== undefined) {
           const enabledVal = updateData.enabled === true || String(updateData.enabled).toUpperCase() === 'TRUE' || String(updateData.enabled) === 'true';
           this.sheet.getRange(rowIndex, headers.indexOf('enabled') + 1).setValue(enabledVal);

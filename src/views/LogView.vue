@@ -43,10 +43,10 @@
       <!-- List Header (Sticky Bottom Part) -->
       <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
-          <div class="col-span-3">발생 일시</div>
-          <div class="col-span-3">액션 유형</div>
-          <div class="col-span-5">상세 내용</div>
-          <div class="col-span-1 text-right">조회</div>
+          <div class="col-span-3 text-center">발생 일시</div>
+          <div class="col-span-3 text-center">액션 유형</div>
+          <div class="col-span-5 text-center">상세 내용</div>
+          <div class="col-span-1 text-center">조회</div>
         </div>
       </div>
     </div>
@@ -66,12 +66,12 @@
           class="bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4"
         >
           <!-- Timestamp -->
-          <div class="md:col-span-3 flex items-center gap-3">
+          <div class="md:col-span-3 flex items-center md:justify-center gap-3">
             <span class="text-sm font-bold text-gray-600 font-mono">{{ formatFullDate(log.timestamp) }}</span>
           </div>
 
           <!-- Action -->
-          <div class="md:col-span-3 flex items-center gap-2">
+          <div class="md:col-span-3 flex items-center md:justify-center gap-2">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">유형</span>
             <span
               class="px-2.5 py-1 rounded-lg text-[10px] font-black tracking-tight shadow-sm border"
@@ -82,13 +82,13 @@
           </div>
 
           <!-- Details Preview -->
-          <div class="md:col-span-5 flex items-center gap-2">
+          <div class="md:col-span-5 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">내용</span>
             <span class="text-sm font-medium text-gray-500 truncate max-w-xs md:max-w-md">{{ log.details || '-' }}</span>
           </div>
 
           <!-- Arrow -->
-          <div class="md:col-span-1 flex items-center justify-end">
+          <div class="md:col-span-1 flex items-center justify-end md:justify-center">
             <i class="ph-bold ph-magnifying-glass-plus text-gray-300 group-hover:text-indigo-500 transition-colors text-xl"></i>
           </div>
         </div>
@@ -152,6 +152,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
 const { systemLogs: logs } = useStore();
 const { alert } = useDialog();
@@ -214,22 +215,10 @@ const downloadCsv = () => {
   const rows = data.map(l => [
     l.timestamp,
     l.action,
-    (l.details || '').replace(/,/g, ' ').replace(/\n/g, ' ')
+    l.details || ''
   ]);
 
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(r => r.join(','))
-  ].join('\n');
-
-  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.setAttribute('href', URL.createObjectURL(blob));
-  link.setAttribute('download', `system_logs_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadCsvFile(`system_logs_${todayStamp()}.csv`, headers, rows);
 };
 
 const getActionClass = (action) => {
@@ -245,7 +234,7 @@ const formatFullDate = (ts) => {
   if (!ts) return '-';
   const parts = ts.split(' ');
   if (parts.length < 2) return ts;
-  return parts[0].slice(5) + ' ' + parts[1].slice(0, 5);
+  return parts[0].slice(5) + ' ' + parts[1].slice(0, 8);
 };
 
 const formatJson = (details) => {
