@@ -51,11 +51,11 @@
       <!-- List Header (Sticky Bottom Part) -->
       <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
-          <div class="col-span-2">이름</div>
-          <div class="col-span-3">이메일</div>
-          <div class="col-span-3">환급 계좌</div>
+          <div class="col-span-2 text-center">이름</div>
+          <div class="col-span-3 text-center">이메일</div>
+          <div class="col-span-3 text-center">환급 계좌</div>
           <div class="col-span-2 text-center">상태</div>
-          <div class="col-span-2 text-right">가입일</div>
+          <div class="col-span-2 text-center">가입일</div>
         </div>
       </div>
     </div>
@@ -70,21 +70,23 @@
           :class="['bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4', { 'animate-highlight': recentlyAddedIds.includes(member.id) }]"
         >
           <!-- Name -->
-          <div class="md:col-span-2 flex items-center gap-3">
+          <div class="md:col-span-2 flex items-center md:justify-center gap-3">
             <span class="font-bold text-gray-900 text-base group-hover:text-indigo-600 transition-colors">{{ member.name }}</span>
           </div>
 
           <!-- Email -->
-          <div class="md:col-span-3 flex items-center gap-2 min-w-0">
+          <div class="md:col-span-3 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">이메일</span>
             <span v-if="member.email" class="text-sm font-medium text-gray-500 truncate">{{ member.email }}</span>
             <span v-else class="text-sm font-medium text-gray-300">미등록</span>
           </div>
 
-          <div class="md:col-span-3 flex items-center gap-2 min-w-0">
+          <div class="md:col-span-3 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">환급 계좌</span>
-            <span v-if="member.bank_type || member.bank_account" class="flex items-center gap-1.5 min-w-0">
-              <span v-if="member.bank_type" class="px-2 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 shrink-0">{{ member.bank_type }}</span>
+            <span v-if="member.bank_type || member.bank_account" class="flex items-center gap-2 min-w-0">
+              <!-- Fixed width, sized for the longest bank name, so every account number starts at
+                   the same x and the column does not look ragged. -->
+              <span class="w-[68px] shrink-0 px-1.5 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 text-center truncate">{{ member.bank_type || '-' }}</span>
               <span class="text-sm font-bold text-gray-600 font-mono truncate">{{ member.bank_account || '-' }}</span>
             </span>
             <span v-else class="text-sm font-medium text-gray-300">미등록</span>
@@ -102,7 +104,7 @@
           </div>
 
           <!-- Date -->
-          <div class="md:col-span-2 flex items-center md:justify-end gap-2">
+          <div class="md:col-span-2 flex items-center md:justify-center gap-2">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">가입일</span>
             <span class="text-sm font-bold text-gray-600 font-mono">{{ formatDate(member.joined_at || member.created_at) }}</span>
             <i class="ph-bold ph-caret-right text-gray-300 md:hidden ml-auto"></i>

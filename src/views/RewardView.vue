@@ -59,10 +59,10 @@
         </div>
 
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
-          <div class="col-span-2">지급 대상</div>
-          <div class="col-span-2">지급 일자</div>
-          <div class="col-span-2 text-right">금액</div>
-          <div class="col-span-5">설명</div>
+          <div class="col-span-2 text-center">지급 대상</div>
+          <div class="col-span-2 text-center">지급 일자</div>
+          <div class="col-span-2 text-center">금액</div>
+          <div class="col-span-5 text-center">설명</div>
           <div class="col-span-1"></div>
         </div>
       </div>
@@ -83,24 +83,24 @@
           :class="['bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4', { 'animate-highlight': recentlyAddedIds.includes(reward.id) }]"
         >
           <!-- Member Name -->
-          <div class="md:col-span-2 flex items-center gap-3">
+          <div class="md:col-span-2 flex items-center md:justify-center gap-3">
             <span class="font-bold text-gray-900 text-base">{{ getMemberName(reward.member_id) }}</span>
           </div>
 
           <!-- Reward Date -->
-          <div class="md:col-span-2 flex items-center gap-2">
+          <div class="md:col-span-2 flex items-center md:justify-center gap-2">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">지급 일자</span>
             <span class="text-sm font-bold text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">{{ reward.reward_date }}</span>
           </div>
 
           <!-- Amount -->
-          <div class="md:col-span-2 flex items-center md:justify-end gap-2">
+          <div class="md:col-span-2 flex items-center md:justify-center gap-2">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">금액</span>
             <span class="text-base font-black text-indigo-600">{{ Number(reward.amount).toLocaleString() }}원</span>
           </div>
 
           <!-- Description -->
-          <div class="md:col-span-5 flex items-center gap-2">
+          <div class="md:col-span-5 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">설명</span>
             <span class="text-sm font-medium text-gray-500 truncate max-w-xs md:max-w-md">{{ reward.description || '-' }}</span>
           </div>
