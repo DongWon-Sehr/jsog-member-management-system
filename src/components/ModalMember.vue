@@ -86,6 +86,8 @@
                   <div class="relative group">
                     <input
                       v-model="form.bankType"
+                      @paste="onBankPaste"
+                      @blur="normalizeBankType"
                       type="text"
                       list="bank-list"
                       placeholder="은행"
@@ -279,12 +281,29 @@ const onAccountInput = (event) => {
   if (!form.bankType) form.bankType = bankFromAccount(digits);
 };
 
+const clipboardText = (event) =>
+  (event.clipboardData || window.clipboardData || { getData: () => '' }).getData('text') || '';
+
 const onAccountPaste = (event) => {
-  const text = (event.clipboardData || window.clipboardData || { getData: () => '' }).getData('text');
-  if (!form.bankType) {
-    const bank = bankFromText(text);
-    if (bank) form.bankType = bank;
-  }
+  const bank = bankFromText(clipboardText(event));
+  if (bank && !form.bankType) form.bankType = bank;
+};
+
+const onBankPaste = (event) => {
+  const text = clipboardText(event);
+  const bank = bankFromText(text);
+  const digits = text.replace(/\D/g, '');
+
+  if (!bank && digits.length < 8) return;
+
+  event.preventDefault();
+  form.bankType = bank || form.bankType;
+  if (digits.length >= 8) form.bankAccount = digits;
+};
+
+const normalizeBankType = () => {
+  const bank = bankFromText(form.bankType);
+  if (bank) form.bankType = bank;
 };
 
 // Stats Calculation for Activity Tab
