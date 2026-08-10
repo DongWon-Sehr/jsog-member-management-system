@@ -16,7 +16,7 @@ const RewardService = {
    * Adds a new reward record
    * 
    * @param {string} memberId - The UUID of the member receiving the reward
-   * @param {string} rewardDate - Date or period of the reward (e.g., '2026-Q1' or '2026-06-30')
+   * @param {string} rewardDate - Payout date, 'YYYY-MM-DD' (the column is a DATE)
    * @param {number|string} amount - The amount or value of the prize
    * @param {string} description - Additional details (e.g., 'Q1 Max Workouts', 'Half-year 1st place')
    */

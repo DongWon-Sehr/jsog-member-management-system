@@ -60,7 +60,7 @@
 
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
           <div class="col-span-2">지급 대상</div>
-          <div class="col-span-2">지급 기간</div>
+          <div class="col-span-2">지급 일자</div>
           <div class="col-span-2 text-right">금액</div>
           <div class="col-span-5">설명</div>
           <div class="col-span-1"></div>
@@ -89,7 +89,7 @@
 
           <!-- Reward Date -->
           <div class="md:col-span-2 flex items-center gap-2">
-            <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">지급 기간</span>
+            <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">지급 일자</span>
             <span class="text-sm font-bold text-gray-600 font-mono bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">{{ reward.reward_date }}</span>
           </div>
 
@@ -335,7 +335,7 @@ const downloadCsv = () => {
   const data = sortedRewards.value;
   if (data.length === 0) return;
 
-  const headers = ['지급대상', '지급기간/일자', '금액', '상세내용'];
+  const headers = ['지급대상', '지급일자', '금액', '상세내용'];
   const rows = data.map(r => [
     getMemberName(r.member_id),
     r.reward_date,

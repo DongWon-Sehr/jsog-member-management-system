@@ -36,8 +36,8 @@ const MigrationService = {
     rewards_log: [
       { name: 'id', type: 'TEXT' },
       { name: 'member_id', type: 'TEXT' },
-      { name: 'reward_date', type: 'TEXT' },
-      { name: 'amount', type: 'DOUBLE' },
+      { name: 'reward_date', type: 'DATE' },
+      { name: 'amount', type: 'CURRENCY' },
       { name: 'description', type: 'TEXT' },
       { name: 'created_at', type: 'DATE_TIME' }
     ],
@@ -47,11 +47,6 @@ const MigrationService = {
       { name: 'action', type: 'TEXT' },
       { name: 'details', type: 'TEXT' }
     ],
-    // A week's identity is its start_date, not (year, month, week_number): the latter three are
-    // labels the admin assigns by hand and may edit at any time.
-    // `is_rest_week` is the single source of truth for rest weeks. `week_number` on a rest week is
-    // a preserved value with no join meaning (0 means "never assigned"), kept so that toggling
-    // rest off restores the number the admin originally picked.
     workout_weeks: [
       { name: 'id', type: 'TEXT' },
       { name: 'year', type: 'DOUBLE' },
