@@ -19,6 +19,17 @@ const sortedMembers = computed(() => [...members.value].sort(byJoinedAt));
 const activeMembers = computed(() =>
   sortedMembers.value.filter(m => m.enabled === true || String(m.enabled).toUpperCase() === 'TRUE')
 );
+
+const hasJoinedBy = (member, date) => {
+  if (!date) return true;
+  const joined = member.joined_at || member.created_at || '';
+  if (!joined) return true;
+  return String(joined).split(' ')[0].split('T')[0] <= String(date).split(' ')[0].split('T')[0];
+};
+
+const membersJoinedBy = (date) => activeMembers.value.filter(m => hasJoinedBy(m, date));
+
+const membersOfWeek = (week) => membersJoinedBy(week ? week.end_date : null);
 const rewards = ref([]);
 const weeks = ref([]);
 const workoutRecords = ref([]);
@@ -62,6 +73,9 @@ export function useStore() {
     members,
     sortedMembers,
     activeMembers,
+    hasJoinedBy,
+    membersJoinedBy,
+    membersOfWeek,
     rewards,
     weeks,
     workoutRecords,

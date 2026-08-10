@@ -227,7 +227,7 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
 import { isRestWeek } from '../composables/weekUtils';
 
-const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, workoutLogs, sharedWeekId } = useStore();
+const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, membersOfWeek, hasJoinedBy, workoutLogs, sharedWeekId } = useStore();
 const isRefreshing = ref(false);
 const selectedWeekId = ref(null);
 
@@ -308,7 +308,7 @@ const weeklyRanking = computed(() => {
   if (!w) return [];
 
   // Include active members even with 0 counts (only active members are shown)
-  const rawCounts = activeMembers.value.map(m => {
+  const rawCounts = membersOfWeek(w).map(m => {
     const record = workoutRecords.value.find(r =>
       r.member_id === m.id &&
       String(r.year) === String(w.year) &&
@@ -440,10 +440,14 @@ const initPerfChart = () => {
 
   const labels = quarterWeeks.map(w => `${w.month}-${w.week_number}주차`);
   
-  const membersWithCumulative = activeMembers.value.map(m => {
+  const membersWithCumulative = membersOfWeek(wRef).map(m => {
     let runningTotal = 0;
     const weeklyDataList = [];
     const cumulativeData = quarterWeeks.map(w => {
+      if (!hasJoinedBy(m, w.end_date)) {
+        weeklyDataList.push(null);
+        return runningTotal === 0 ? null : runningTotal;
+      }
       const record = workoutRecords.value.find(r => 
         r.member_id === m.id && 
         String(r.year) === String(w.year) && 

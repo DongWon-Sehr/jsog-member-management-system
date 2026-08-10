@@ -100,10 +100,12 @@
                       <i class="ph-fill ph-credit-card text-gray-300 group-focus-within:text-indigo-500 transition-colors"></i>
                     </div>
                     <input
-                      v-model="form.bankAccount"
+                      :value="form.bankAccount"
+                      @input="onAccountInput"
+                      @paste="onAccountPaste"
                       type="text"
                       inputmode="numeric"
-                      placeholder="계좌번호"
+                      placeholder="계좌번호 (숫자만)"
                       class="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white rounded-2xl outline-none transition-all font-bold text-gray-900 shadow-inner"
                     />
                   </div>
@@ -224,6 +226,67 @@ const today = () => new Date().toISOString().split('T')[0];
 const BANKS = ['카카오뱅크', '토스뱅크', '케이뱅크', '국민', '신한', '우리', '하나', '농협', '기업',
   'SC제일', '씨티', '새마을금고', '우체국', '부산', '대구', '경남', '광주', '전북', '제주', '수협', '산업'];
 
+const BANK_ALIASES = {
+  '카카오뱅크': ['카카오뱅크', '카뱅', 'kakaobank'],
+  '토스뱅크': ['토스뱅크', '토스', 'toss'],
+  '케이뱅크': ['케이뱅크', 'k뱅크', 'kbank'],
+  '국민': ['국민', 'kb'],
+  '신한': ['신한', 'shinhan'],
+  '우리': ['우리', 'woori'],
+  '하나': ['하나', 'keb', 'hana'],
+  '농협': ['농협', 'nh'],
+  '기업': ['기업', 'ibk'],
+  'SC제일': ['sc제일', 'sc'],
+  '씨티': ['씨티', 'citi'],
+  '새마을금고': ['새마을'],
+  '우체국': ['우체국'],
+  '부산': ['부산'], '대구': ['대구'], '경남': ['경남'], '광주': ['광주'],
+  '전북': ['전북'], '제주': ['제주'], '수협': ['수협'], '산업': ['산업', 'kdb']
+};
+
+const ACCOUNT_PREFIXES = [
+  { prefix: '3333', bank: '카카오뱅크' },
+  { prefix: '1000', bank: '토스뱅크' }
+];
+
+const bankFromText = (text) => {
+  const compact = String(text).toLowerCase().replace(/\s/g, '');
+  for (const [bank, aliases] of Object.entries(BANK_ALIASES)) {
+    if (aliases.some(alias => compact.includes(alias))) return bank;
+  }
+  return '';
+};
+
+const bankFromAccount = (digits) => {
+  const match = ACCOUNT_PREFIXES.find(entry => digits.startsWith(entry.prefix));
+  return match ? match.bank : '';
+};
+
+const onAccountInput = (event) => {
+  const input = event.target;
+  const raw = input.value;
+  const digits = raw.replace(/\D/g, '');
+
+  form.bankAccount = digits;
+
+  if (raw !== digits) {
+    const caret = input.selectionStart === null ? raw.length : input.selectionStart;
+    const kept = raw.slice(0, caret).replace(/\D/g, '').length;
+    input.value = digits;
+    input.setSelectionRange(kept, kept);
+  }
+
+  if (!form.bankType) form.bankType = bankFromAccount(digits);
+};
+
+const onAccountPaste = (event) => {
+  const text = (event.clipboardData || window.clipboardData || { getData: () => '' }).getData('text');
+  if (!form.bankType) {
+    const bank = bankFromText(text);
+    if (bank) form.bankType = bank;
+  }
+};
+
 // Stats Calculation for Activity Tab
 const stats = computed(() => {
   if (!props.memberData || !props.memberData.id) {
@@ -311,7 +374,7 @@ const save = () => {
     alert({ message: '이름을 입력해주세요.', isDanger: true });
     return;
   }
-  emit('save', { ...form });
+  emit('save', { ...form, bankAccount: String(form.bankAccount || '').replace(/\D/g, '') });
 };
 </script>
 

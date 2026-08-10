@@ -219,7 +219,7 @@ import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
 import { downloadCsvFile } from '../composables/useCsv';
 
-const { weeks, activeMembers, workoutRecords, sharedWeekId } = useStore();
+const { weeks, activeMembers, membersOfWeek, workoutRecords, sharedWeekId } = useStore();
 const { confirm, alert } = useDialog();
 const isPlannerOpen = ref(false);
 
@@ -310,7 +310,7 @@ const memberRecords = computed(() => {
     String(r.week_number) === String(weekData.week_number)
   );
   
-  return activeMembers.value
+  return membersOfWeek(weekData)
     .map(member => {
       const existing = dbRecords.find(r => r.member_id === member.id);
       return {
@@ -347,7 +347,7 @@ const summaryCounts = computed(() => {
     String(r.week_number) === String(weekData.week_number)
   );
 
-  const stats = activeMembers.value.reduce((acc, m) => {
+  const stats = membersOfWeek(weekData).reduce((acc, m) => {
     const existing = dbRecords.find(r => r.member_id === m.id);
     const count = existing ? Number(existing.count) : 0;
     const sp = existing ? (existing.super_pass === true || String(existing.super_pass).toUpperCase() === 'TRUE') : false;
