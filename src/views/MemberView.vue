@@ -12,6 +12,18 @@
         </div>
         
         <div class="flex items-center gap-3 sm:gap-4">
+          <div class="relative group">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
+            </div>
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="이름·이메일 검색"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+            />
+          </div>
+
           <!-- Show Disabled Filter -->
           <label class="flex items-center gap-2 cursor-pointer group">
             <div class="relative flex items-center">
@@ -29,16 +41,21 @@
             <i class="ph-bold ph-plus text-lg"></i>
             <span class="font-black text-sm">회원 등록</span>
           </button>
+
+          <button @click="downloadCsv" :disabled="filteredMembers.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
+            <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
+          </button>
         </div>
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
       <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
-          <div class="col-span-3">이름</div>
-          <div class="col-span-4">이메일</div>
+          <div class="col-span-2 text-center">이름</div>
+          <div class="col-span-3 text-center">이메일</div>
+          <div class="col-span-3 text-center">환급 계좌</div>
           <div class="col-span-2 text-center">상태</div>
-          <div class="col-span-3 text-right">가입일</div>
+          <div class="col-span-2 text-center">가입일</div>
         </div>
       </div>
     </div>
@@ -53,14 +70,26 @@
           :class="['bg-white p-5 md:px-8 md:py-4 rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 transition-all cursor-pointer group flex flex-col md:grid md:grid-cols-12 md:items-center gap-2 md:gap-4', { 'animate-highlight': recentlyAddedIds.includes(member.id) }]"
         >
           <!-- Name -->
-          <div class="md:col-span-3 flex items-center gap-3">
+          <div class="md:col-span-2 flex items-center md:justify-center gap-3">
             <span class="font-bold text-gray-900 text-base group-hover:text-indigo-600 transition-colors">{{ member.name }}</span>
           </div>
 
           <!-- Email -->
-          <div class="md:col-span-4 flex items-center gap-2">
+          <div class="md:col-span-3 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">이메일</span>
-            <span class="text-sm font-medium text-gray-500 truncate">{{ member.email || '-' }}</span>
+            <span v-if="member.email" class="text-sm font-medium text-gray-500 truncate">{{ member.email }}</span>
+            <span v-else class="text-sm font-medium text-gray-300">미등록</span>
+          </div>
+
+          <div class="md:col-span-3 flex items-center md:justify-center gap-2 min-w-0">
+            <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">환급 계좌</span>
+            <span v-if="member.bank_type || member.bank_account" class="flex items-center gap-2 min-w-0">
+              <!-- Fixed width, sized for the longest bank name, so every account number starts at
+                   the same x and the column does not look ragged. -->
+              <span class="w-[68px] shrink-0 px-1.5 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 text-center truncate">{{ member.bank_type || '-' }}</span>
+              <span class="text-sm font-bold text-gray-600 font-mono truncate">{{ member.bank_account || '-' }}</span>
+            </span>
+            <span v-else class="text-sm font-medium text-gray-300">미등록</span>
           </div>
 
           <!-- Status -->
@@ -75,9 +104,9 @@
           </div>
 
           <!-- Date -->
-          <div class="md:col-span-3 flex items-center md:justify-end gap-2">
+          <div class="md:col-span-2 flex items-center md:justify-center gap-2">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">가입일</span>
-            <span class="text-sm font-bold text-gray-600 font-mono">{{ formatDate(member.created_at) }}</span>
+            <span class="text-sm font-bold text-gray-600 font-mono">{{ formatDate(member.joined_at || member.created_at) }}</span>
             <i class="ph-bold ph-caret-right text-gray-300 md:hidden ml-auto"></i>
           </div>
         </div>
@@ -107,8 +136,9 @@ import { ref, computed } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
 import ModalMember from '../components/ModalMember.vue';
+import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
-const { members } = useStore();
+const { members, sortedMembers } = useStore();
 const { alert } = useDialog();
 
 const showDisabled = ref(false);
@@ -119,7 +149,7 @@ const recentlyAddedIds = ref([]);
 
 // Filter logic
 const filteredMembers = computed(() => {
-  let list = members.value;
+  let list = sortedMembers.value;
   
   // 1. Status Filter
   if (!showDisabled.value) {
@@ -162,28 +192,17 @@ const downloadCsv = () => {
   const data = filteredMembers.value;
   if (data.length === 0) return;
 
-  const headers = ['이름', '이메일', '상태', '가입일'];
+  const headers = ['이름', '이메일', '은행', '계좌번호', '상태', '가입일'];
   const rows = data.map(m => [
     m.name,
     m.email || '',
+    m.bank_type || '',
+    m.bank_account || '',
     m.enabled ? '활동' : '비활동',
-    formatDate(m.created_at)
+    formatDate(m.joined_at || m.created_at)
   ]);
 
-  const csvContent = [
-    headers.join(','),
-    ...rows.map(r => r.join(','))
-  ].join('\n');
-
-  const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', `members_${new Date().toISOString().split('T')[0]}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  downloadCsvFile(`members_${todayStamp()}.csv`, headers, rows);
 };
 
 const handleSaveMember = (formData) => {
@@ -193,7 +212,13 @@ const handleSaveMember = (formData) => {
     const idx = members.value.findIndex(m => m.id === formData.id);
     if (idx !== -1) {
       const oldMember = { ...members.value[idx] };
-      members.value[idx] = { ...members.value[idx], ...formData };
+      members.value[idx] = {
+        ...members.value[idx],
+        ...formData,
+        joined_at: formData.joinedAt,
+        bank_type: formData.bankType,
+        bank_account: formData.bankAccount
+      };
       
       google.script.run
         .withSuccessHandler(res => {
@@ -208,7 +233,14 @@ const handleSaveMember = (formData) => {
           members.value[idx] = oldMember;
           alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
         })
-        .apiUpdateMember(formData.id, { name: formData.name, email: formData.email, enabled: formData.enabled });
+        .apiUpdateMember(formData.id, {
+          name: formData.name,
+          email: formData.email,
+          enabled: formData.enabled,
+          joined_at: formData.joinedAt,
+          bank_type: formData.bankType,
+          bank_account: formData.bankAccount
+        });
       closeModal();
     }
   } else {
@@ -216,6 +248,9 @@ const handleSaveMember = (formData) => {
     const tempMember = {
       ...formData,
       id: tempId,
+      joined_at: formData.joinedAt,
+      bank_type: formData.bankType,
+      bank_account: formData.bankAccount,
       created_at: new Date().toISOString()
     };
     members.value.unshift(tempMember);
@@ -254,7 +289,11 @@ const handleSaveMember = (formData) => {
         recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
         alert({ title: '오류', message: '서버 요청 중 오류가 발생했습니다.', isDanger: true });
       })
-      .apiAddMember(formData.name, formData.email);
+      .apiAddMember(formData.name, formData.email, {
+        joined_at: formData.joinedAt,
+        bank_type: formData.bankType,
+        bank_account: formData.bankAccount
+      });
     closeModal();
   }
 };

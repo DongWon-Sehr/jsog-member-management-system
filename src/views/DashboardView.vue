@@ -227,9 +227,8 @@ import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
 import { isRestWeek } from '../composables/weekUtils';
 
-const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, workoutLogs, sharedWeekId } = useStore();
+const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, membersOfWeek, hasJoinedBy, workoutLogs, selectedWeekId } = useStore();
 const isRefreshing = ref(false);
-const selectedWeekId = ref(null);
 
 const showAllWeeklyRanking = ref(false);
 const showAllQuarterlyRanking = ref(false);
@@ -308,7 +307,7 @@ const weeklyRanking = computed(() => {
   if (!w) return [];
 
   // Include active members even with 0 counts (only active members are shown)
-  const rawCounts = activeMembers.value.map(m => {
+  const rawCounts = membersOfWeek(w).map(m => {
     const record = workoutRecords.value.find(r =>
       r.member_id === m.id &&
       String(r.year) === String(w.year) &&
@@ -397,9 +396,6 @@ const fullReload = () => {
 };
 
 const goToWorkoutRecords = () => {
-  if (selectedWeekId.value) {
-    sharedWeekId.value = selectedWeekId.value;
-  }
   currentView.value = 'WorkoutRecords';
 };
 
@@ -440,10 +436,14 @@ const initPerfChart = () => {
 
   const labels = quarterWeeks.map(w => `${w.month}-${w.week_number}주차`);
   
-  const membersWithCumulative = activeMembers.value.map(m => {
+  const membersWithCumulative = membersOfWeek(wRef).map(m => {
     let runningTotal = 0;
     const weeklyDataList = [];
     const cumulativeData = quarterWeeks.map(w => {
+      if (!hasJoinedBy(m, w.end_date)) {
+        weeklyDataList.push(null);
+        return runningTotal === 0 ? null : runningTotal;
+      }
       const record = workoutRecords.value.find(r => 
         r.member_id === m.id && 
         String(r.year) === String(w.year) && 
@@ -635,22 +635,25 @@ const initCharts = () => {
 };
 
 onMounted(() => {
-  // Set default selected week to today's week
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  console.log('[DEBUG-onMounted] todayStr is:', todayStr, 'weeks.value.length:', weeks.value.length);
-  const currentWeek = weeks.value.find(w => {
-    if (!w.start_date || !w.end_date) return false;
-    const start = String(w.start_date).split(' ')[0].split('T')[0];
-    const end = String(w.end_date).split(' ')[0].split('T')[0];
-    return todayStr >= start && todayStr <= end;
-  });
-  if (currentWeek) {
-    console.log('[DEBUG-onMounted] Setting selectedWeekId to currentWeek:', currentWeek.id);
-    selectedWeekId.value = currentWeek.id;
-  } else if (validWeeks.value.length > 0) {
-    console.log('[DEBUG-onMounted] currentWeek is undefined. Falling back to validWeeks[0]:', validWeeks.value[0]);
-    selectedWeekId.value = validWeeks.value[0].id;
+  // The week selection is shared with the workout tab and this view remounts on every tab switch,
+  // so only fall back to today's week when nothing valid is selected yet.
+  const alreadySelected = selectedWeekId.value && weeks.value.some(w => w.id === selectedWeekId.value);
+
+  if (!alreadySelected) {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const currentWeek = weeks.value.find(w => {
+      if (!w.start_date || !w.end_date) return false;
+      const start = String(w.start_date).split(' ')[0].split('T')[0];
+      const end = String(w.end_date).split(' ')[0].split('T')[0];
+      return todayStr >= start && todayStr <= end;
+    });
+
+    if (currentWeek) {
+      selectedWeekId.value = currentWeek.id;
+    } else if (validWeeks.value.length > 0) {
+      selectedWeekId.value = validWeeks.value[0].id;
+    }
   }
 
   nextTick(() => {
@@ -664,35 +667,20 @@ watch([selectedWeekId, workoutRecords, activeMembers, workoutLogs], () => {
 
 // Also watch weeks to ensure selectedWeekId is set once data is loaded
 watch(weeks, (newWeeks) => {
-  console.log('[DEBUG] watch(weeks) triggered. newWeeks.length:', newWeeks.length, 'selectedWeekId:', selectedWeekId.value);
   if (newWeeks.length > 0 && !selectedWeekId.value) {
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    console.log('[DEBUG] todayStr is:', todayStr);
     
-    let matchFound = false;
     const currentWeek = newWeeks.find(w => {
       if (!w.start_date || !w.end_date) return false;
       const start = String(w.start_date).split(' ')[0].split('T')[0];
       const end = String(w.end_date).split(' ')[0].split('T')[0];
-      
-      // We log only one of the checks to avoid spamming the console too much, maybe the one that is closest to today
-      if (start.startsWith('2026-06') || end.startsWith('2026-06')) {
-         console.log(`[DEBUG] Check week ID ${w.id}: start=${start}, end=${end}, isMatch? ${todayStr >= start && todayStr <= end}`);
-      }
-      
-      const isMatch = todayStr >= start && todayStr <= end;
-      if (isMatch) matchFound = true;
-      return isMatch;
+      return todayStr >= start && todayStr <= end;
     });
-    
-    console.log('[DEBUG] Match found?', matchFound, currentWeek);
-    
+
     if (currentWeek) {
-      console.log('[DEBUG] Setting selectedWeekId to currentWeek:', currentWeek.id);
       selectedWeekId.value = currentWeek.id;
     } else {
-      console.log('[DEBUG] currentWeek is undefined. Falling back to validWeeks[0]:', validWeeks.value[0]);
       selectedWeekId.value = validWeeks.value[0]?.id;
     }
   }

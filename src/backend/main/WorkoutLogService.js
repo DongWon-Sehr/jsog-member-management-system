@@ -46,7 +46,7 @@ const WorkoutLogService = {
    * @param {Array} logIdsToDelete - Array of log UUIDs
    * @param {string} weeklyNote - Note for the specific week
    */
-  batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote) {
+  batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote, superPass) {
     // Records hang off (year, month, week_number), and rest weeks carry no number. Saving logs
     // against an unassigned week used to pass silently - `0` is falsy, so the count sync below was
     // skipped and the logs drifted away from the counts. Refuse it loudly instead.
@@ -130,7 +130,11 @@ const WorkoutLogService = {
     // Get current record info (we need superPass, and count for the no-week fallback)
     const records = WorkoutService.getRecordsByWeek(year, month, weekNumber);
     const existing = records.find(r => r.member_id === memberId);
-    const superPass = existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false;
+    // undefined means the caller is not touching the flag, so keep whatever the sheet holds. The
+    // modal passes an explicit boolean; the monthly-limit rule is enforced by updateWorkoutCount.
+    const newSuperPass = superPass === undefined || superPass === null
+      ? (existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false)
+      : (superPass === true || String(superPass).toUpperCase() === 'TRUE');
 
     let newCount;
     if (week) {
@@ -144,7 +148,7 @@ const WorkoutLogService = {
       newCount = Math.max(0, (existing ? Number(existing.count) : 0) + netChange);
     }
 
-    WorkoutService.updateWorkoutCount(memberId, year, month, weekNumber, newCount, superPass, weeklyNote);
+    WorkoutService.updateWorkoutCount(memberId, year, month, weekNumber, newCount, newSuperPass, weeklyNote);
 
     return { added: createdLogs, deletedCount: logIdsToDelete ? logIdsToDelete.length : 0 };
   },

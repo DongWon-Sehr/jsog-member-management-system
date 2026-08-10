@@ -32,13 +32,12 @@
               </select>
             </div>
 
-            <!-- Reward Date / Period -->
+            <!-- Reward Date -->
             <div class="space-y-1.5">
-              <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">지급 기간/일자</label>
-              <input 
+              <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">지급 일자</label>
+              <input
                 v-model="form.rewardDate"
-                type="text" 
-                placeholder="예: 2026-Q1, 2026-05-08"
+                type="date"
                 class="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none font-bold text-gray-900 transition-all"
               />
             </div>

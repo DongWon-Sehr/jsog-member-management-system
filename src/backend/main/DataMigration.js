@@ -796,3 +796,505 @@ function _migrateWorkoutWeeksRestFlag(apply) {
   if (!apply) console.log('Run run_applyWorkoutWeeksRestFlagMigration() to write these changes.');
   console.log(`=== _migrateWorkoutWeeksRestFlag End (${mode}) ===`);
 }
+
+function run_importChatHistory() {
+  _importChatHistory(false);
+}
+
+function run_applyChatHistoryImport() {
+  _importChatHistory(true);
+}
+
+function _hangulOnly(name) {
+  return String(name === null || name === undefined ? '' : name).replace(/[^가-힣]/g, '');
+}
+
+function _importChatHistory(apply) {
+  const mode = apply ? 'APPLY' : 'DRY RUN';
+  console.log(`=== _importChatHistory Start (${mode}) ===`);
+
+  if (typeof CHAT_IMPORT_WEEKS === 'undefined' || !CHAT_IMPORT_WEEKS.length) {
+    console.error('CHAT_IMPORT_WEEKS is empty. Regenerate it with: node scripts/parse-kakao-chat.js');
+    return;
+  }
+
+  const weeksSheet = Util.getSheet('workout_weeks');
+  const recordsSheet = Util.getSheet('workout_records');
+  const logsSheet = Util.getSheet('workout_logs');
+  const rewardsSheet = Util.getSheet('rewards_log');
+  if (!weeksSheet) throw new Error('workout_weeks sheet not found');
+  if (!recordsSheet) throw new Error('workout_records sheet not found');
+  if (!logsSheet) throw new Error('workout_logs sheet not found');
+  if (!rewardsSheet) throw new Error('rewards_log sheet not found');
+
+  const membersByName = {};
+  MemberService.getAllMembers().forEach(member => {
+    const key = _hangulOnly(member.name);
+    if (!key) return;
+    if (membersByName[key]) {
+      console.warn(`Two members share the short name '${key}': '${membersByName[key].name}' and '${member.name}'. Their records are skipped.`);
+      membersByName[key] = null;
+      return;
+    }
+    membersByName[key] = member;
+  });
+
+  const unknownNames = {};
+
+  const weekHeaders = weeksSheet.getRange(1, 1, 1, weeksSheet.getLastColumn()).getValues()[0];
+  const existingWeeks = {};
+  const claimedLabels = {};
+
+  WorkoutWeekService.getAllWeeks().forEach(week => {
+    const startDate = Util.toDateString(week.start_date);
+    if (!startDate) return;
+    existingWeeks[startDate] = week;
+    if (!week.is_rest_week && Util.hasWeekNumber(week.week_number)) {
+      claimedLabels[`${week.year}-${week.month}-${week.week_number}`] = startDate;
+    }
+  });
+
+  const recordHeaders = recordsSheet.getRange(1, 1, 1, recordsSheet.getLastColumn()).getValues()[0];
+  const existingRecords = {};
+  Util.sheetToObjects(recordsSheet, 'workout_records').forEach(record => {
+    existingRecords[`${record.member_id}|${record.year}-${record.month}-${record.week_number}`] =
+      Number(record.count);
+  });
+
+  const logHeaders = logsSheet.getRange(1, 1, 1, logsSheet.getLastColumn()).getValues()[0];
+  const existingLogDates = {};
+  Util.sheetToObjects(logsSheet, 'workout_logs').forEach(log => {
+    existingLogDates[`${log.member_id}|${Util.toDateString(log.workout_date)}`] = true;
+  });
+
+  const timestamp = Util.getCurrentTimestamp();
+  const newWeekRows = [];
+  const newRecordRows = [];
+  const newLogRows = [];
+  let weeksSkipped = 0;
+  let recordsSkipped = 0;
+  let weeksBlocked = 0;
+  let logsSkipped = 0;
+  let logsPadded = 0;
+  let logsDropped = 0;
+
+  CHAT_IMPORT_WEEKS.forEach(week => {
+    const startDate = week.start_date;
+    const existing = existingWeeks[startDate];
+    let label = null;
+
+    if (existing) {
+      weeksSkipped++;
+      if (!existing.is_rest_week && Util.hasWeekNumber(existing.week_number)) {
+        label = { year: Number(existing.year), month: Number(existing.month), weekNumber: Number(existing.week_number) };
+      } else {
+        console.log(`${startDate}: already in the sheet as a rest week / unnumbered week - records skipped.`);
+      }
+    } else if (week.is_rest_week) {
+      newWeekRows.push({ year: week.year, month: week.month, week_number: 0, start_date: startDate, end_date: week.end_date, is_rest_week: true });
+      console.log(`${startDate}: ${apply ? 'adding' : 'would add'} rest week (${week.year}-${week.month}).`);
+    } else {
+      const labelKey = `${week.year}-${week.month}-${week.week_number}`;
+      if (!Util.hasWeekNumber(week.week_number)) {
+        console.warn(`${startDate}: the chat never labelled this week (${labelKey}). Add it in the planner by hand - skipped.`);
+        weeksBlocked++;
+        return;
+      }
+      if (claimedLabels[labelKey]) {
+        console.warn(`${startDate}: label ${labelKey} is already used by ${claimedLabels[labelKey]}. Fix the numbering in the planner - skipped.`);
+        weeksBlocked++;
+        return;
+      }
+      claimedLabels[labelKey] = startDate;
+      newWeekRows.push({ year: week.year, month: week.month, week_number: week.week_number, start_date: startDate, end_date: week.end_date, is_rest_week: false });
+      label = { year: week.year, month: week.month, weekNumber: week.week_number };
+      console.log(`${startDate}: ${apply ? 'adding' : 'would add'} week ${labelKey} (${week.records.length} record(s) from ${week.postings} posting(s)).`);
+    }
+
+    if (!label) return;
+
+    week.records.forEach(record => {
+      const member = membersByName[_hangulOnly(record.name)];
+      if (!member) {
+        unknownNames[record.name] = (unknownNames[record.name] || 0) + 1;
+        return;
+      }
+
+      const key = `${member.id}|${label.year}-${label.month}-${label.weekNumber}`;
+      const alreadyThere = existingRecords[key] !== undefined;
+
+      if (alreadyThere) {
+        recordsSkipped++;
+      } else {
+        existingRecords[key] = record.count;
+        newRecordRows.push({
+          id: Util.generateUUID(),
+          member_id: member.id,
+          year: label.year,
+          month: label.month,
+          week_number: label.weekNumber,
+          count: record.count,
+          super_pass: record.super_pass,
+          note: record.note,
+          created_at: timestamp,
+          updated_at: timestamp
+        });
+        console.log(`  ${startDate} ${member.name}: ${apply ? 'adding' : 'would add'} count ${record.count}${record.super_pass ? ' (슈퍼패스)' : ''}${record.note ? ` "${record.note}"` : ''}`);
+      }
+
+      const span = _datesInSpan(startDate, week.end_date);
+
+      const hasLogs = span.some(date => existingLogDates[`${member.id}|${date}`]);
+      if (hasLogs) {
+        logsSkipped += (week.logs || []).filter(log => log.name === record.name).length;
+        return;
+      }
+
+      const chatLogs = (week.logs || []).filter(log => log.name === record.name);
+      const logs = _fitLogsToCount(
+        chatLogs,
+        Number(existingRecords[key]) || 0,
+        span,
+        `${startDate} ${member.name}`,
+        apply
+      );
+      if (logs.length > chatLogs.length) logsPadded += logs.length - chatLogs.length;
+      if (logs.length < chatLogs.length) logsDropped += chatLogs.length - logs.length;
+      if (logs.length === 0) return;
+
+      logs.forEach(log => {
+        existingLogDates[`${member.id}|${Util.toDateString(log.workout_date)}`] = true;
+        newLogRows.push({
+          id: Util.generateUUID(),
+          member_id: member.id,
+          workout_date: log.workout_date,
+          workout_type: log.workout_type,
+          duration_minutes: log.duration_minutes,
+          created_at: timestamp
+        });
+      });
+    });
+  });
+
+  const newJoinDates = [];
+  let joinDatesSkipped = 0;
+
+  (typeof CHAT_IMPORT_MEMBERS === 'undefined' ? [] : CHAT_IMPORT_MEMBERS).forEach(entry => {
+    const member = membersByName[_hangulOnly(entry.name)];
+    if (!member) {
+      unknownNames[entry.name] = (unknownNames[entry.name] || 0) + 1;
+      return;
+    }
+
+    const current = Util.toDateString(member.joined_at);
+    if (current) {
+      joinDatesSkipped++;
+      return;
+    }
+
+    newJoinDates.push({ id: member.id, name: member.name, joined_at: entry.joined_at });
+    console.log(`  ${member.name}: ${apply ? 'setting' : 'would set'} joined_at ${entry.joined_at}`);
+  });
+
+  const rewardHeaders = rewardsSheet.getRange(1, 1, 1, rewardsSheet.getLastColumn()).getValues()[0];
+  const existingRewards = {};
+  Util.sheetToObjects(rewardsSheet, 'rewards_log').forEach(reward => {
+    existingRewards[`${reward.member_id}|${reward.reward_date}`] = true;
+  });
+
+  const newRewardRows = [];
+  let rewardsSkipped = 0;
+
+  (typeof CHAT_IMPORT_REWARDS === 'undefined' ? [] : CHAT_IMPORT_REWARDS).forEach(reward => {
+    const member = membersByName[_hangulOnly(reward.name)];
+    if (!member) {
+      unknownNames[reward.name] = (unknownNames[reward.name] || 0) + 1;
+      return;
+    }
+
+    const key = `${member.id}|${reward.reward_date}`;
+    if (existingRewards[key]) {
+      rewardsSkipped++;
+      return;
+    }
+    existingRewards[key] = true;
+
+    newRewardRows.push({
+      id: Util.generateUUID(),
+      member_id: member.id,
+      reward_date: reward.reward_date,
+      amount: reward.amount,
+      description: reward.description,
+      created_at: timestamp
+    });
+    console.log(`  ${reward.reward_date} ${member.name}: ${apply ? 'adding' : 'would add'} reward - ${reward.description} (금액 미상)`);
+  });
+
+  Object.keys(unknownNames).forEach(name => {
+    console.warn(`No member matches the chat name '${name}' (${unknownNames[name]} record(s) skipped). Register them first if their history matters.`);
+  });
+
+  if (apply) {
+    if (newWeekRows.length > 0) {
+      const rows = newWeekRows.map(week => weekHeaders.map(header => {
+        if (header === 'id') return Util.generateUUID();
+        if (header === 'created_at') return timestamp;
+        return week[header] !== undefined ? week[header] : '';
+      }));
+      weeksSheet.getRange(weeksSheet.getLastRow() + 1, 1, rows.length, weekHeaders.length).setValues(rows);
+      _sortRows(weeksSheet, weekHeaders, ['start_date']);
+    }
+
+    if (newRecordRows.length > 0) {
+      const rows = newRecordRows.map(record => recordHeaders.map(header => record[header] !== undefined ? record[header] : ''));
+      recordsSheet.getRange(recordsSheet.getLastRow() + 1, 1, rows.length, recordHeaders.length).setValues(rows);
+      _sortRows(recordsSheet, recordHeaders, ['year', 'month', 'week_number', 'member_id']);
+    }
+
+    if (newLogRows.length > 0) {
+      const rows = newLogRows.map(log => logHeaders.map(header => log[header] !== undefined ? log[header] : ''));
+      logsSheet.getRange(logsSheet.getLastRow() + 1, 1, rows.length, logHeaders.length).setValues(rows);
+      _sortRows(logsSheet, logHeaders, ['workout_date', 'member_id']);
+    }
+
+    newJoinDates.forEach(entry => {
+      MemberService.updateMember(entry.id, { joined_at: entry.joined_at });
+    });
+
+    if (newRewardRows.length > 0) {
+      const rows = newRewardRows.map(reward => rewardHeaders.map(header => reward[header] !== undefined ? reward[header] : ''));
+      rewardsSheet.getRange(rewardsSheet.getLastRow() + 1, 1, rows.length, rewardHeaders.length).setValues(rows);
+      _sortRows(rewardsSheet, rewardHeaders, ['reward_date', 'member_id']);
+    }
+  }
+
+  const unknownLogs = newLogRows.filter(log => log.workout_type === CHAT_IMPORT_UNKNOWN_TYPE).length;
+
+  console.log('--------------------------------------------------');
+  console.log(`Weeks:   ${newWeekRows.length} ${apply ? 'added' : 'to add'}, ${weeksSkipped} already in the sheet, ${weeksBlocked} blocked.`);
+  console.log(`Records: ${newRecordRows.length} ${apply ? 'added' : 'to add'}, ${recordsSkipped} already in the sheet.`);
+  console.log(`Logs:    ${newLogRows.length} ${apply ? 'added' : 'to add'} (${unknownLogs} ${CHAT_IMPORT_UNKNOWN_TYPE}), ${logsSkipped} already logged.`);
+  console.log(`         fitted to the sheet's counts: ${logsPadded} padded, ${logsDropped} dropped.`);
+  console.log(`Members: ${newJoinDates.length} joined_at ${apply ? 'set' : 'to set'}, ${joinDatesSkipped} already had one.`);
+  console.log(`Rewards: ${newRewardRows.length} ${apply ? 'added' : 'to add'} with no amount (fill them in from the reward tab), ${rewardsSkipped} already in the sheet.`);
+  if (!apply) console.log('Nothing was written. Run run_applyChatHistoryImport() to write these changes.');
+  console.log(`=== _importChatHistory End (${mode}) ===`);
+}
+
+function run_migrateRewardsLogTypes() {
+  _migrateRewardsLogTypes(false);
+}
+
+function run_applyRewardsLogTypesMigration() {
+  _migrateRewardsLogTypes(true);
+}
+
+function _migrateRewardsLogTypes(apply) {
+  const mode = apply ? 'APPLY' : 'DRY RUN';
+  console.log(`=== _migrateRewardsLogTypes Start (${mode}) ===`);
+
+  const sheet = Util.getSheet('rewards_log');
+  if (!sheet) {
+    console.error("Sheet 'rewards_log' not found.");
+    return;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const columns = [
+    { name: 'reward_date', type: 'DATE', parse: _parseRewardDate, expects: 'a date' },
+    { name: 'amount', type: 'CURRENCY', parse: _parseAmount, expects: 'a number' }
+  ];
+
+  const plans = [];
+  const problems = [];
+
+  columns.forEach(column => {
+    const index = headers.indexOf(column.name);
+    if (index === -1) {
+      console.warn(`'${column.name}' column not found - skipped.`);
+      return;
+    }
+
+    const values = [];
+    let converted = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (row.every(cell => cell === '' || cell === null)) {
+        values.push(['']);
+        continue;
+      }
+
+      const value = row[index];
+      const result = column.parse(value);
+      if (result === null) {
+        problems.push(`${column.name} row ${i + 1}: '${value}' is not ${column.expects}.`);
+        values.push([value]);
+        continue;
+      }
+      if (result.changed) converted++;
+      values.push([result.value]);
+    }
+
+    plans.push({ column: column, index: index, values: values, converted: converted });
+    console.log(`${column.name} → ${column.type}: ${values.length} row(s), ${converted} value(s) ${apply ? 'rewritten' : 'to rewrite'}.`);
+  });
+
+  if (problems.length > 0) {
+    console.error(`${problems.length} value(s) cannot be converted. Fix them in the reward tab, then run this again:`);
+    problems.forEach(entry => console.error(`  ${entry}`));
+    console.log('Nothing was changed.');
+    console.log(`=== _migrateRewardsLogTypes End (${mode}) ===`);
+    return;
+  }
+
+  if (apply) {
+    _setTableColumnTypes(sheet, plans.map(plan => ({ name: plan.column.name, type: plan.column.type })));
+    SpreadsheetApp.flush();
+
+    plans.forEach(plan => {
+      if (plan.values.length === 0) return;
+      sheet.getRange(2, plan.index + 1, plan.values.length, 1).setValues(plan.values);
+    });
+  } else {
+    console.log('Run run_applyRewardsLogTypesMigration() to write these changes.');
+  }
+
+  console.log(`=== _migrateRewardsLogTypes End (${mode}) ===`);
+}
+
+function _parseAmount(value) {
+  if (value === '' || value === null || value === undefined) return { value: '', changed: false };
+  if (typeof value === 'number') return { value: value, changed: false };
+
+  const text = String(value).replace(/[₩,\s]/g, '');
+  if (!/^-?\d+(\.\d+)?$/.test(text)) return null;
+  return { value: Number(text), changed: true };
+}
+
+function _parseRewardDate(value) {
+  if (value === '' || value === null || value === undefined) return { value: '', changed: false };
+  if (Object.prototype.toString.call(value) === '[object Date]') return { value: value, changed: false };
+
+  const text = String(value).trim();
+
+  let match = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(text);
+  let date = match ? _asDate(match[1], match[2], match[3]) : null;
+
+  if (!date) {
+    match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+    date = match ? _asDate(match[3], match[1], match[2]) : null;
+  }
+
+  return date ? { value: date, changed: true } : null;
+}
+
+function _asDate(year, month, day) {
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  const valid = date.getFullYear() === Number(year)
+    && date.getMonth() === Number(month) - 1
+    && date.getDate() === Number(day);
+  return valid ? date : null;
+}
+
+function _setTableColumnTypes(sheet, changes) {
+  const spreadsheet = Util.getSpreadsheet();
+
+  try {
+    const meta = Sheets.Spreadsheets.get(spreadsheet.getId(), { fields: 'sheets(properties(sheetId),tables)' });
+    const target = (meta.sheets || []).find(entry => entry.properties.sheetId === sheet.getSheetId());
+    const table = target && target.tables && target.tables[0];
+
+    if (!table) {
+      console.log(`'${sheet.getName()}' is not a native Table - the values were converted, no column type to update.`);
+      return;
+    }
+
+    const columns = (table.columnProperties || []).map(column => {
+      const change = changes.find(entry => entry.name === column.columnName);
+      if (!change) return column;
+      return { columnIndex: column.columnIndex, columnName: column.columnName, columnType: change.type };
+    });
+
+    Sheets.Spreadsheets.batchUpdate({
+      requests: [{
+        updateTable: {
+          table: { tableId: table.tableId, columnProperties: columns },
+          fields: 'columnProperties'
+        }
+      }]
+    }, spreadsheet.getId());
+    changes.forEach(change => console.log(`Table column '${change.name}' is now ${change.type}.`));
+  } catch (e) {
+    console.warn(`Could not update the Table column types on '${sheet.getName()}': ${e.message}. The values were converted; set the column types by hand if they still read as text.`);
+  }
+}
+
+function _fitLogsToCount(logs, count, span, label, apply) {
+  if (logs.length === count) return logs;
+
+  if (count === 0) {
+    console.log(`  ${label}: sheet count is 0 - ${logs.length} chat log(s) dropped.`);
+    return [];
+  }
+
+  if (logs.length > count) {
+    const ordered = logs.slice().sort((a, b) => {
+      const unknownA = a.workout_type === CHAT_IMPORT_UNKNOWN_TYPE ? 1 : 0;
+      const unknownB = b.workout_type === CHAT_IMPORT_UNKNOWN_TYPE ? 1 : 0;
+      if (unknownA !== unknownB) return unknownB - unknownA;
+      return b.workout_date.localeCompare(a.workout_date);
+    });
+    const dropped = ordered.slice(0, logs.length - count);
+    const kept = logs.filter(log => dropped.indexOf(log) === -1);
+    console.log(`  ${label}: ${logs.length} chat log(s) vs count ${count} - ${apply ? 'dropping' : 'would drop'} ${dropped.length} (${dropped.map(log => `${log.workout_date.slice(0, 10)} ${log.workout_type}`).join(', ')}).`);
+    return kept;
+  }
+
+  const used = {};
+  logs.forEach(log => { used[log.workout_date.slice(0, 10)] = true; });
+
+  const padded = logs.slice();
+  const free = span.filter(date => !used[date]);
+  let cursor = 0;
+  while (padded.length < count) {
+    const date = free.length > 0 ? free[cursor % free.length] : span[cursor % span.length];
+    cursor++;
+    padded.push({
+      name: logs.length > 0 ? logs[0].name : '',
+      workout_date: `${date} 00:00:00`,
+      workout_type: CHAT_IMPORT_UNKNOWN_TYPE,
+      duration_minutes: 30
+    });
+  }
+
+  padded.sort((a, b) => a.workout_date.localeCompare(b.workout_date));
+  console.log(`  ${label}: ${logs.length} chat log(s) vs count ${count} - ${apply ? 'padding' : 'would pad'} ${count - logs.length} ${CHAT_IMPORT_UNKNOWN_TYPE}.`);
+  return padded;
+}
+
+function _datesInSpan(startDate, endDate) {
+  const dates = [];
+  const cursor = new Date(`${startDate}T00:00:00`);
+  const last = new Date(`${endDate}T00:00:00`);
+  while (cursor <= last) {
+    dates.push(Util.toDateString(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function _sortRows(sheet, headers, columnNames) {
+  const spec = columnNames
+    .map(name => headers.indexOf(name) + 1)
+    .filter(column => column > 0)
+    .map(column => ({ column: column, ascending: true }));
+  if (spec.length === 0) return;
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 3) return;
+
+  sheet.getRange(2, 1, lastRow - 1, headers.length).sort(spec);
+}

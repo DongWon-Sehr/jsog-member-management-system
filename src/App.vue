@@ -16,17 +16,14 @@
 
     <!-- Global Loading Overlay -->
     <div v-if="isLoading" class="fixed inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-[100] backdrop-blur-md">
-      <div class="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center gap-6 max-w-[90%] text-center transform transition-all animate-in fade-in zoom-in duration-300">
-        <div class="relative">
-          <i class="ph-bold ph-circle-notch animate-spin text-indigo-600 text-6xl"></i>
-          <i class="ph-fill ph-person-simple-run absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-400 text-2xl"></i>
-        </div>
-        <div class="flex flex-col items-center gap-2">
-          <span class="font-black text-gray-900 text-xl tracking-tight">주삼오공 Admin</span>
-          <transition name="slide-up" mode="out-in">
-            <span :key="loadingText" class="text-indigo-600 font-medium h-6">{{ loadingText }}</span>
+      <div class="loading-card bg-white rounded-3xl shadow-2xl flex flex-col items-center justify-center text-center">
+        <div class="loading-emoji-stage">
+          <transition name="emoji-swap">
+            <span :key="loadingEmoji" class="loading-emoji">{{ loadingEmoji }}</span>
           </transition>
         </div>
+        <span class="font-black text-gray-900 text-xl tracking-tight">주삼오공 Admin</span>
+        <p class="loading-phrase text-indigo-600 font-medium">{{ loadingText }}</p>
       </div>
     </div>
 
@@ -58,6 +55,8 @@ const { members, activeMembers, rewards, weeks, workoutRecords, workoutLogs, sys
 const { call } = useGas();
 
 const phraseInterval = ref(null);
+const LOADING_EMOJIS = ['🏃', '🏋️', '🧘', '🚴', '🏊', '🤸', '🎾', '⚽'];
+const loadingEmoji = ref(LOADING_EMOJIS[0]);
 
 const components = {
   Dashboard,
@@ -72,10 +71,12 @@ const activeComponent = computed(() => components[currentView.value]);
 const startLoadingAnimation = () => {
   let index = 0;
   loadingText.value = LOADING_PHRASES[0];
+  loadingEmoji.value = LOADING_EMOJIS[0];
   phraseInterval.value = setInterval(() => {
-    index = (index + 1) % LOADING_PHRASES.length;
-    loadingText.value = LOADING_PHRASES[index];
-  }, 2000);
+    index += 1;
+    loadingText.value = LOADING_PHRASES[index % LOADING_PHRASES.length];
+    loadingEmoji.value = LOADING_EMOJIS[index % LOADING_EMOJIS.length];
+  }, 1400);
 };
 
 const stopLoadingAnimation = () => {
@@ -168,5 +169,59 @@ html, body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Mirrored in scripts/post-build.js: the GAS build replaces index.html and drops this bundle,
+   so the deployed copy of these rules lives in that template. Keep the two in sync. */
+.loading-card {
+  width: 320px;
+  height: 232px;
+  padding: 28px 24px;
+  gap: 6px;
+}
+
+.loading-emoji-stage {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 10px;
+}
+
+.loading-emoji {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  line-height: 1;
+}
+
+.emoji-swap-enter-active {
+  transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.emoji-swap-leave-active {
+  transition: opacity 0.4s ease-in, transform 0.4s cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+.emoji-swap-enter-from {
+  opacity: 0;
+  transform: translateX(-72px) scale(0.6) rotate(-14deg);
+}
+
+.emoji-swap-leave-to {
+  opacity: 0;
+  transform: translateX(72px) scale(0.6) rotate(14deg);
+}
+
+.loading-phrase {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
 }
 </style>
