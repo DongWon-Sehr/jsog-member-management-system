@@ -171,7 +171,12 @@ const sortedRewards = computed(() => {
     list = list.filter(r => getMemberName(r.member_id).toLowerCase().includes(q));
   }
 
-  return list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  return list.sort((a, b) => {
+    const dateA = String(a.reward_date || '').split(' ')[0].split('T')[0];
+    const dateB = String(b.reward_date || '').split(' ')[0].split('T')[0];
+    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+    return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+  });
 });
 
 const totalRewardAmount = computed(() => {
