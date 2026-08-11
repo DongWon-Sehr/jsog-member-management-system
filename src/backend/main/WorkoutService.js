@@ -41,7 +41,6 @@ const WorkoutService = {
     const data = this.sheet.getDataRange().getValues();
     const headers = data[0];
 
-    // Mapping indices
     const idx = {
       id: headers.indexOf('id'),
       member_id: headers.indexOf('member_id'),
@@ -55,14 +54,13 @@ const WorkoutService = {
       updated_at: headers.indexOf('updated_at')
     };
 
-    // Create a map to quickly find existing rows
     const existingMap = {};
     for (let i = 1; i < data.length; i++) {
       const key = `${data[i][idx.member_id]}_${data[i][idx.year]}_${data[i][idx.month]}_${data[i][idx.week_number]}`;
       existingMap[key] = i + 1;
     }
 
-    // Validate Super Pass rule: Only 1 super pass per month per member
+    // Super pass rule: only one per member per month
     const allRecords = Util.sheetToObjects(this.sheet, this.tableName);
     const superPassUsage = {};
 
@@ -96,7 +94,6 @@ const WorkoutService = {
       const rowIndex = existingMap[key];
 
       if (rowIndex) {
-        // Update existing record
         this.sheet.getRange(rowIndex, idx.count + 1).setValue(record.count);
         this.sheet.getRange(rowIndex, idx.super_pass + 1).setValue(record.superPass);
         if (idx.note !== -1) {
@@ -104,7 +101,6 @@ const WorkoutService = {
         }
         this.sheet.getRange(rowIndex, idx.updated_at + 1).setValue(timestamp);
       } else {
-        // Insert new record
         const newRecord = {
           id: Util.generateUUID(),
           member_id: record.memberId,
@@ -132,7 +128,6 @@ const WorkoutService = {
     const data = this.sheet.getDataRange().getValues();
     const headers = data[0];
 
-    // Mapping indices
     const idx = {
       id: headers.indexOf('id'),
       member_id: headers.indexOf('member_id'),
@@ -145,7 +140,7 @@ const WorkoutService = {
       updated_at: headers.indexOf('updated_at')
     };
 
-    // Validate Super Pass rule
+    // Super pass rule: only one per member per month
     if (superPass === true || String(superPass).toUpperCase() === 'TRUE') {
       const allRecords = Util.sheetToObjects(this.sheet, this.tableName);
       const alreadyUsed = allRecords.find(r => 
@@ -163,7 +158,6 @@ const WorkoutService = {
 
     let foundRowIndex = -1;
 
-    // Find existing record
     for (let i = 1; i < data.length; i++) {
       if (
         data[i][idx.member_id] === memberId &&
@@ -171,7 +165,7 @@ const WorkoutService = {
         String(data[i][idx.month]) === String(month) &&
         String(data[i][idx.week_number]) === String(weekNumber)
       ) {
-        foundRowIndex = i + 1; // Sheets use 1-based index
+        foundRowIndex = i + 1;
         break;
       }
     }
@@ -179,7 +173,6 @@ const WorkoutService = {
     const timestamp = Util.getCurrentTimestamp();
 
     if (foundRowIndex > -1) {
-      // Update existing record
       this.sheet.getRange(foundRowIndex, idx.count + 1).setValue(count);
       this.sheet.getRange(foundRowIndex, idx.super_pass + 1).setValue(superPass);
       if (idx.note !== -1) {
@@ -187,7 +180,6 @@ const WorkoutService = {
       }
       this.sheet.getRange(foundRowIndex, idx.updated_at + 1).setValue(timestamp);
     } else {
-      // Insert new record
       const newRecord = {
         id: Util.generateUUID(),
         member_id: memberId,
@@ -244,7 +236,6 @@ const WorkoutService = {
       this.sheet.getRange(foundRowIndex, idx.count + 1).setValue(newCount);
       this.sheet.getRange(foundRowIndex, idx.updated_at + 1).setValue(timestamp);
     } else {
-      // Insert new record with newCount
       this.updateWorkoutCount(memberId, year, month, weekNumber, newCount);
     }
     

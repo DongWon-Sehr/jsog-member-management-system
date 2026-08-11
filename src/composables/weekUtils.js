@@ -1,10 +1,5 @@
-/**
- * Helpers for reading workout_weeks rows.
- *
- * `is_rest_week` is the single source of truth for rest weeks. `week_number` is the admin-assigned
- * workout week label and is only meaningful on a non-rest week - a rest week keeps whatever number
- * it was last given (0 = never assigned) so toggling rest off restores the admin's choice.
- */
+// is_rest_week is the single source of truth; week_number is only meaningful on non-rest weeks
+// A rest week keeps its last number (0 = never assigned) so toggling rest off restores the admin's choice
 
 /**
  * @param {Object} week - A workout_weeks row
@@ -13,9 +8,7 @@
 export const isRestWeek = (week) => {
   if (!week) return false;
 
-  // Legacy bridge: rows written before the is_rest_week column existed encode a rest week as
-  // week_number 0. The backend normalizes this in getAllWeeks(), so this only catches rows built
-  // locally (optimistic updates) before a refetch.
+  // Legacy rows encode rest as week_number 0; the backend normalizes on fetch, so this only catches locally-built rows
   if (week.is_rest_week === '' || week.is_rest_week === null || week.is_rest_week === undefined) {
     return Number(week.week_number) === 0;
   }
@@ -29,7 +22,7 @@ export const isRestWeek = (week) => {
 export const isWorkoutWeek = (week) => !!week && !isRestWeek(week);
 
 /**
- * '8월 1주차' / '8월 휴식주간'
+ * '8월 1주차' (August week 1) / '8월 휴식주간' (August rest week)
  */
 export const formatWeekLabel = (week) => {
   if (!week) return '미지정';
@@ -37,7 +30,7 @@ export const formatWeekLabel = (week) => {
 };
 
 /**
- * '1주차' / '휴식주간' - the month-less variant used in exports and headings
+ * '1주차' (week N) / '휴식주간' (rest week) - the month-less variant used in exports and headings
  */
 export const formatWeekNumberLabel = (week) => {
   if (!week) return '미지정';

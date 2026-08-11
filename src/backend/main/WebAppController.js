@@ -113,8 +113,7 @@ function apiGetDashboardSummary() {
     const dateStr = Utilities.formatDate(now, "GMT+9", "yyyy-MM-dd");
     const currentWeek = WorkoutWeekService.getWeekByDate(dateStr);
     
-    // A rest week holds no records, so its count stays at 0 rather than picking up whatever sits
-    // under the unassigned week number.
+    // Rest weeks hold no records; keep the count at 0 instead of picking up the unassigned week number
     let weeklyCount = 0;
     if (currentWeek && !WorkoutWeekService.isRestWeek(currentWeek)) {
       const records = WorkoutService.getRecordsByWeek(currentWeek.year, currentWeek.month, currentWeek.week_number);

@@ -9,7 +9,6 @@
         <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all duration-200 scale-100 opacity-100 flex flex-col">
           <!-- Body -->
           <div class="p-6 pb-4 sm:p-8 sm:pb-6 text-center">
-            <!-- Icon based on type or danger -->
             <div class="mx-auto flex items-center justify-center w-14 h-14 rounded-full mb-4" :class="isDanger ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-600'">
               <i class="text-3xl" :class="isDanger ? 'ph-fill ph-warning-circle' : (dialogType === 'confirm' ? 'ph-fill ph-question' : 'ph-fill ph-info')"></i>
             </div>

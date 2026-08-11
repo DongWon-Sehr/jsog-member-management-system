@@ -25,7 +25,7 @@
             <input 
               v-model="searchQuery"
               type="text" 
-              placeholder="회원 이름 검색"
+              placeholder="멤버 이름 검색"
               class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
             />
           </div>
@@ -226,19 +226,16 @@ const isPlannerOpen = ref(false);
 const selectedYear = ref(new Date().getFullYear());
 const searchQuery = ref('');
 const statusFilter = ref('all'); // all, eligible, incomplete
-let isNavigating = false; // Flag to prevent watcher interference
+let isNavigating = false; // suppresses the year watcher during programmatic week navigation
 
-// Log Modal state
 const isLogModalOpen = ref(false);
 const selectedMemberId = ref(null);
 
-// Filter and sort weeks chronologically
 const validWeeks = computed(() => {
   return [...weeks.value]
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
 });
 
-// Year Navigation Logic
 const availableYears = computed(() => {
   const years = [...new Set(validWeeks.value.map(w => Number(w.year)))];
   if (years.length === 0) years.push(new Date().getFullYear());
@@ -254,12 +251,10 @@ const navigateYear = (direction) => {
   }
 };
 
-// Filtered Weeks based on Selected Year
 const filteredWeeks = computed(() => {
   return validWeeks.value.filter(w => Number(w.year) === selectedYear.value);
 });
 
-// Week Navigation Logic
 const navigateWeek = async (directionStr) => {
   const list = validWeeks.value;
   const currentIndex = list.findIndex(w => w.id === selectedWeekId.value);
@@ -298,7 +293,6 @@ const currentWeekData = computed(() => {
   return weeks.value.find(w => w.id === selectedWeekId.value) || null;
 });
 
-// Calculate Member Records with Search and Status Filters
 const memberRecords = computed(() => {
   const weekData = currentWeekData.value;
   if (!weekData) return [];
@@ -321,12 +315,10 @@ const memberRecords = computed(() => {
       };
     })
     .filter(record => {
-      // 1. Search Filter
       if (searchQuery.value.trim() && !record.name.toLowerCase().includes(searchQuery.value.toLowerCase().trim())) {
         return false;
       }
       
-      // 2. Status Filter
       const isEligible = record.count >= 3 || (record.count >= 1 && record.superPass);
       if (statusFilter.value === 'eligible' && !isEligible) return false;
       if (statusFilter.value === 'incomplete' && isEligible) return false;
@@ -335,7 +327,6 @@ const memberRecords = computed(() => {
     });
 });
 
-// Summary Counts for the Current View
 const summaryCounts = computed(() => {
   const weekData = currentWeekData.value;
   if (!weekData) return { total: 0, eligible: 0, incomplete: 0, targetReached: 0, superPassUsed: 0 };
@@ -366,8 +357,7 @@ const summaryCounts = computed(() => {
   return stats;
 });
 
-// Summary-bar chips act as a single-select toggle for statusFilter.
-// Re-clicking the active chip resets to '전체보기' ('all').
+// Summary-bar chips are a single-select toggle; re-clicking the active chip resets to 'all'
 const toggleStatusFilter = (value) => {
   statusFilter.value = statusFilter.value === value ? 'all' : value;
 };
@@ -440,10 +430,8 @@ const toggleSuperPass = async (record) => {
 const setInitialWeek = async () => {
   if (validWeeks.value.length === 0) return;
 
-  // The selection is shared with the dashboard, so it may point at a week from another year -
-  // the year selector has to follow it, otherwise the week list would not contain it.
-  // Only keep it if that week still exists: a planner save can drop or replace rows, and a
-  // dangling id would leave the view stuck on an empty week with no way back.
+  // Week selection is shared with the dashboard, so the year selector must follow it across years
+  // Keep it only while the week still exists — planner saves can drop rows and strand a dangling id
   const shared = validWeeks.value.find(w => w.id === selectedWeekId.value);
   if (shared) {
     if (selectedYear.value !== Number(shared.year)) {
