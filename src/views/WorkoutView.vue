@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-0 pb-6">
+  <div id="workout-page" class="space-y-0 pb-6">
     <!-- Unified Header Section (Sticky) -->
     <div class="sticky top-28 md:top-16 z-30 bg-white">
       <!-- Page Title & Primary Selectors (Indigo Style) -->
@@ -76,6 +76,10 @@
             <i class="ph-bold ph-gear text-xl"></i>
           </button>
 
+          <button @click="takeScreenshot" :disabled="!currentWeekData" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="스크린샷 저장">
+            <i class="ph-bold ph-camera text-gray-500 text-xl"></i>
+          </button>
+
           <button @click="downloadCsv" :disabled="!currentWeekData" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
             <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
           </button>
@@ -136,7 +140,7 @@
       <p class="text-gray-400 text-sm mt-2">운동 기록을 추가하거나 수정할 수 없습니다.</p>
     </div>
 
-    <div v-else class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl overflow-hidden min-h-[400px]">
+    <div v-else id="workout-capture-area" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl overflow-hidden min-h-[400px]">
       <div class="px-6 pb-6 space-y-3 pt-1">
         <div v-for="record in memberRecords" :key="record.memberId" 
              @click="openLogModal(record.memberId)"
@@ -215,6 +219,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
 import { isRestWeek, formatWeekLabel, formatWeekNumberLabel } from '../composables/weekUtils';
+import { useScreenshot } from '../composables/useScreenshot';
 import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
 import { downloadCsvFile } from '../composables/useCsv';
@@ -492,6 +497,15 @@ const getRefundStatus = (record) => {
 const openLogModal = (memberId) => {
   selectedMemberId.value = memberId;
   isLogModalOpen.value = true;
+};
+
+const { captureElement } = useScreenshot();
+const takeScreenshot = () => {
+  if (!currentWeekData.value) return;
+  captureElement(
+    [{ id: 'gnb-capture', bg: '#ffffff' }, { id: 'workout-page' }],
+    `jsog_workouts_${formatWeekLabel(currentWeekData.value).replace(/ /g, '_')}.png`
+  );
 };
 
 const downloadCsv = () => {
