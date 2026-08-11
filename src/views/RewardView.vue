@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-0 pb-6">
+  <div id="reward-page" class="space-y-0 pb-6">
     <!-- Unified Header Section (Sticky) -->
     <div class="sticky top-28 md:top-16 z-30 bg-white">
       <!-- Page Title & Primary Actions (Indigo Style) -->
@@ -37,6 +37,10 @@
             <span class="font-black text-sm">지급 등록</span>
           </button>
 
+          <button @click="takeScreenshot" :disabled="rewards.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="스크린샷 저장">
+            <i class="ph-bold ph-camera text-gray-500 text-xl"></i>
+          </button>
+
           <button @click="downloadCsv" :disabled="rewards.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
             <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
           </button>
@@ -69,7 +73,7 @@
     </div>
 
     <!-- Main Content Area -->
-    <div class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl overflow-hidden min-h-[500px]">
+    <div id="reward-capture-area" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl overflow-hidden min-h-[500px]">
       <div v-if="isLoading && rewards.length === 0" class="py-32 flex flex-col items-center justify-center text-center">
         <i class="ph-bold ph-spinner animate-spin text-indigo-600 text-5xl mb-4"></i>
         <p class="text-indigo-800 font-black">데이터를 불러오는 중입니다...</p>
@@ -149,6 +153,7 @@ import { useDialog } from '../composables/useDialog';
 import ModalReward from '../components/ModalReward.vue';
 import ModalRewardRecommendation from '../components/ModalRewardRecommendation.vue';
 import { downloadCsvFile, todayStamp } from '../composables/useCsv';
+import { useScreenshot } from '../composables/useScreenshot';
 
 const { memberMap, rewards } = useStore();
 const { alert, confirm } = useDialog();
@@ -333,6 +338,12 @@ const handleModalDelete = async (id) => {
     })
     .apiDeleteReward(id);
 };
+
+const { captureElement } = useScreenshot();
+const takeScreenshot = () => captureElement(
+  [{ id: 'gnb-capture', bg: '#ffffff' }, { id: 'reward-page' }],
+  `jsog_rewards_${todayStamp()}.png`
+);
 
 const downloadCsv = () => {
   const data = sortedRewards.value;

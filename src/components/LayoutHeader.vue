@@ -1,6 +1,6 @@
 <template>
   <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div id="gnb-capture" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16 items-center">
         <div class="flex items-center">
           <button @click="reloadApp" class="group flex-shrink-0 flex items-center gap-1 cursor-pointer" title="새로고침">
