@@ -3,12 +3,12 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16 items-center">
         <div class="flex items-center">
-          <div class="flex-shrink-0 flex items-center gap-2">
+          <button @click="reloadApp" class="flex-shrink-0 flex items-center gap-2 cursor-pointer" title="새로고침">
             <div class="bg-indigo-600 p-2 rounded-lg flex items-center justify-center">
               <i class="ph-bold ph-person-simple-run text-white text-xl"></i>
             </div>
             <span class="text-xl font-bold text-gray-900 tracking-tight">주삼오공 <span class="text-indigo-600">Admin</span></span>
-          </div>
+          </button>
           <nav class="hidden md:ml-8 md:flex md:space-x-4 items-center">
             <button 
               v-for="item in navigation" 
@@ -54,6 +54,16 @@ const { currentView } = useStore();
 
 // Injected from package.json at build time by vite.config.js
 const appVersion = __APP_VERSION__;
+
+// location.reload() in the GAS iframe can hit an expired one-time URL; re-request the app URL instead
+const reloadApp = () => {
+  const appUrl = document.getElementById('app')?.dataset.appUrl;
+  if (appUrl && appUrl.startsWith('http')) {
+    window.top.location.href = appUrl;
+  } else {
+    window.location.reload();
+  }
+};
 
 const navigation = [
   { name: '대시보드', id: 'Dashboard' },
