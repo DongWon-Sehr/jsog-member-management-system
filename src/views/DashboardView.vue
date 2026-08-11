@@ -399,17 +399,39 @@ const goToWorkoutRecords = () => {
   currentView.value = 'WorkoutRecords';
 };
 
+// snapdom is imported as an ESM module (not a <script> tag): its classic build declares
+// internals as top-level globals, which this app's minified bundle clobbers (e.g. window.gr).
+let snapdomPromise = null;
+const loadSnapdom = () => {
+  snapdomPromise ||= import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.1/dist/snapdom.mjs').then(m => m.snapdom);
+  return snapdomPromise;
+};
+
 const takeScreenshot = async () => {
   const element = document.getElementById('capture-area');
-  if (!element || typeof html2canvas === 'undefined') return;
+  if (!element) return;
+  // At fractional browser zoom (e.g. 110% -> devicePixelRatio 1.1) the SVG clone rasterizes
+  // text slightly wider than the live layout, so flex-wrap rows and titles re-wrap in the
+  // capture. Locking wrapping for the duration of the capture keeps every line intact; the
+  // few extra pixels of text width just extend into the row's free space instead.
+  const noWrapLock = document.createElement('style');
+  noWrapLock.textContent = '#capture-area.capturing * { flex-wrap: nowrap !important; white-space: nowrap !important; }';
+  document.head.appendChild(noWrapLock);
+  element.classList.add('capturing');
   try {
-    const canvas = await html2canvas(element, { backgroundColor: '#f9fafb', scale: 2, logging: false, useCORS: true });
+    const snapdom = await loadSnapdom();
+    const result = await snapdom(element, { backgroundColor: '#f9fafb', scale: 2, embedFonts: true, iconFonts: [/phosphor/i] });
+    const canvas = await result.toCanvas();
     const image = canvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.href = image;
     link.download = `jsog_dashboard_${selectedWeekLabel.value.replace(/ /g, '_')}.png`;
     link.click();
   } catch (err) { console.error('Screenshot failed:', err); }
+  finally {
+    element.classList.remove('capturing');
+    noWrapLock.remove();
+  }
 };
 
 const colors = [
