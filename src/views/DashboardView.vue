@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-0 pb-6">
+  <div id="dashboard-page" class="space-y-0 pb-6">
     <!-- Unified Header Section -->
     <div class="sticky top-28 md:top-16 z-30 bg-white">
       <div class="px-6 py-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-indigo-50/30 rounded-t-3xl border-t border-x border-gray-100">
@@ -226,6 +226,7 @@
 import { ref, onMounted, computed, watch, nextTick } from 'vue';
 import { useStore } from '../composables/useStore';
 import { isRestWeek } from '../composables/weekUtils';
+import { useScreenshot } from '../composables/useScreenshot';
 
 const { dashboardSummary, currentView, weeks, workoutRecords, members, activeMembers, membersOfWeek, hasJoinedBy, workoutLogs, selectedWeekId } = useStore();
 const isRefreshing = ref(false);
@@ -411,36 +412,11 @@ const goToWorkoutRecords = () => {
   currentView.value = 'WorkoutRecords';
 };
 
-// ESM import required: snapdom's classic build leaks globals that this bundle's mangler clobbers
-let snapdomPromise = null;
-const loadSnapdom = () => {
-  snapdomPromise ||= import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.1/dist/snapdom.mjs').then(m => m.snapdom);
-  return snapdomPromise;
-};
-
-const takeScreenshot = async () => {
-  const element = document.getElementById('capture-area');
-  if (!element) return;
-  // At fractional browser zoom the SVG clone rasterizes text wider and re-wraps lines
-  const noWrapLock = document.createElement('style');
-  noWrapLock.textContent = '#capture-area.capturing * { flex-wrap: nowrap !important; white-space: nowrap !important; }';
-  document.head.appendChild(noWrapLock);
-  element.classList.add('capturing');
-  try {
-    const snapdom = await loadSnapdom();
-    const result = await snapdom(element, { backgroundColor: '#f9fafb', scale: 2, embedFonts: true, iconFonts: [/phosphor/i] });
-    const canvas = await result.toCanvas();
-    const image = canvas.toDataURL('image/png');
-    const link = document.createElement('a');
-    link.href = image;
-    link.download = `jsog_dashboard_${selectedWeekLabel.value.replace(/ /g, '_')}.png`;
-    link.click();
-  } catch (err) { console.error('Screenshot failed:', err); }
-  finally {
-    element.classList.remove('capturing');
-    noWrapLock.remove();
-  }
-};
+const { captureElement } = useScreenshot();
+const takeScreenshot = () => captureElement(
+  [{ id: 'gnb-capture', bg: '#ffffff' }, { id: 'dashboard-page' }],
+  `jsog_dashboard_${selectedWeekLabel.value.replace(/ /g, '_')}.png`
+);
 
 const colors = [
   '#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', 
