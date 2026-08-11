@@ -197,7 +197,7 @@
         <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col">
           <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
             <i class="ph-bold ph-chart-pie text-indigo-500"></i>
-            {{ selectedWeekLabel }} 운동 종류
+            {{ selectedQuarterLabel }} 운동 종류
           </h3>
           
           <div class="flex-1 relative min-h-[300px]">
@@ -209,7 +209,7 @@
         <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col xl:col-span-3">
           <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
             <i class="ph-bold ph-calendar-check text-indigo-500"></i>
-            {{ selectedWeekLabel }} 요일별 운동 집중도
+            {{ selectedQuarterLabel }} 요일별 운동 집중도
           </h3>
           
           <div class="flex-1 relative min-h-[350px]">
@@ -330,6 +330,21 @@ const visibleWeeklyRanking = computed(() => {
   }
   return weeklyRanking.value.filter(item => item.rank <= 3);
 });
+
+// Non-rest weeks of the selected week's quarter, cumulative up to the selected week (same population as quarterlyRanking)
+const quarterWeekRanges = computed(() => {
+  const wRef = currentWeekData.value;
+  if (!wRef) return [];
+  const currentQuarter = Math.ceil(Number(wRef.month) / 3);
+  return weeks.value
+    .filter(w => {
+      const q = Math.ceil(Number(w.month) / 3);
+      return Number(w.year) === Number(wRef.year) && q === currentQuarter && !isRestWeek(w) && w.start_date <= wRef.end_date;
+    })
+    .map(w => ({ start: w.start_date, end: w.end_date }));
+});
+
+const isInSelectedQuarter = (dateStr) => quarterWeekRanges.value.some(r => dateStr >= r.start && dateStr <= r.end);
 
 const quarterlyRanking = computed(() => {
   const wRef = currentWeekData.value;
@@ -558,14 +573,13 @@ const toggleAllSeries = () => {
 };
 
 const initDayChart = () => {
-  const wRef = currentWeekData.value;
-  if (!dayChartCanvas.value || workoutLogs.value.length === 0 || !wRef) return;
+  if (!dayChartCanvas.value || workoutLogs.value.length === 0 || !currentWeekData.value) return;
 
   const dayCounts = [0, 0, 0, 0, 0, 0, 0];
   workoutLogs.value.forEach(log => {
     const date = new Date(log.workout_date.replace(' ', 'T'));
     const dateStr = log.workout_date.split(' ')[0];
-    if (!isNaN(date.getTime()) && dateStr >= wRef.start_date && dateStr <= wRef.end_date) {
+    if (!isNaN(date.getTime()) && isInSelectedQuarter(dateStr)) {
       dayCounts[date.getDay()]++;
     }
   });
@@ -606,13 +620,12 @@ const initDayChart = () => {
 };
 
 const initTypeChart = () => {
-  const wRef = currentWeekData.value;
-  if (!typeChartCanvas.value || workoutLogs.value.length === 0 || !wRef) return;
+  if (!typeChartCanvas.value || workoutLogs.value.length === 0 || !currentWeekData.value) return;
 
   const typeMap = {};
   workoutLogs.value.forEach(log => {
     const dateStr = log.workout_date.split(' ')[0];
-    if (dateStr >= wRef.start_date && dateStr <= wRef.end_date) {
+    if (isInSelectedQuarter(dateStr)) {
       const type = log.workout_type || '기타';
       typeMap[type] = (typeMap[type] || 0) + 1;
     }

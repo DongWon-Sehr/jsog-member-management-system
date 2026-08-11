@@ -25,7 +25,7 @@
             <input 
               v-model="searchQuery"
               type="text" 
-              placeholder="회원 이름 검색"
+              placeholder="멤버 이름 검색"
               class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
             />
           </div>
