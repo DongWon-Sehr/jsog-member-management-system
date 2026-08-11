@@ -3,9 +3,9 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="flex justify-between h-16 items-center">
         <div class="flex items-center">
-          <button @click="reloadApp" class="flex-shrink-0 flex items-center gap-2 cursor-pointer" title="새로고침">
-            <div class="bg-indigo-600 p-2 rounded-lg flex items-center justify-center">
-              <i class="ph-bold ph-person-simple-run text-white text-xl"></i>
+          <button @click="reloadApp" class="group flex-shrink-0 flex items-center gap-1 cursor-pointer" title="새로고침">
+            <div class="h-10 flex items-center justify-center">
+              <i class="ph-bold ph-barbell text-indigo-600 text-3xl -rotate-[15deg] transition-transform duration-300 group-hover:rotate-[15deg]"></i>
             </div>
             <span class="text-xl font-bold text-gray-900 tracking-tight">주삼오공 <span class="text-indigo-600">Admin</span></span>
           </button>
