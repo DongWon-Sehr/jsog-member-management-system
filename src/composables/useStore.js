@@ -1,6 +1,5 @@
 import { ref, reactive, computed } from 'vue';
 
-// --- Global Reactive State ---
 const members = ref([]);
 
 const joinedAtOf = (member) => {
@@ -42,10 +41,9 @@ const dashboardSummary = reactive({
 });
 const isLoading = ref(false);
 const loadingText = ref('데이터를 불러오는 중입니다... 🚀');
-const currentView = ref('Dashboard'); // Moved from App.vue for global control
+const currentView = ref('Dashboard');
 const selectedWeekId = ref(null);
 
-// --- Caching / Computed State for Performance ---
 const memberMap = computed(() => {
   const map = {};
   members.value.forEach(m => {
@@ -54,7 +52,6 @@ const memberMap = computed(() => {
   return map;
 });
 
-// --- Constants ---
 const LOADING_PHRASES = [
   "주삼오공 멤버 데이터를 불러오는 중... 🏃‍♂️",
   "이번 주 오운완 기록을 집계하고 있습니다. ✨",
@@ -69,7 +66,6 @@ const LOADING_PHRASES = [
  */
 export function useStore() {
   return {
-    // State
     members,
     sortedMembers,
     activeMembers,
@@ -87,10 +83,8 @@ export function useStore() {
     currentView,
     selectedWeekId,
     
-    // Computed / Cache
     memberMap,
     
-    // Constants
     LOADING_PHRASES
   };
 }

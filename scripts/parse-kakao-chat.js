@@ -1,23 +1,18 @@
 /**
- * Extracts the weekly leaderboard history out of a KakaoTalk chat export and writes it as a
- * GAS-loadable data file (src/backend/main/ChatImportData.js).
+ * Extracts weekly leaderboard history from a KakaoTalk chat export into ChatImportData.js.
+ * The last leaderboard posting of each week is the settled result for that week.
  *
- * The chat is the only record of the group's first two years: every week someone posts a
- * leaderboard message, and each member copy-pastes it back with their own number bumped. The last
- * posting of a week is therefore the settled result for that week.
+ * Usage: node scripts/parse-kakao-chat.js [path/to/export.csv] [--out <file>] [--json <file>]
  *
- * Usage:
- *   node scripts/parse-kakao-chat.js [path/to/export.csv] [--out <file>] [--json <file>]
- *
- * Nothing here talks to the spreadsheet - importing the generated file is
- * ChatHistoryMigration.js's job, run by hand from the Apps Script editor.
+ * Output goes to migration/ (gitignored; already imported once) - to re-import, copy it into
+ * src/backend/main/, push, and run the migration by hand from the Apps Script editor.
  */
 
 import { readFileSync, writeFileSync, readdirSync } from 'fs';
 import { join, basename } from 'path';
 
 const DEFAULT_CSV_DIR = 'migration';
-const DEFAULT_OUT = 'src/backend/main/ChatImportData.js';
+const DEFAULT_OUT = 'migration/ChatImportData.js';
 
 function parseCsv(text) {
   const rows = [];

@@ -306,7 +306,6 @@ const normalizeBankType = () => {
   if (bank) form.bankType = bank;
 };
 
-// Stats Calculation for Activity Tab
 const stats = computed(() => {
   if (!props.memberData || !props.memberData.id) {
     return { totalWorkouts: 0, totalRewardAmount: 0, quarterlyStats: [], recentRewards: [] };
@@ -319,7 +318,6 @@ const stats = computed(() => {
   const totalWorkouts = memberRecords.reduce((sum, r) => sum + (Number(r.count) || 0), 0);
   const totalRewardAmount = memberRewards.reduce((sum, r) => sum + (Number(r.amount) || 0), 0);
 
-  // Group by Quarter
   const qMap = {};
   memberRecords.forEach(r => {
     const q = Math.ceil(Number(r.month) / 3);
@@ -331,7 +329,6 @@ const stats = computed(() => {
     if (isSuccess) qMap[label].successWeeks++;
   });
 
-  // Count total possible weeks per quarter for success rate
   Object.keys(qMap).forEach(label => {
     const [year, qPart] = label.split(' Q');
     const quarter = parseInt(qPart);
@@ -362,7 +359,7 @@ onMounted(() => window.addEventListener('keydown', handleEsc));
 onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
 watch(() => props.memberData, (newVal) => {
-  activeTab.value = 'info'; // Reset tab on open/change
+  activeTab.value = 'info';
   if (newVal) {
     isEditMode.value = true;
     form.id = newVal.id;

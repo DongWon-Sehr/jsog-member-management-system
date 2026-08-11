@@ -5,7 +5,6 @@ const DIST_DIR = 'dist';
 const ASSETS_DIR = path.join(DIST_DIR, 'assets');
 const SRC_DIR = 'src';
 
-// Helper to extract template from Vue SFC
 function extractTemplate(filePath) {
   if (!fs.existsSync(filePath)) return `<!-- ${path.basename(filePath)} not found -->`;
   const content = fs.readFileSync(filePath, 'utf-8');
@@ -23,18 +22,16 @@ async function run() {
 
   const allAssetFiles = fs.readdirSync(ASSETS_DIR);
 
-  // 1. Extract JS -> javascript.html
   let jsContent = '';
   const mainJsFile = allAssetFiles.find(f => f.endsWith('.js'));
   if (mainJsFile) {
     jsContent = fs.readFileSync(path.join(ASSETS_DIR, mainJsFile), 'utf-8');
-    // GAS Template Safety: Escape scriptlets
+    // Escape <? ?> so GAS does not parse them as scriptlets
     jsContent = jsContent.replace(/<\?/g, '<\\?').replace(/\?>/g, '\\?>');
   }
   fs.writeFileSync(path.join(DIST_DIR, 'javascript.html'), `<script>\n${jsContent}\n</script>`);
   console.log(`[Post-Build] ✅ Created javascript.html (${jsContent.length} bytes)`);
 
-  // 2. Extract Templates (Existing Vue SFCs)
   const components = [
     'DashboardView', 'MemberView', 'WorkoutView', 'RewardView', 'LogView', 
     'LayoutHeader', 'ModalMember', 'ModalWeekPlanner', 'ModalWorkoutLog', 
@@ -42,7 +39,6 @@ async function run() {
   ];
 
   components.forEach(name => {
-    // Try to find the file in either views or components
     let vuePath = path.join(SRC_DIR, 'views', `${name}.vue`);
     if (!fs.existsSync(vuePath)) vuePath = path.join(SRC_DIR, 'components', `${name}.vue`);
 
@@ -51,7 +47,6 @@ async function run() {
   });
   console.log(`[Post-Build] ✅ Created ${components.length} component HTML files`);
 
-  // 3. Create the FINAL index.html (Optimized CDN mode)
   const gasIndexTemplate = `<!DOCTYPE html>
   <html>
   <head>
@@ -68,9 +63,6 @@ async function run() {
 
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- html2canvas for screenshots -->
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
     <!-- Custom CSS styles -->
     <style>
@@ -86,10 +78,8 @@ async function run() {
         animation: highlight-fade 2s ease-out forwards;
       }
 
-      /* Loading overlay. Kept here rather than in a Tailwind class or App.vue's <style>: this
-         template replaces index.html and drops Vite's CSS bundle, and Tailwind comes from the Play
-         CDN, which generates utilities from the DOM only once it has booted - the overlay shows and
-         disappears in the first seconds, so utility-driven animation is not reliable here. */
+      /* Loading overlay styles must live here: this template drops Vite's CSS bundle, and the
+         Tailwind Play CDN boots too late for an overlay shown in the first seconds. */
       .loading-card {
         width: 320px;
         height: 232px;
@@ -111,8 +101,7 @@ async function run() {
         font-size: 44px;
         line-height: 1;
       }
-      /* One belt moving left to right: the new emoji slides in from the left while the old one
-         slides out to the right. Both run at once (no mode="out-in") so they overlap as a hand-off. */
+      /* New emoji slides in from the left as the old exits right; both run at once as a hand-off. */
       .emoji-swap-enter-active {
         transition: opacity 0.45s ease-out, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
       }
@@ -141,7 +130,7 @@ async function run() {
   </head>
   <body class="bg-gray-50 text-gray-800 min-h-screen">
     <div id="app" class="min-h-screen flex flex-col relative" data-app-url="<?!= BASE_WEBAPP_URL ?>">
-      <!-- Template Placeholders (for In-Browser Compilation if used, otherwise Vue handles via JS) -->
+      <!-- Hidden component templates for Vue's in-browser compiler -->
       <div style="display: none;">
         <?!= include('LayoutHeader'); ?>
         <?!= include('DashboardView'); ?>
@@ -160,7 +149,7 @@ async function run() {
 
       <!-- App mounting point -->
       <div class="flex-1 flex flex-col">
-        <!-- Loader will be handled by Vue inside App.vue -->
+        <!-- Intentionally empty: App.vue renders the loader and app here -->
       </div>
     </div>
     <?!= include('javascript'); ?>
@@ -170,7 +159,6 @@ async function run() {
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), gasIndexTemplate);
   console.log('[Post-Build] ✅ Replaced index.html with clean GAS template');
 
-  // 4. Clean up
   fs.rmSync(ASSETS_DIR, { recursive: true, force: true });
   console.log('[Post-Build] 🎉 Build and split complete! CSS redundancy removed.');
 }

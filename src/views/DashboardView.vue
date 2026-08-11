@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <!-- Main Content Area (Captured Area) -->
+    <!-- Main Content Area (Captured Area): everything inside #capture-area is included in the screenshot export -->
     <div id="capture-area" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-6 space-y-6 min-h-[400px]">
       <!-- Summary Stats -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -197,7 +197,7 @@
         <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col">
           <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
             <i class="ph-bold ph-chart-pie text-indigo-500"></i>
-            {{ selectedWeekLabel }} 운동 종류
+            {{ selectedQuarterLabel }} 운동 종류
           </h3>
           
           <div class="flex-1 relative min-h-[300px]">
@@ -209,7 +209,7 @@
         <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col xl:col-span-3">
           <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
             <i class="ph-bold ph-calendar-check text-indigo-500"></i>
-            {{ selectedWeekLabel }} 요일별 운동 집중도
+            {{ selectedQuarterLabel }} 요일별 운동 집중도
           </h3>
           
           <div class="flex-1 relative min-h-[350px]">
@@ -241,7 +241,6 @@ let perfChartInstance = null;
 let dayChartInstance = null;
 let typeChartInstance = null;
 
-// Period Selection logic
 const validWeeks = computed(() => {
   return [...weeks.value]
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
@@ -287,7 +286,7 @@ const selectedWeekWorkoutCount = computed(() => {
     .reduce((sum, r) => sum + (Number(r.count) || 0), 0);
 });
 
-// Helper: Calculate joint rankings for all slots
+// Tied counts share the same rank (competition ranking)
 const calculateAllRanks = (list) => {
   if (list.length === 0) return [];
   const sorted = [...list].sort((a, b) => b.count - a.count);
@@ -306,7 +305,7 @@ const weeklyRanking = computed(() => {
   const w = currentWeekData.value;
   if (!w) return [];
 
-  // Include active members even with 0 counts (only active members are shown)
+  // Weekly ranking lists every active member, including those with 0 workouts
   const rawCounts = membersOfWeek(w).map(m => {
     const record = workoutRecords.value.find(r =>
       r.member_id === m.id &&
@@ -329,9 +328,23 @@ const visibleWeeklyRanking = computed(() => {
   if (showAllWeeklyRanking.value) {
     return weeklyRanking.value;
   }
-  // Show only top 3 ranks
   return weeklyRanking.value.filter(item => item.rank <= 3);
 });
+
+// Non-rest weeks of the selected week's quarter, cumulative up to the selected week (same population as quarterlyRanking)
+const quarterWeekRanges = computed(() => {
+  const wRef = currentWeekData.value;
+  if (!wRef) return [];
+  const currentQuarter = Math.ceil(Number(wRef.month) / 3);
+  return weeks.value
+    .filter(w => {
+      const q = Math.ceil(Number(w.month) / 3);
+      return Number(w.year) === Number(wRef.year) && q === currentQuarter && !isRestWeek(w) && w.start_date <= wRef.end_date;
+    })
+    .map(w => ({ start: w.start_date, end: w.end_date }));
+});
+
+const isInSelectedQuarter = (dateStr) => quarterWeekRanges.value.some(r => dateStr >= r.start && dateStr <= r.end);
 
 const quarterlyRanking = computed(() => {
   const wRef = currentWeekData.value;
@@ -376,7 +389,6 @@ const visibleQuarterlyRanking = computed(() => {
   if (showAllQuarterlyRanking.value) {
     return quarterlyRanking.value;
   }
-  // Show only top 3 ranks
   return quarterlyRanking.value.filter(item => item.rank <= 3);
 });
 
@@ -399,17 +411,35 @@ const goToWorkoutRecords = () => {
   currentView.value = 'WorkoutRecords';
 };
 
+// ESM import required: snapdom's classic build leaks globals that this bundle's mangler clobbers
+let snapdomPromise = null;
+const loadSnapdom = () => {
+  snapdomPromise ||= import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.1/dist/snapdom.mjs').then(m => m.snapdom);
+  return snapdomPromise;
+};
+
 const takeScreenshot = async () => {
   const element = document.getElementById('capture-area');
-  if (!element || typeof html2canvas === 'undefined') return;
+  if (!element) return;
+  // At fractional browser zoom the SVG clone rasterizes text wider and re-wraps lines
+  const noWrapLock = document.createElement('style');
+  noWrapLock.textContent = '#capture-area.capturing * { flex-wrap: nowrap !important; white-space: nowrap !important; }';
+  document.head.appendChild(noWrapLock);
+  element.classList.add('capturing');
   try {
-    const canvas = await html2canvas(element, { backgroundColor: '#f9fafb', scale: 2, logging: false, useCORS: true });
+    const snapdom = await loadSnapdom();
+    const result = await snapdom(element, { backgroundColor: '#f9fafb', scale: 2, embedFonts: true, iconFonts: [/phosphor/i] });
+    const canvas = await result.toCanvas();
     const image = canvas.toDataURL('image/png');
     const link = document.createElement('a');
     link.href = image;
     link.download = `jsog_dashboard_${selectedWeekLabel.value.replace(/ /g, '_')}.png`;
     link.click();
   } catch (err) { console.error('Screenshot failed:', err); }
+  finally {
+    element.classList.remove('capturing');
+    noWrapLock.remove();
+  }
 };
 
 const colors = [
@@ -503,7 +533,7 @@ const initPerfChart = () => {
               dataset.pointRadius = 4;
             }
             ci.update();
-            // keep the 전체 선택/해제 label in sync with manual legend toggles
+            // Keep the select-all button label in sync with manual legend toggles
             seriesAllVisible.value = ci.data.datasets.every(d => d.borderWidth === 5);
           }
         },
@@ -521,10 +551,9 @@ const initPerfChart = () => {
   });
 };
 
-// Select-all / deselect-all toggle for the cumulative performance chart legend
 const toggleAllSeries = () => {
   if (!perfChartInstance) return;
-  const show = !seriesAllVisible.value; // target state for every series
+  const show = !seriesAllVisible.value;
   perfChartInstance.data.datasets.forEach((dataset, index) => {
     const baseColor = colors[index % colors.length];
     if (show) {
@@ -544,14 +573,13 @@ const toggleAllSeries = () => {
 };
 
 const initDayChart = () => {
-  const wRef = currentWeekData.value;
-  if (!dayChartCanvas.value || workoutLogs.value.length === 0 || !wRef) return;
+  if (!dayChartCanvas.value || workoutLogs.value.length === 0 || !currentWeekData.value) return;
 
   const dayCounts = [0, 0, 0, 0, 0, 0, 0];
   workoutLogs.value.forEach(log => {
     const date = new Date(log.workout_date.replace(' ', 'T'));
     const dateStr = log.workout_date.split(' ')[0];
-    if (!isNaN(date.getTime()) && dateStr >= wRef.start_date && dateStr <= wRef.end_date) {
+    if (!isNaN(date.getTime()) && isInSelectedQuarter(dateStr)) {
       dayCounts[date.getDay()]++;
     }
   });
@@ -592,13 +620,12 @@ const initDayChart = () => {
 };
 
 const initTypeChart = () => {
-  const wRef = currentWeekData.value;
-  if (!typeChartCanvas.value || workoutLogs.value.length === 0 || !wRef) return;
+  if (!typeChartCanvas.value || workoutLogs.value.length === 0 || !currentWeekData.value) return;
 
   const typeMap = {};
   workoutLogs.value.forEach(log => {
     const dateStr = log.workout_date.split(' ')[0];
-    if (dateStr >= wRef.start_date && dateStr <= wRef.end_date) {
+    if (isInSelectedQuarter(dateStr)) {
       const type = log.workout_type || '기타';
       typeMap[type] = (typeMap[type] || 0) + 1;
     }
@@ -635,8 +662,7 @@ const initCharts = () => {
 };
 
 onMounted(() => {
-  // The week selection is shared with the workout tab and this view remounts on every tab switch,
-  // so only fall back to today's week when nothing valid is selected yet.
+  // Week selection is shared with the workout tab across remounts — only default to today's week when unset
   const alreadySelected = selectedWeekId.value && weeks.value.some(w => w.id === selectedWeekId.value);
 
   if (!alreadySelected) {
@@ -665,7 +691,7 @@ watch([selectedWeekId, workoutRecords, activeMembers, workoutLogs], () => {
   initCharts();
 }, { deep: true });
 
-// Also watch weeks to ensure selectedWeekId is set once data is loaded
+// Initial data arrives after mount, so default the week once weeks load
 watch(weeks, (newWeeks) => {
   if (newWeeks.length > 0 && !selectedWeekId.value) {
     const now = new Date();
@@ -686,4 +712,3 @@ watch(weeks, (newWeeks) => {
   }
 }, { immediate: true });
 </script>
-pt>

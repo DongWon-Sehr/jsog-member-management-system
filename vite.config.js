@@ -16,7 +16,9 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         { src: 'appsscript.json', dest: '' },
-        { src: 'src/backend/**/*.js', dest: '' }
+        // ChatImportData.js is one-off migration data (400KB+) that has already been imported.
+        // Excluded so a regenerated copy never ships to the Apps Script project.
+        { src: ['src/backend/**/*.js', '!src/backend/**/ChatImportData.js'], dest: '' }
       ]
     })
   ],
@@ -24,6 +26,9 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: false,
+    // terser keeps quoted strings; the default minifier's backtick strings break under GAS's
+    // comment stripper, which treats `//` inside template literals as a line comment
+    minify: 'terser',
     rollupOptions: {
       external: ["vue", "imask"],
       plugins: [

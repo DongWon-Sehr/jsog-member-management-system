@@ -81,8 +81,7 @@
                     </label>
                   </div>
 
-                  <!-- Year and month stay editable on a rest week: the dashboard still labels it
-                       as "N월 휴식주간", and a week straddling two months needs a manual call. -->
+                  <!-- Year/month stay editable on rest weeks: the dashboard still labels them by month, and straddling weeks need a manual call -->
                   <div class="col-span-2">
                     <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">기준 연도</div>
                     <input v-model.number="row.year" type="number" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all" />
@@ -166,7 +165,6 @@ const handleEsc = (e) => {
 onMounted(() => window.addEventListener('keydown', handleEsc));
 onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
-// Year Selection setup
 const currentYear = new Date().getFullYear();
 const availableYears = [];
 for (let y = 2024; y <= currentYear + 1; y++) {
@@ -174,10 +172,8 @@ for (let y = 2024; y <= currentYear + 1; y++) {
 }
 const selectedYear = ref(currentYear);
 
-// The main matrix state
 const plannerMatrix = ref([]);
 
-// Format Helper
 const formatDateFull = (date) => {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -190,9 +186,7 @@ const formatDateShort = (dateStr) => {
   return `${m}.${d}`;
 };
 
-// The (year, month, week_number) label is the join key for workout_records, so it has to be
-// unique - but only among workout weeks. Rest weeks are excluded: they hold no records and their
-// week_number is just a preserved value.
+// (year, month, week_number) is the join key for workout_records — unique among workout weeks only; rest weeks hold no records
 const labelKey = (row) => `${row.year}-${row.month}-${row.week_number}`;
 
 const duplicateLabels = computed(() => {
@@ -215,7 +209,6 @@ const unnumberedRows = computed(() =>
 
 const hasBlockingIssue = computed(() => duplicateLabels.value.size > 0 || unnumberedRows.value.length > 0);
 
-// Smallest week number not yet taken within the same (year, month)
 const nextFreeWeekNumber = (rows, target) => {
   const taken = new Set(
     rows
@@ -228,21 +221,17 @@ const nextFreeWeekNumber = (rows, target) => {
   return candidate;
 };
 
-// Generate Matrix Logic
 const generateMatrix = (year) => {
   const matrix = [];
 
-  // 1. Find Jan 1st
   const jan1 = new Date(year, 0, 1);
 
-  // 2. Find the Monday before or on Jan 1st
   let dayOfWeek = jan1.getDay(); // 0 is Sunday, 1 is Monday
   let diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
   const startDate = new Date(jan1);
   startDate.setDate(startDate.getDate() - diffToMonday);
 
-  // 3. Loop by adding 7 days until we hit Jan 1st of the next year
   const nextYearJan1 = new Date(year + 1, 0, 1);
 
   let currentStart = new Date(startDate);
@@ -254,7 +243,6 @@ const generateMatrix = (year) => {
     const startStr = formatDateFull(currentStart);
     const endStr = formatDateFull(currentEnd);
 
-    // Check if we have an existing record in the DB for this start_date
     const existingRecord = weeks.value.find(w => {
       if (!w.start_date) return false;
       // Handle standardized date (YYYY-MM-DD) or datetime (YYYY-MM-DD HH:mm:ss)
@@ -262,15 +250,13 @@ const generateMatrix = (year) => {
       return dbStart === startStr;
     });
 
-    // Thursday decides which month a week leans towards by default; the admin overrides it
-    // whenever a week straddling two months belongs to the other one.
+    // The Thursday decides a week's default month; the admin overrides straddling weeks manually
     const thursday = new Date(currentStart);
     thursday.setDate(thursday.getDate() + 3);
 
     if (existingRecord) {
-      // Use DB data
       matrix.push({
-        id: existingRecord.id, // Keep ID for updates
+        id: existingRecord.id,
         start_date: startStr,
         end_date: endStr,
         year: Number(existingRecord.year),
@@ -292,7 +278,6 @@ const generateMatrix = (year) => {
       });
     }
 
-    // Move to next week
     currentStart.setDate(currentStart.getDate() + 7);
   }
 
@@ -305,17 +290,14 @@ const generateMatrix = (year) => {
   plannerMatrix.value = matrix;
 };
 
-// Handle Rest Week Toggle
 const handleRestWeekChange = (row) => {
-  // The number is deliberately kept while the week is marked as rest, so unchecking restores the
-  // admin's original choice instead of resetting to a guess. A number is only invented when the
-  // row never had one (0 = never assigned, e.g. rows migrated from the old schema).
+  // week_number is kept while a week is rest so unchecking restores the admin's choice;
+  // a number is only invented when the row never had one (0, e.g. rows from the old schema)
   if (!row.is_rest_week && !(Number(row.week_number) > 0)) {
     row.week_number = nextFreeWeekNumber(plannerMatrix.value, row);
   }
 };
 
-// Watch for year change or modal open to regenerate
 watch(() => selectedYear.value, (newYear) => {
   if (props.isOpen) generateMatrix(newYear);
 });
@@ -326,7 +308,6 @@ watch(() => props.isOpen, (isOpen) => {
   }
 });
 
-// Save Logic
 const close = () => {
   emit('close');
 };
@@ -352,8 +333,7 @@ const saveBatch = async () => {
 
   isSaving.value = true;
 
-  // Prepare payload. A rest week keeps its week_number so the choice survives a rest toggle;
-  // the server ignores it for lookups because is_rest_week is what marks the week.
+  // A rest week keeps its week_number so the choice survives toggling; the server ignores it for lookups
   const payload = plannerMatrix.value.map(row => ({
     year: row.year,
     month: row.month,
@@ -366,14 +346,12 @@ const saveBatch = async () => {
   google.script.run
     .withSuccessHandler((res) => {
       if (res && res.success) {
-        // Refresh local store data blindly to reflect new truths
         google.script.run
           .withSuccessHandler(r => {
             isSaving.value = false;
             if (r.success) {
               weeks.value = r.data;
-              // Rebuild from what the server actually stored, so a rejected or adjusted row is
-              // visible here instead of only living in local state. Modal remains open.
+              // Rebuild from server truth so rejected/adjusted rows become visible; modal stays open
               generateMatrix(selectedYear.value);
             }
           })
@@ -405,7 +383,6 @@ const saveBatch = async () => {
   transform: translateY(20px) scale(0.95);
 }
 
-/* Custom Scrollbar for matrix */
 .overflow-y-auto::-webkit-scrollbar {
   width: 8px;
 }

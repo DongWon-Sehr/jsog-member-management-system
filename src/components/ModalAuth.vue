@@ -87,7 +87,6 @@ watch(pin, (newVal) => {
   if (newVal.length === 4) {
     isValidating.value = true;
     
-    // Server-side validation
     google.script.run
       .withSuccessHandler((res) => {
         isValidating.value = false;

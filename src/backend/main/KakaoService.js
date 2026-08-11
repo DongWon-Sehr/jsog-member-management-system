@@ -16,20 +16,18 @@ const KakaoService = {
 
     const cleanEmail = String(email).trim();
 
-    // 1. Email Format Validation (Since we use @sys.text)
+    // Manual format check needed: Kakao param uses @sys.text, no built-in validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(cleanEmail)) {
       return this.createSimpleResponse(`'${cleanEmail}'은 올바른 이메일 형식이 아닙니다. 정확한 이메일을 입력해주세요.`);
     }
 
-    // 2. Database Lookup
     const member = MemberService.getMemberByEmail(cleanEmail);
 
     if (!member) {
       return this.createSimpleResponse(`'${cleanEmail}'은 등록되지 않은 이메일입니다. 시스템 관리자에게 멤버 등록을 먼저 요청해주세요.`);
     }
 
-    // 3. Update the member record with the Kakao ID (kakao_plus_id)
     try {
       const success = MemberService.updateMember(member.id, { kakao_plus_id: userKey });
 
@@ -50,7 +48,6 @@ const KakaoService = {
   startManualAuth(userKey) {
     const member = MemberService.getMemberByKakaoId(userKey);
     
-    // If not registered via Kakao ID, prompt for registration
     if (!member) {
       return this.responseWithQuickReplies(
         "등록된 사용자 정보를 찾을 수 없습니다. 먼저 [사용자 등록] 메뉴를 통해 이메일 인증을 완료해주세요.",
@@ -76,10 +73,9 @@ const KakaoService = {
    * Registers workout log manually.
    */
   registerManualWorkout(userKey, params) {
-    // 1. Identify member
     let member = MemberService.getMemberByKakaoId(userKey);
     
-    // Fallback: search by name if provided (for manual testing/proxy)
+    // Name fallback supports manual testing/proxy authentication
     if (!member && params.member_name) {
       member = MemberService.getMemberByName(params.member_name);
     }
@@ -88,11 +84,9 @@ const KakaoService = {
       return this.createSimpleResponse("인증 대상을 찾을 수 없습니다. 먼저 사용자 등록을 완료해주세요.");
     }
 
-    // 2. Extract workout details
     const workoutType = params.workout_type || "기타";
     const duration = parseInt(params.duration) || 30;
     
-    // 3. Get current week data
     const now = new Date();
     const dateStr = Utilities.formatDate(now, "GMT+9", "yyyy-MM-dd");
     const week = WorkoutWeekService.getWeekByDate(dateStr);
@@ -101,14 +95,13 @@ const KakaoService = {
       return this.createSimpleResponse("현재 진행 중인 운동 주차 정보가 없습니다. 관리자에게 문의하세요.");
     }
 
-    // A rest week holds no workout records, so an authentication here would leave a log with no
-    // count attached to it. Turn it away instead of half-recording it.
+    // Rest weeks hold no workout records; reject rather than leave a countless log
     if (WorkoutWeekService.isRestWeek(week)) {
       const restEnd = Util.toDateString(week.end_date);
       return this.createSimpleResponse(`☕ 이번 주(${Util.toDateString(week.start_date)} ~ ${restEnd})는 휴식주간이라 운동 인증을 받지 않습니다.\n다음 운동주차에 다시 인증해주세요!`);
     }
 
-    // 4. Register Log (This automatically updates counts)
+    // addWorkoutLog also updates weekly counts
     try {
       WorkoutLogService.addWorkoutLog(
         member.id, 
@@ -120,7 +113,6 @@ const KakaoService = {
         week.week_number
       );
 
-      // 5. Generate Leaderboard Text for sharing
       const leaderboardText = this._generateLeaderboardText(week);
 
       return {
@@ -175,7 +167,7 @@ const KakaoService = {
   },
 
   /**
-   * Private: Generates the copy-paste leaderboard text.
+   * Private: Generates the copy-paste leaderboard text members share into the open chat room.
    */
   _generateLeaderboardText(week) {
     const records = WorkoutService.getRecordsByWeek(week.year, week.month, week.week_number);
@@ -184,7 +176,6 @@ const KakaoService = {
     let text = `🔥 주삼오공 (${week.month}-${week.week_number}주차)\n`;
     text += `--------------------------\n`;
     
-    // Sort by count descending
     const sorted = [...activeMembers].map(m => {
       const rec = records.find(r => String(r.member_id) === String(m.id));
       return {

@@ -79,7 +79,7 @@ const Util = {
           if (type === 'DATE') {
             value = `${y}-${m}-${d}`;
           } else {
-            // Default to DATE_TIME or if type is unknown but it's a Date object
+            // Non-DATE types (or unknown) fall back to DATE_TIME format
             const hh = String(value.getHours()).padStart(2, '0');
             const mm = String(value.getMinutes()).padStart(2, '0');
             const ss = String(value.getSeconds()).padStart(2, '0');
@@ -100,19 +100,16 @@ const Util = {
   sanitizeData(data) {
     if (data === null || data === undefined) return data;
 
-    // Handle Arrays
     if (Array.isArray(data)) {
       return data.map(item => Util.sanitizeData(item));
     }
 
-    // Handle Dates (Fallback for objects/arrays not coming directly from sheetToObjects)
     if (data instanceof Date) {
       const pad = (n) => (n < 10 ? '0' + n : n);
       return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())} ` +
              `${pad(data.getHours())}:${pad(data.getMinutes())}:${pad(data.getSeconds())}`;
     }
 
-    // Handle Objects
     if (typeof data === 'object') {
       const sanitized = {};
       for (const key in data) {

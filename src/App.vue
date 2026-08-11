@@ -9,7 +9,6 @@
         name="fade" 
         mode="out-in"
       >
-        <!-- Use the global currentView to decide what to show -->
         <component :is="activeComponent" />
       </transition>
     </main>
@@ -44,7 +43,6 @@ import GlobalDialog from './components/GlobalDialog.vue';
 import { useStore } from './composables/useStore';
 import { useGas } from './composables/useGas';
 
-// Views
 import Dashboard from './views/DashboardView.vue';
 import Members from './views/MemberView.vue';
 import WorkoutRecords from './views/WorkoutView.vue';
@@ -135,7 +133,6 @@ onUnmounted(() => {
 </script>
 
 <style>
-/* Global Styles for GAS compatibility */
 html, body {
   margin: 0;
   padding: 0;
@@ -171,8 +168,7 @@ html, body {
   display: none;
 }
 
-/* Mirrored in scripts/post-build.js: the GAS build replaces index.html and drops this bundle,
-   so the deployed copy of these rules lives in that template. Keep the two in sync. */
+/* Loading-card rules are duplicated in scripts/post-build.js's GAS index template — keep in sync. */
 .loading-card {
   width: 320px;
   height: 232px;

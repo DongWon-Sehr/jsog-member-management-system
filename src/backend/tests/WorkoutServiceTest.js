@@ -10,8 +10,7 @@ function test_manual_WorkoutService_superPassRule() {
   console.log(`[WorkoutService] Testing SuperPass once-per-month rule for ${month}월...`);
   
   try {
-    // Attempting to trigger the validation logic
-    // In a real test, you'd ensure a record already exists with super_pass = true
+    // A real test needs an existing record with super_pass = true to trigger the validation
     WorkoutService.updateWorkoutCount(memberId, year, month, 1, 0, true, 'Test 1');
     console.log("✅ First check passed (or no existing record)");
     

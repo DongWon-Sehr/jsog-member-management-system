@@ -59,20 +59,17 @@ const MemberService = {
     if (!input) return null;
     const cleanInput = String(input).trim();
 
-    // 1. If it looks like an email, use email search
     if (cleanInput.includes('@')) {
       return this.getMemberByEmail(cleanInput);
     }
 
-    // 2. Name search with emoji and special character removal
     const allMembers = this.getAllMembers();
     
-    // Helper to strip everything except Korean, English, and Numbers
+    // Strip everything except Korean, English, and numbers
     const purify = (str) => String(str).replace(/[^\wㄱ-힣]/g, '').trim();
     const target = purify(cleanInput);
     if (!target) return null;
 
-    // Try exact match first, then partial match
     const matches = allMembers.filter(member => {
       const dbNameClean = purify(member.name);
       return dbNameClean === target || dbNameClean.includes(target);
@@ -99,7 +96,6 @@ const MemberService = {
       bank_account: details.bank_account || ''
     };
 
-    // Create array matching the header order
     const headers = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
     const rowData = headers.map(header => newMember[header] !== undefined ? newMember[header] : '');
     
@@ -120,9 +116,8 @@ const MemberService = {
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][idIndex] === memberId) {
-        const rowIndex = i + 1; // 1-based index
+        const rowIndex = i + 1;
         
-        // Update allowed fields
         if (updateData.name !== undefined) {
           this.sheet.getRange(rowIndex, headers.indexOf('name') + 1).setValue(updateData.name);
         }
@@ -146,7 +141,6 @@ const MemberService = {
           this.sheet.getRange(rowIndex, headers.indexOf('enabled') + 1).setValue(enabledVal);
         }
         
-        // Always update timestamp
         this.sheet.getRange(rowIndex, updatedAtIndex + 1).setValue(Util.getCurrentTimestamp());
         return true;
       }
@@ -168,7 +162,6 @@ const MemberService = {
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][idIndex] === memberId) {
-        // rowIndex is i + 1 (1-based index)
         this.sheet.getRange(i + 1, enabledIndex + 1).setValue(false);
         this.sheet.getRange(i + 1, updatedAtIndex + 1).setValue(Util.getCurrentTimestamp());
         return true;
