@@ -53,7 +53,7 @@ const RewardService = {
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][idIndex] === rewardId) {
-        const rowIndex = i + 1; // 1-based index
+        const rowIndex = i + 1;
         fields.forEach(field => {
           if (updateData[field] !== undefined) {
             const colIndex = headers.indexOf(field);

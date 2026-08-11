@@ -21,7 +21,7 @@
             </div>
 
             <div class="flex flex-col items-center space-y-4">
-              <!-- PIN Inputs (Visual only, keypad controlled) -->
+              <!-- Display-only PIN dots; input comes from the keypad below -->
               <div class="flex gap-4">
                 <div 
                   v-for="i in 4" :key="i"

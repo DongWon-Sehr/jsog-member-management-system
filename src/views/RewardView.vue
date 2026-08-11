@@ -224,7 +224,6 @@ const handleRecommendationSelect = (data) => {
 const handleSaveReward = (formData) => {
   isProcessing.value = true;
 
-  // Edit existing reward
   if (formData.id) {
     const idx = rewards.value.findIndex(r => r.id === formData.id);
     if (idx === -1) {
@@ -239,7 +238,6 @@ const handleSaveReward = (formData) => {
       description: formData.description
     };
     
-    // Optimistic Update
     rewards.value[idx] = { ...rewards.value[idx], ...updateData };
 
     google.script.run
@@ -260,7 +258,6 @@ const handleSaveReward = (formData) => {
     return;
   }
 
-  // Add new reward
   const tempId = 'temp-' + Date.now();
   const tempReward = {
     id: tempId,

@@ -84,8 +84,7 @@
           <div class="md:col-span-3 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">환급 계좌</span>
             <span v-if="member.bank_type || member.bank_account" class="flex items-center gap-2 min-w-0">
-              <!-- Fixed width, sized for the longest bank name, so every account number starts at
-                   the same x and the column does not look ragged. -->
+              <!-- Fixed width fits the longest bank name so account numbers align across rows -->
               <span class="w-[68px] shrink-0 px-1.5 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 text-center truncate">{{ member.bank_type || '-' }}</span>
               <span class="text-sm font-bold text-gray-600 font-mono truncate">{{ member.bank_account || '-' }}</span>
             </span>
@@ -147,16 +146,13 @@ const isModalOpen = ref(false);
 const selectedMember = ref(null);
 const recentlyAddedIds = ref([]);
 
-// Filter logic
 const filteredMembers = computed(() => {
   let list = sortedMembers.value;
   
-  // 1. Status Filter
   if (!showDisabled.value) {
     list = list.filter(m => m.enabled === true || m.enabled === 'TRUE' || m.enabled === 'true');
   }
 
-  // 2. Search Filter
   if (searchQuery.value.trim()) {
     const q = searchQuery.value.toLowerCase().trim();
     list = list.filter(m => 
@@ -173,7 +169,6 @@ const formatDate = (dateStr) => {
   return String(dateStr).split(' ')[0];
 };
 
-// Modal Handlers
 const openAddModal = () => {
   selectedMember.value = null;
   isModalOpen.value = true;
@@ -256,7 +251,6 @@ const handleSaveMember = (formData) => {
     members.value.unshift(tempMember);
     recentlyAddedIds.value.push(tempId);
     
-    // Auto-remove highlight for temp ID after 2 seconds
     setTimeout(() => {
       recentlyAddedIds.value = recentlyAddedIds.value.filter(id => id !== tempId);
     }, 2000);
@@ -268,7 +262,7 @@ const handleSaveMember = (formData) => {
           if (idx !== -1) {
             members.value[idx] = res.data;
             
-            // Seamlessly transfer highlight from tempId to real ID if still active
+            // Transfer any active highlight from the temp ID to the server-assigned ID
             const hIdx = recentlyAddedIds.value.indexOf(tempId);
             if (hIdx > -1) {
               recentlyAddedIds.value[hIdx] = res.data.id;

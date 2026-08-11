@@ -119,8 +119,7 @@ const calculateRecommendations = () => {
   const quarter = parseInt(qStr);
   const targetYear = parseInt(year);
 
-  // Find weeks in this quarter. Rest weeks are excluded: nobody can score in them, so counting
-  // them would deflate everyone's success rate.
+  // Rest weeks are excluded — nobody can score in them, so counting them would deflate success rates
   const quarterWeeks = weeks.value.filter(w => {
     const q = Math.ceil(Number(w.month) / 3);
     return Number(w.year) === targetYear && q === quarter && !isRestWeek(w);

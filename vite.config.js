@@ -26,10 +26,8 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     cssCodeSplit: false,
-    // GAS strips what it thinks are `//` line comments from served inline scripts, but its
-    // lexer predates template literals — a `//` inside a backtick string (e.g. a URL) makes
-    // it delete the rest of the line and break the bundle. The default oxc minifier rewrites
-    // strings as template literals; terser keeps normal quotes, which the stripper respects.
+    // terser keeps quoted strings; the default minifier's backtick strings break under GAS's
+    // comment stripper, which treats `//` inside template literals as a line comment
     minify: 'terser',
     rollupOptions: {
       external: ["vue", "imask"],

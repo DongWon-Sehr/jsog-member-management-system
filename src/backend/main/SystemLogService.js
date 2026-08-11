@@ -49,7 +49,6 @@ const SystemLogService = {
    */
   getRecentLogs(limit = 50) {
     const logs = Util.sheetToObjects(this.sheet, this.tableName);
-    // Sort by timestamp descending and take the top `limit`
     return logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, limit);
   }
 };

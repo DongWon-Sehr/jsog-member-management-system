@@ -36,7 +36,7 @@ function doPost(e) {
     
     console.log(`[doPost] Received request on path: /${path}`);
 
-    // 1. REST Path: /kakao (Primary for Chatbot Skills)
+    // Kakao chatbot skill: matched by /kakao path or by payload shape
     if (path === "kakao" || (payload.userRequest && payload.userRequest.user)) {
       const response = _executeApi('KakaoSkill', () => KakaoController.handleRequest(payload), payload);
       
@@ -44,7 +44,7 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
-    // 2. Generic API or Webhook logs
+    // Generic API or webhook logs
     SystemLogService.addLog("POST_RECEIVED", { path, payload });
     
     return ContentService.createTextOutput(JSON.stringify({ success: true, message: "Data received" }))
@@ -53,7 +53,7 @@ function doPost(e) {
   } catch (err) {
     console.error("[doPost] Error:", err.toString());
     
-    // Fallback Kakao Error Response
+    // Errors must still return Kakao-formatted JSON
     const errorResponse = {
       version: "2.0",
       template: {

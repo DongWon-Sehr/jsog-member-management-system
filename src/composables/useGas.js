@@ -3,7 +3,7 @@
  */
 export function useGas() {
   /**
-   * Executes a GAS function and returns a Promise
+   * Executes a GAS function and returns a Promise (wraps google.script.run)
    * @param {string} functionName - Name of the function to call in Api.js
    * @param {...any} args - Arguments to pass to the function
    */
@@ -11,7 +11,6 @@ export function useGas() {
     return new Promise((resolve, reject) => {
       if (typeof google === 'undefined' || !google.script || !google.script.run) {
         console.warn(`GAS environment not detected. Mocking call to ${functionName}`);
-        // Mock data for local development
         setTimeout(() => resolve({ success: true, data: [], message: 'Mocked Response' }), 500);
         return;
       }

@@ -47,16 +47,12 @@ const WorkoutLogService = {
    * @param {string} weeklyNote - Note for the specific week
    */
   batchSaveWorkoutLogs(memberId, year, month, weekNumber, logsToAdd, logsToUpdate, logIdsToDelete, weeklyNote, superPass) {
-    // Records hang off (year, month, week_number), and rest weeks carry no number. Saving logs
-    // against an unassigned week used to pass silently - `0` is falsy, so the count sync below was
-    // skipped and the logs drifted away from the counts. Refuse it loudly instead.
+    // week_number 0 (unassigned/rest) is falsy, so such saves used to skip the count sync silently; refuse loudly
     if (!year || !month || !Util.hasWeekNumber(weekNumber)) {
       throw new Error('[주차 지정 오류] 운동 주차가 지정되지 않은 주에는 운동 기록을 저장할 수 없습니다. 휴식주간이 아닌지 확인해주세요.');
     }
 
-    // The weekly count is keyed by (year, month, week_number) while each log is keyed by its
-    // own date. If a log lands outside the target week both keys drift apart: the log shows up
-    // under a different week while this week's count is inflated. Reject it before writing.
+    // Logs dated outside the target week desync the (year, month, week_number)-keyed count; reject before writing
     const week = WorkoutWeekService.getWeek(year, month, weekNumber);
 
     if (week) {
@@ -79,7 +75,7 @@ const WorkoutLogService = {
     const workoutTypeIndex = headers.indexOf('workout_type');
     const durationIndex = headers.indexOf('duration_minutes');
 
-    // 1. Delete logs
+    // Delete logs
     if (logIdsToDelete && logIdsToDelete.length > 0) {
       // Iterate backwards to avoid row index shifting
       for (let i = data.length - 1; i >= 1; i--) {
@@ -89,7 +85,7 @@ const WorkoutLogService = {
       }
     }
 
-    // 2. Update logs
+    // Update logs
     if (logsToUpdate && logsToUpdate.length > 0) {
       const updateMap = {};
       logsToUpdate.forEach(l => { updateMap[l.id] = l; });
@@ -106,7 +102,7 @@ const WorkoutLogService = {
       }
     }
 
-    // 3. Add logs
+    // Add logs
     const createdLogs = [];
     if (logsToAdd && logsToAdd.length > 0) {
       const timestamp = Util.getCurrentTimestamp();
@@ -126,24 +122,21 @@ const WorkoutLogService = {
       });
     }
 
-    // 4. Sync count and update note
-    // Get current record info (we need superPass, and count for the no-week fallback)
+    // Sync count and note; existing record supplies superPass and the count for the no-week fallback
     const records = WorkoutService.getRecordsByWeek(year, month, weekNumber);
     const existing = records.find(r => r.member_id === memberId);
-    // undefined means the caller is not touching the flag, so keep whatever the sheet holds. The
-    // modal passes an explicit boolean; the monthly-limit rule is enforced by updateWorkoutCount.
+    // undefined/null means the caller is not touching the flag; the monthly limit is enforced by updateWorkoutCount
     const newSuperPass = superPass === undefined || superPass === null
       ? (existing ? (existing.super_pass === true || existing.super_pass === 'TRUE' || existing.super_pass === 'true') : false)
       : (superPass === true || String(superPass).toUpperCase() === 'TRUE');
 
     let newCount;
     if (week) {
-      // Derive the count from the logs that actually fall inside the week rather than from a
-      // running delta, so a count that has already drifted is repaired on the next save.
+      // Recompute the count from logs inside the week so previous drift is repaired on save
       SpreadsheetApp.flush();
       newCount = this.countLogsInRange(memberId, this.toDateString(week.start_date), this.toDateString(week.end_date));
     } else {
-      // No week definition to anchor the range on: keep the previous delta behaviour.
+      // No week definition to anchor the range on: keep the previous delta behaviour
       const netChange = (logsToAdd ? logsToAdd.length : 0) - (logIdsToDelete ? logIdsToDelete.length : 0);
       newCount = Math.max(0, (existing ? Number(existing.count) : 0) + netChange);
     }
@@ -174,14 +167,12 @@ const WorkoutLogService = {
       created_at: Util.getCurrentTimestamp()
     };
 
-    // Create array matching the header order
     const headers = this.sheet.getRange(1, 1, 1, this.sheet.getLastColumn()).getValues()[0];
     const rowData = headers.map(header => newLog[header] !== undefined ? newLog[header] : '');
     
     this.sheet.appendRow(rowData);
 
-    // Sync count (+1). A rest week has no week number to hang a record on, so the log is stored
-    // without a count. Callers are expected to reject rest weeks before getting here.
+    // Rest weeks have no week number to hang a count on; callers should reject them before getting here
     if (year && month && Util.hasWeekNumber(weekNumber)) {
       WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, 1);
     } else {
@@ -211,7 +202,6 @@ const WorkoutLogService = {
       if (data[i][idIndex] === logId) {
         this.sheet.deleteRow(i + 1);
         
-        // Sync count (-1)
         if (memberId && year && month && Util.hasWeekNumber(weekNumber)) {
           WorkoutService.incrementWorkoutCount(memberId, year, month, weekNumber, -1);
         }

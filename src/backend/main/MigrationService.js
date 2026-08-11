@@ -68,33 +68,27 @@ const MigrationService = {
   setup() {
     const ss = Util.getSpreadsheet();
 
-    // 2. Initialize member table
     this._ensureTable(ss, 'member', this.SCHEMA.member);
 
-    // 2. Initialize workout_records table
     this._ensureTable(ss, 'workout_records', this.SCHEMA.workout_records);
 
-    // 3. Initialize workout_logs table
     this._ensureTable(ss, 'workout_logs', this.SCHEMA.workout_logs);
 
-    // 4. Initialize rewards_log table
     this._ensureTable(ss, 'rewards_log', this.SCHEMA.rewards_log);
 
-    // 5. Initialize logs table
     this._ensureTable(ss, 'logs', this.SCHEMA.logs);
 
-    // 6. Initialize workout_weeks table
     this._ensureTable(ss, 'workout_weeks', this.SCHEMA.workout_weeks);
   },
 
   /**
    * Creates a sheet and converts it into a structured Table via Sheets API if it's new.
+   * Existing sheets only get missing columns appended.
    */
   _ensureTable(ss, sheetName, columnsConfig) {
     let sheet = ss.getSheetByName(sheetName);
     const requiredColumnNames = columnsConfig.map(col => col.name);
     
-    // If sheet doesn't exist, create it and make it a Table
     if (!sheet) {
       console.log(`[Migration] Creating new sheet: '${sheetName}'`);
       sheet = ss.insertSheet(sheetName);
@@ -111,13 +105,12 @@ const MigrationService = {
         };
       });
 
-      // Try to create the table using the exact sheetName
       const resource = {
         requests: [
           {
             addTable: {
               table: {
-                name: sheetName, // Use exact name as requested
+                name: sheetName,
                 range: {
                   sheetId: sheetId,
                   startRowIndex: 0,
@@ -139,17 +132,14 @@ const MigrationService = {
         console.error(`[Migration] Error creating Table for '${sheetName}': ${e.message}`);
       }
 
-      // Post-creation cleanup: Clean up extra rows safely
       try {
-        // 1. Freeze the header row
         sheet.setFrozenRows(1);
         
         const currentMaxRows = sheet.getMaxRows();
         if (currentMaxRows > 1) {
-          // 2. Clear all content and formatting from row 2 onwards
           sheet.getRange(2, 1, currentMaxRows - 1, sheet.getLastColumn()).clear();
           
-          // 3. Delete extra rows to leave only row 1 (header) and row 2 (clean data row)
+          // Keep only the header plus one clean data row
           if (currentMaxRows > 2) {
             sheet.deleteRows(3, currentMaxRows - 2);
           }
@@ -161,7 +151,6 @@ const MigrationService = {
       return;
     }
 
-    // If sheet exists, check headers and append missing columns
     const lastCol = sheet.getLastColumn();
     
     if (lastCol === 0) {

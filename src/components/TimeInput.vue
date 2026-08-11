@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted, watch, useAttrs } from "vue"
-// IMask is now global from CDN
 
 const props = defineProps({
   variant: {
@@ -9,13 +8,13 @@ const props = defineProps({
   }
 })
 
-const model = defineModel() // v-model
+const model = defineModel()
 const attrs = useAttrs()
 const inputRef = ref(null)
 let mask
 
 onMounted(() => {
-  // Use global IMask
+  // IMask is loaded as a CDN global, not bundled
   const IMaskLib = window.IMask;
   
   if (!IMaskLib) {
@@ -44,20 +43,17 @@ onMounted(() => {
     lazy: false // Always show mask
   })
 
-  // Sync mask to model
   mask.on("accept", () => {
     if (model.value !== mask.value) {
       model.value = mask.value
     }
   })
 
-  // Initial sync from model
   if (model.value) {
     mask.value = model.value
   }
 })
 
-// Keep mask in sync if model changes from outside
 watch(() => model.value, (newVal) => {
   if (mask && newVal !== mask.value) {
     mask.value = newVal || ""
@@ -101,8 +97,5 @@ function handleDblClick() {
 </template>
 
 <style scoped>
-/* 
-  IMPORTANT: Styles here are discarded by post-build.js. 
-  All styling MUST be done via Tailwind classes in the template.
-*/
+/* Scoped styles are discarded by post-build.js — style via Tailwind classes in the template only */
 </style>

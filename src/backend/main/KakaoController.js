@@ -8,7 +8,6 @@ const KakaoController = {
    */
   handleRequest(payload) {
     try {
-      // Kakao Payload Structure check
       if (!payload || !payload.userRequest || !payload.userRequest.user) {
         throw new Error("Invalid Kakao payload structure.");
       }
@@ -23,15 +22,14 @@ const KakaoController = {
         case '인증_시작': // User says "인증" or "운동"
           return KakaoService.startManualAuth(userKey);
         
-        case '사용자_등록': // Combined intent: menu click + email mandatory parameter
-          // Kakao Builder must send 'email' as a parameter
+        case '사용자_등록': // Combined intent: menu click + mandatory 'email' param set in Kakao Builder
           const email = params.email; 
           return KakaoService.verifyAndRegister(userKey, email);
 
         case '인증_데이터_전송': // User selected workout type and provided optional data
           return KakaoService.registerManualWorkout(userKey, params);
 
-        case '인증사진_전송': // Existing photo intent (placeholder for now)
+        case '인증사진_전송': // Photo intent (placeholder for now)
           const imageUrl = payload.userRequest.params.media ? payload.userRequest.params.media.url : null;
           if (!imageUrl) return this.sendSimpleText("사진이 감지되지 않았습니다.");
           return KakaoService.processPhoto(userKey, imageUrl);

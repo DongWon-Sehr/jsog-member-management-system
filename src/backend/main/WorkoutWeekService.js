@@ -29,8 +29,7 @@ const WorkoutWeekService = {
   isRestWeek(week) {
     if (!week) return false;
 
-    // Legacy bridge: rows written before the is_rest_week column existed encode a rest week as
-    // week_number 0. Safe to drop once run_migrateWorkoutWeeksRestFlag has run on every sheet.
+    // Legacy rows predate is_rest_week and encode rest as week_number 0; drop once run_migrateWorkoutWeeksRestFlag has run everywhere
     if (week.is_rest_week === '' || week.is_rest_week === null || week.is_rest_week === undefined) {
       return Number(week.week_number) === 0;
     }
@@ -133,8 +132,7 @@ const WorkoutWeekService = {
 
     if (startDateIndex === -1) throw new Error(`'start_date' column not found in ${this.tableName}`);
 
-    // Scope the rewrite by start_date, never by the year/month columns: those hold admin-assigned
-    // labels and a week inside this span may legitimately be labelled with another year or month.
+    // Scope by start_date, never by year/month: those are admin labels and may cross the span
     const sortedStarts = payload.map(week => week.start_date).sort();
     const spanStart = sortedStarts[0];
     const spanEnd = sortedStarts[sortedStarts.length - 1];
@@ -153,15 +151,13 @@ const WorkoutWeekService = {
       const startDate = Util.toDateString(row[startDateIndex]);
 
       if (startDate && startDate >= spanStart && startDate <= spanEnd) {
-        // A row inside the span that the planner did not produce - its start_date is off the
-        // Monday grid. Rebuilding the block would drop it, so refuse rather than lose it.
+        // In-span rows the planner did not produce (off the Monday grid) would be dropped; refuse rather than lose them
         if (!payloadStartDates[startDate]) {
           if (orphanStartDates.indexOf(startDate) === -1) orphanStartDates.push(startDate);
           continue;
         }
 
-        // Inside the span: dropped, then rebuilt from the payload. Rows sharing a start_date
-        // collapse into one here, which repairs duplicates left behind by the old upsert.
+        // Rows sharing a start_date collapse into one, repairing duplicates left by the old upsert
         if (!carriedIdentities[startDate]) {
           carriedIdentities[startDate] = {
             id: idIndex === -1 ? '' : row[idIndex],
@@ -194,8 +190,7 @@ const WorkoutWeekService = {
       return headers.map(header => (record[header] !== undefined ? record[header] : ''));
     });
 
-    // Keep the sheet in chronological order. Without this the rewritten block would sink to the
-    // bottom on every save, and this sheet gets read by hand.
+    // Keep chronological order: the sheet is read by hand and rewritten blocks would sink to the bottom
     const finalRows = preservedRows.concat(rebuiltRows).sort((rowA, rowB) => {
       const dateA = Util.toDateString(rowA[startDateIndex]);
       const dateB = Util.toDateString(rowB[startDateIndex]);
@@ -229,8 +224,7 @@ const WorkoutWeekService = {
     return {
       year: Number(week.year),
       month: Number(week.month),
-      // A rest week keeps whatever number it was last given (0 = never assigned) so the admin's
-      // manual choice survives a rest toggle. It is not part of any join key.
+      // Rest weeks keep their last number (0 = never assigned) so the admin's choice survives a rest toggle
       week_number: Util.hasWeekNumber(week.week_number) ? Number(week.week_number) : 0,
       start_date: startDate,
       end_date: endDate,
@@ -257,7 +251,7 @@ const WorkoutWeekService = {
         throw new Error(`[주차 저장 오류] ${week.start_date} 주는 운동주간인데 주차 번호가 지정되지 않았습니다.`);
       }
 
-      // Unique only among non-rest weeks: this is the join key for workout_records.
+      // Unique only among non-rest weeks: this is the join key for workout_records
       const label = `${week.year}-${week.month}-${week.week_number}`;
       if (seenLabels[label]) {
         throw new Error(`[주차 저장 오류] ${week.year}년 ${week.month}월 ${week.week_number}주차가 중복 지정되었습니다. (${seenLabels[label]}, ${week.start_date})`);

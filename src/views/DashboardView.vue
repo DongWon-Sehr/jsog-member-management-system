@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <!-- Main Content Area (Captured Area) -->
+    <!-- Main Content Area (Captured Area): everything inside #capture-area is included in the screenshot export -->
     <div id="capture-area" class="bg-gray-50/50 border-x border-b border-gray-100 rounded-b-3xl p-6 space-y-6 min-h-[400px]">
       <!-- Summary Stats -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -241,7 +241,6 @@ let perfChartInstance = null;
 let dayChartInstance = null;
 let typeChartInstance = null;
 
-// Period Selection logic
 const validWeeks = computed(() => {
   return [...weeks.value]
     .sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
@@ -287,7 +286,7 @@ const selectedWeekWorkoutCount = computed(() => {
     .reduce((sum, r) => sum + (Number(r.count) || 0), 0);
 });
 
-// Helper: Calculate joint rankings for all slots
+// Tied counts share the same rank (competition ranking)
 const calculateAllRanks = (list) => {
   if (list.length === 0) return [];
   const sorted = [...list].sort((a, b) => b.count - a.count);
@@ -306,7 +305,7 @@ const weeklyRanking = computed(() => {
   const w = currentWeekData.value;
   if (!w) return [];
 
-  // Include active members even with 0 counts (only active members are shown)
+  // Weekly ranking lists every active member, including those with 0 workouts
   const rawCounts = membersOfWeek(w).map(m => {
     const record = workoutRecords.value.find(r =>
       r.member_id === m.id &&
@@ -329,7 +328,6 @@ const visibleWeeklyRanking = computed(() => {
   if (showAllWeeklyRanking.value) {
     return weeklyRanking.value;
   }
-  // Show only top 3 ranks
   return weeklyRanking.value.filter(item => item.rank <= 3);
 });
 
@@ -376,7 +374,6 @@ const visibleQuarterlyRanking = computed(() => {
   if (showAllQuarterlyRanking.value) {
     return quarterlyRanking.value;
   }
-  // Show only top 3 ranks
   return quarterlyRanking.value.filter(item => item.rank <= 3);
 });
 
@@ -399,8 +396,7 @@ const goToWorkoutRecords = () => {
   currentView.value = 'WorkoutRecords';
 };
 
-// snapdom is imported as an ESM module (not a <script> tag): its classic build declares
-// internals as top-level globals, which this app's minified bundle clobbers (e.g. window.gr).
+// ESM import required: snapdom's classic build leaks globals that this bundle's mangler clobbers
 let snapdomPromise = null;
 const loadSnapdom = () => {
   snapdomPromise ||= import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.1/dist/snapdom.mjs').then(m => m.snapdom);
@@ -410,10 +406,7 @@ const loadSnapdom = () => {
 const takeScreenshot = async () => {
   const element = document.getElementById('capture-area');
   if (!element) return;
-  // At fractional browser zoom (e.g. 110% -> devicePixelRatio 1.1) the SVG clone rasterizes
-  // text slightly wider than the live layout, so flex-wrap rows and titles re-wrap in the
-  // capture. Locking wrapping for the duration of the capture keeps every line intact; the
-  // few extra pixels of text width just extend into the row's free space instead.
+  // At fractional browser zoom the SVG clone rasterizes text wider and re-wraps lines
   const noWrapLock = document.createElement('style');
   noWrapLock.textContent = '#capture-area.capturing * { flex-wrap: nowrap !important; white-space: nowrap !important; }';
   document.head.appendChild(noWrapLock);
@@ -525,7 +518,7 @@ const initPerfChart = () => {
               dataset.pointRadius = 4;
             }
             ci.update();
-            // keep the 전체 선택/해제 label in sync with manual legend toggles
+            // Keep the select-all button label in sync with manual legend toggles
             seriesAllVisible.value = ci.data.datasets.every(d => d.borderWidth === 5);
           }
         },
@@ -543,10 +536,9 @@ const initPerfChart = () => {
   });
 };
 
-// Select-all / deselect-all toggle for the cumulative performance chart legend
 const toggleAllSeries = () => {
   if (!perfChartInstance) return;
-  const show = !seriesAllVisible.value; // target state for every series
+  const show = !seriesAllVisible.value;
   perfChartInstance.data.datasets.forEach((dataset, index) => {
     const baseColor = colors[index % colors.length];
     if (show) {
@@ -657,8 +649,7 @@ const initCharts = () => {
 };
 
 onMounted(() => {
-  // The week selection is shared with the workout tab and this view remounts on every tab switch,
-  // so only fall back to today's week when nothing valid is selected yet.
+  // Week selection is shared with the workout tab across remounts — only default to today's week when unset
   const alreadySelected = selectedWeekId.value && weeks.value.some(w => w.id === selectedWeekId.value);
 
   if (!alreadySelected) {
@@ -687,7 +678,7 @@ watch([selectedWeekId, workoutRecords, activeMembers, workoutLogs], () => {
   initCharts();
 }, { deep: true });
 
-// Also watch weeks to ensure selectedWeekId is set once data is loaded
+// Initial data arrives after mount, so default the week once weeks load
 watch(weeks, (newWeeks) => {
   if (newWeeks.length > 0 && !selectedWeekId.value) {
     const now = new Date();
@@ -708,4 +699,3 @@ watch(weeks, (newWeeks) => {
   }
 }, { immediate: true });
 </script>
-pt>

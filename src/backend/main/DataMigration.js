@@ -8,7 +8,7 @@
  * them and keeps its data in a generated file outside src/.
  */
 
-// ===== 데이터베이스 초기화 ==================================================================
+// ===== Database setup =====================================================================
 
 function run_setupDatabase() {
   console.log("=== run_setupDatabase Start ===");
@@ -17,7 +17,7 @@ function run_setupDatabase() {
   console.log("=== run_setupDatabase End ===");
 }
 
-// ===== 대화 이력 복원 (KakaoTalk chat import) ============================================
+// ===== Chat history import (KakaoTalk) ====================================================
 
 function run_importChatHistory() {
   _importChatHistory(false);
@@ -371,7 +371,7 @@ function _sortRows(sheet, headers, columnNames) {
   sheet.getRange(2, 1, lastRow - 1, headers.length).sort(spec);
 }
 
-// ===== 스키마 타입 이관 (rewards_log) =====================================================
+// ===== Schema type migration (rewards_log) ================================================
 
 function run_migrateRewardsLogTypes() {
   _migrateRewardsLogTypes(false);
@@ -524,7 +524,7 @@ function _setTableColumnTypes(sheet, changes) {
   }
 }
 
-// ===== 주차 스키마 이관 (workout_weeks.is_rest_week) ======================================
+// ===== Week schema migration (workout_weeks.is_rest_week) =================================
 
 /**
  * Migrates workout_weeks onto the is_rest_week schema. Dry run - reports only.
@@ -653,8 +653,7 @@ function _migrateWorkoutWeeksRestFlag(apply) {
 
       const current = row[restIdx];
       if (current !== '' && current !== null && current !== undefined) {
-        // Already migrated. Never recompute from week_number: a migrated rest week keeps the
-        // number the admin assigned, so week_number no longer encodes rest status.
+        // Already migrated; never recompute from week_number - migrated rest weeks keep their admin-assigned number
         column.push([Util.toBoolean(current)]);
         alreadySet++;
         continue;
@@ -709,7 +708,7 @@ function _weekCreatedAtValue(value) {
   return isNaN(parsed) ? 0 : parsed;
 }
 
-// ===== 데이터 정합성 복구 (workout_records.count) ==========================================
+// ===== Data consistency repair (workout_records.count) ====================================
 
 /**
  * Repairs workout_records.count values that drifted away from the actual workout_logs rows.
@@ -753,7 +752,7 @@ function _recalculateWorkoutCounts(apply, fromDate) {
   const logs = WorkoutLogService.getAllLogs();
   const toDateString = value => WorkoutLogService.toDateString(value);
 
-  // Tally logs into the week that actually contains their date.
+  // Tally logs into the week that actually contains their date
   const tally = {};        // composite key -> { memberId, year, month, weekNumber, count }
   const weeksWithLogs = {}; // 'year_month_week' -> true
   let orphanLogs = 0;
@@ -778,8 +777,7 @@ function _recalculateWorkoutCounts(apply, fromDate) {
     tally[key].count++;
   });
 
-  // Determine which weeks are log-managed (and therefore safe to recompute to their true count,
-  // including down to 0). Everything before the boundary is treated as imported history.
+  // Weeks before the boundary are imported history; log-managed weeks are safe to recompute, down to 0
   let boundary = fromDate ? toDateString(fromDate) : null;
   if (!boundary) {
     weeks.forEach(week => {
@@ -824,7 +822,7 @@ function _recalculateWorkoutCounts(apply, fromDate) {
     const key = `${weekKey}|${data[i][idx.member_id]}`;
     seen[key] = true;
 
-    // Out-of-scope weeks hold imported history; recomputing them would wipe the counts.
+    // Out-of-scope weeks hold imported history; recomputing them would wipe the counts
     if (!inScope[weekKey]) continue;
 
     const expected = tally[key] ? tally[key].count : 0;
@@ -839,7 +837,7 @@ function _recalculateWorkoutCounts(apply, fromDate) {
     fixed++;
   }
 
-  // Members with logs in a week but no record row yet.
+  // Members with logs in a week but no record row yet
   let created = 0;
   Object.keys(tally).forEach(key => {
     if (seen[key]) return;
@@ -857,7 +855,7 @@ function _recalculateWorkoutCounts(apply, fromDate) {
   console.log(`=== _recalculateWorkoutCounts End (${mode}) ===`);
 }
 
-// ===== 폐기 (deprecated) =============================================================
+// ===== Deprecated ==========================================================================
 
 /**
  * @deprecated Dedupes on (year, month, week_number), which is no longer the identity of a week -
@@ -894,13 +892,11 @@ function run_removeDuplicateWorkoutWeeks() {
   const seenKeys = new Set();
   const rowsToDelete = [];
 
-  // Iterate from the second row (index 1) to the end
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const key = `${row[yearIdx]}-${row[monthIdx]}-${row[weekNumIdx]}`;
     
     if (seenKeys.has(key)) {
-      // It's a duplicate. Mark the row number (1-based) for deletion.
       rowsToDelete.push(i + 1);
     } else {
       seenKeys.add(key);

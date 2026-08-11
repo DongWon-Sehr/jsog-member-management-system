@@ -259,7 +259,6 @@ const localSuperPass = ref(false);
 const initialSuperPass = ref(false);
 const recentlyAddedIds = ref([]);
 
-// Form states
 const newDate = ref('');
 const newTime = ref('00:00');
 const newType = ref('');
@@ -300,7 +299,6 @@ const hasChanges = computed(() => {
          localSuperPass.value !== initialSuperPass.value;
 });
 
-// Duplicate Detection
 const duplicateIds = computed(() => {
   const dateMap = {};
   const conflictIds = new Set();
@@ -331,7 +329,7 @@ const handleEsc = (e) => {
 onMounted(() => window.addEventListener('keydown', handleEsc));
 onUnmounted(() => window.removeEventListener('keydown', handleEsc));
 
-// Helper to parse "YYYY-MM-DD HH:mm:ss" or Date objects into UI-ready strings
+// Accepts 'YYYY-MM-DD HH:mm:ss' strings or Date objects
 const parseToLocalParts = (input) => {
   if (!input) return { date: '', time: '00:00' };
   
@@ -365,9 +363,7 @@ const weekRange = computed(() => {
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
-// The modal edits one week at a time while the weekly count is stored per (year, month, week).
-// A log dated outside this week would be saved under a different week while inflating this
-// week's count, so the date field offers only this week's days - a wrong date is not selectable.
+// Counts are stored per (year, month, week); limiting selectable dates to this week keeps a log from corrupting another week's count
 const weekDates = computed(() => {
   const { start, end } = weekRange.value;
   if (!start || !end) return [];
@@ -545,8 +541,6 @@ const saveBatch = () => {
   const idsToDelete = deletedIds.value;
   const weeklyNote = localWeeklyNote.value;
 
-  // Optimistic UI updates
-  // 1. Update global logs list
   let updatedLogs = workoutLogs.value.filter(l => !idsToDelete.includes(l.id));
   logsToUpdate.forEach(u => {
     const idx = updatedLogs.findIndex(l => l.id === u.id);
@@ -565,7 +559,6 @@ const saveBatch = () => {
   });
   workoutLogs.value = updatedLogs;
 
-  // 2. Update global records summary
   const recordIndex = workoutRecords.value.findIndex(r => 
     String(r.member_id) === String(props.memberId) &&
     String(r.year) === String(props.weekData.year) &&
@@ -573,8 +566,7 @@ const saveBatch = () => {
     String(r.week_number) === String(props.weekData.week_number)
   );
 
-  // localLogs holds exactly this member's logs for this week (all validated in-range), so its
-  // length is the authoritative count. Mirrors how the server recomputes it.
+  // localLogs holds exactly this member's in-week logs, so its length is the count — mirrors the server's recompute
   const weekLogCount = localLogs.value.length;
   const superPass = localSuperPass.value;
   if (recordIndex > -1) {
@@ -614,7 +606,6 @@ const saveBatch = () => {
         }
         syncLocalState();
       } else {
-        // Rollback
         workoutLogs.value = prevLogs;
         workoutRecords.value = prevRecords;
         syncLocalState();
@@ -623,7 +614,6 @@ const saveBatch = () => {
     })
     .withFailureHandler((err) => {
       isProcessing.value = false;
-      // Rollback
       workoutLogs.value = prevLogs;
       workoutRecords.value = prevRecords;
       syncLocalState();
