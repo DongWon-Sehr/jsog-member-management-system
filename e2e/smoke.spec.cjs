@@ -1,7 +1,11 @@
 const { test, expect } = require('@playwright/test');
 
 // Keep auth state across tests
-test.use({ storageState: 'e2e/.auth.json' });
+// Keep auth state across tests
+const fs = require('fs');
+if (fs.existsSync('e2e/.auth.json')) {
+  test.use({ storageState: 'e2e/.auth.json' });
+}
 
 test.describe('UI Sweep E2E tests', () => {
   const BASE_URL = process.env.BASE_URL;
@@ -33,6 +37,7 @@ test.describe('UI Sweep E2E tests', () => {
         // Wait for user to login manually if they pass PWDEBUG=1 or --debug.
         if (process.env.PWDEBUG || process.env.PLAYWRIGHT_DEBUG) {
           await page.pause();
+          await page.context().storageState({ path: 'e2e/.auth.json' });
         }
 
         // Try waiting for the app to be mounted
