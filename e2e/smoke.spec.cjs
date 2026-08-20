@@ -39,13 +39,47 @@ test.describe('UI Sweep E2E tests', () => {
           await page.context().storageState({ path: 'e2e/.auth.json' });
         }
 
-        // GAS wraps everything in an iframe named "sandboxFrame" or dynamically generated iframe.
-        // The safest way is to target the first iframe that is added to the page, or just use frameLocator('*')
-        // In most GAS webapps, the user app runs in an iframe whose id is sandboxFrame
-        const appFrame = page.frameLocator('iframe');
+        // Google Apps Script usually wraps Web Apps in two layers of iframes:
+        // 1. The outer iframe (has the Apps Script banner)
+        // 2. The inner iframe (id="userHtmlFrame" or sandboxFrame)
+        // Playwright needs to drill down through them, or we can just grab the actual app iframe if it's deeply nested.
 
-        // Try waiting for the app to be mounted inside the iframe
-        await expect(appFrame.locator('#app')).toBeVisible({ timeout: 60000 });
+        // Wait for the main iframe to be attached
+        await page.waitForSelector('iframe', { timeout: 30000 });
+
+        // We can access the deepest iframe by filtering for the one that actually contains our app
+        // However, standard GAS apps typically have: body > iframe > #userHtmlFrame (another iframe)
+        // Let's try locating the iframe that has our #app element inside it.
+        const getAppFrame = async () => {
+           const allFrames = page.frames();
+           // Find the frame that has #app
+           for (const frame of allFrames) {
+              const appElement = await frame.$('#app').catch(() => null);
+              if (appElement) return frame;
+           }
+           return null;
+        };
+
+        // Wait until we find the frame with #app
+        let appFrame = null;
+        const maxWait = 60000;
+        const interval = 1000;
+        let elapsed = 0;
+
+        while (!appFrame && elapsed < maxWait) {
+          appFrame = await getAppFrame();
+          if (!appFrame) {
+             await page.waitForTimeout(interval);
+             elapsed += interval;
+          }
+        }
+
+        if (!appFrame) {
+          throw new Error('Could not find iframe containing #app within timeout.');
+        }
+
+        // Try waiting for the app to be mounted inside the found frame
+        await expect(appFrame.locator('#app')).toBeVisible({ timeout: 15000 });
         await expect(appFrame.locator('.loading-card')).toHaveCount(0, { timeout: 30000 });
 
         for (const view of VIEWS) {
