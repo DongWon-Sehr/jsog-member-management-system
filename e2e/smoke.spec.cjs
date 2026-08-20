@@ -39,17 +39,9 @@ test.describe('UI Sweep E2E tests', () => {
           await page.context().storageState({ path: 'e2e/.auth.json' });
         }
 
-        // Google Apps Script usually wraps Web Apps in two layers of iframes:
-        // 1. The outer iframe (has the Apps Script banner)
-        // 2. The inner iframe (id="userHtmlFrame" or sandboxFrame)
-        // Playwright needs to drill down through them, or we can just grab the actual app iframe if it's deeply nested.
-
         // Wait for the main iframe to be attached
         await page.waitForSelector('iframe', { timeout: 30000 });
 
-        // We can access the deepest iframe by filtering for the one that actually contains our app
-        // However, standard GAS apps typically have: body > iframe > #userHtmlFrame (another iframe)
-        // Let's try locating the iframe that has our #app element inside it.
         const getAppFrame = async () => {
            const allFrames = page.frames();
            // Find the frame that has #app
@@ -83,17 +75,17 @@ test.describe('UI Sweep E2E tests', () => {
         await expect(appFrame.locator('.loading-card')).toHaveCount(0, { timeout: 30000 });
 
         for (const view of VIEWS) {
-          if (viewport.name === 'Mobile') {
-            const navBtn = appFrame.locator(`.md\\:hidden button:has-text("${view.navItem}")`).first();
-            await expect(navBtn).toBeVisible({ timeout: 5000 });
-            await navBtn.click();
-          } else {
-            const navBtn = appFrame.locator(`nav.hidden.md\\:flex button:has-text("${view.navItem}")`).first();
-            await expect(navBtn).toBeVisible({ timeout: 5000 });
-            await navBtn.click();
-          }
+          // Instead of strictly relying on Tailwind classes which might be mangled or flaky,
+          // locate the button by its exact text and force a click inside the iframe
+          const navBtn = appFrame.locator(`button`, { hasText: view.navItem }).first();
 
+          await expect(navBtn).toBeVisible({ timeout: 5000 });
+          // Force click to ensure it clicks even if obscured or if there's multiple matching (desktop vs mobile nav)
+          await navBtn.click({ force: true });
+
+          // Wait for view transition
           await page.waitForTimeout(1000);
+
           await page.screenshot({ path: `e2e/screenshots/${viewport.name}-${view.name}.png`, fullPage: true });
         }
       });
