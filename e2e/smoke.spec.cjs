@@ -1,7 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
 // Keep auth state across tests
-// Keep auth state across tests
 const fs = require('fs');
 if (fs.existsSync('e2e/.auth.json')) {
   test.use({ storageState: 'e2e/.auth.json' });
@@ -40,17 +39,22 @@ test.describe('UI Sweep E2E tests', () => {
           await page.context().storageState({ path: 'e2e/.auth.json' });
         }
 
-        // Try waiting for the app to be mounted
-        await expect(page.locator('#app')).toBeVisible({ timeout: 60000 });
-        await expect(page.locator('.loading-card')).toHaveCount(0, { timeout: 30000 });
+        // GAS wraps everything in an iframe named "sandboxFrame" or dynamically generated iframe.
+        // The safest way is to target the first iframe that is added to the page, or just use frameLocator('*')
+        // In most GAS webapps, the user app runs in an iframe whose id is sandboxFrame
+        const appFrame = page.frameLocator('iframe');
+
+        // Try waiting for the app to be mounted inside the iframe
+        await expect(appFrame.locator('#app')).toBeVisible({ timeout: 60000 });
+        await expect(appFrame.locator('.loading-card')).toHaveCount(0, { timeout: 30000 });
 
         for (const view of VIEWS) {
           if (viewport.name === 'Mobile') {
-            const navBtn = page.locator(`.md\\:hidden button:has-text("${view.navItem}")`).first();
+            const navBtn = appFrame.locator(`.md\\:hidden button:has-text("${view.navItem}")`).first();
             await expect(navBtn).toBeVisible({ timeout: 5000 });
             await navBtn.click();
           } else {
-            const navBtn = page.locator(`nav.hidden.md\\:flex button:has-text("${view.navItem}")`).first();
+            const navBtn = appFrame.locator(`nav.hidden.md\\:flex button:has-text("${view.navItem}")`).first();
             await expect(navBtn).toBeVisible({ timeout: 5000 });
             await navBtn.click();
           }
