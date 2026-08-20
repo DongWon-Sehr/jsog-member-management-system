@@ -1,9 +1,11 @@
 import { ref } from 'vue';
 
-// ESM import required: snapdom's classic build leaks globals that this bundle's mangler clobbers
+// ESM import required: snapdom's classic build leaks globals that this bundle's mangler clobbers.
+// new Function hides import() from Vite, whose preload wrapper's import.meta breaks under GAS
+const dynamicImport = new Function('url', 'return import(url)');
 let snapdomPromise = null;
 const loadSnapdom = () => {
-  snapdomPromise ||= import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.1/dist/snapdom.mjs').then(m => m.snapdom);
+  snapdomPromise ||= dynamicImport('https://cdn.jsdelivr.net/npm/@zumer/snapdom@2.24.1/dist/snapdom.mjs').then(m => m.snapdom);
   return snapdomPromise;
 };
 

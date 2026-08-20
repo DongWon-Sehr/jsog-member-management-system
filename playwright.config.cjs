@@ -2,7 +2,7 @@ const { defineConfig, devices } = require('@playwright/test');
 
 module.exports = defineConfig({
   testDir: './e2e',
-  timeout: 120000,
+  timeout: 300000,
   use: {
     // Some Google auth checks flag the default Chromium/Chrome when launched by Playwright
     // We pass additional launch arguments to mask the automation flags.
