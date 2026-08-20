@@ -4,15 +4,24 @@ module.exports = defineConfig({
   testDir: './e2e',
   timeout: 120000,
   use: {
-    // Avoid automated browser signatures so Google doesn't block the login
-    channel: 'chrome', // Use actual Chrome installed on the OS
-    headless: false,   // Must run headed to pass Google's security checks and allow manual login
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    // Some Google auth checks flag the default Chromium/Chrome when launched by Playwright
+    // We pass additional launch arguments to mask the automation flags.
+    channel: 'chrome',
+    headless: false,
+    launchOptions: {
+      args: [
+        '--disable-blink-features=AutomationControlled', // This is the crucial flag to bypass Google's automation detection
+        '--start-maximized'
+      ],
+      ignoreDefaultArgs: ['--enable-automation']
+    },
+    // Don't set a hardcoded userAgent as it can cause mismatch fingerprinting.
+    // Just let Chrome use its default.
   },
   projects: [
     {
       name: 'GoogleLoginAllowed',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 });
