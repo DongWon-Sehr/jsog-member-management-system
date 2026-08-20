@@ -84,7 +84,7 @@
           <!-- Details Preview -->
           <div class="md:col-span-5 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">내용</span>
-            <span class="text-sm font-medium text-gray-500 truncate max-w-xs md:max-w-md">{{ log.details || '-' }}</span>
+            <span class="text-sm font-medium text-gray-500 truncate  max-w-xs md:max-w-md">{{ log.details || '-' }}</span>
           </div>
 
           <!-- Arrow -->

@@ -189,7 +189,7 @@
           <!-- Note -->
           <div class="lg:col-span-3 flex items-center gap-2">
             <span class="lg:hidden text-[10px] font-black text-gray-400 uppercase w-20 shrink-0">메모</span>
-            <span class="text-sm font-medium text-gray-600 truncate">{{ record.note || '-' }}</span>
+            <span class="text-sm font-medium text-gray-600 truncate ">{{ record.note || '-' }}</span>
             <i class="ph-bold ph-caret-right text-gray-300 lg:hidden ml-auto"></i>
           </div>
 

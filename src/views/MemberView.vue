@@ -77,7 +77,7 @@
           <!-- Email -->
           <div class="md:col-span-3 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">이메일</span>
-            <span v-if="member.email" class="text-sm font-medium text-gray-500 truncate">{{ member.email }}</span>
+            <span v-if="member.email" class="text-sm font-medium text-gray-500 truncate ">{{ member.email }}</span>
             <span v-else class="text-sm font-medium text-gray-300">미등록</span>
           </div>
 
@@ -85,8 +85,8 @@
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">환급 계좌</span>
             <span v-if="member.bank_type || member.bank_account" class="flex items-center gap-2 min-w-0">
               <!-- Fixed width fits the longest bank name so account numbers align across rows -->
-              <span class="w-[68px] shrink-0 px-1.5 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 text-center truncate">{{ member.bank_type || '-' }}</span>
-              <span class="text-sm font-bold text-gray-600 font-mono truncate">{{ member.bank_account || '-' }}</span>
+              <span class="w-[68px] shrink-0 px-1.5 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 text-center truncate ">{{ member.bank_type || '-' }}</span>
+              <span class="text-sm font-bold text-gray-600 font-mono truncate ">{{ member.bank_account || '-' }}</span>
             </span>
             <span v-else class="text-sm font-medium text-gray-300">미등록</span>
           </div>

@@ -53,20 +53,34 @@
                 
                 <div class="flex flex-col sm:grid sm:grid-cols-12 sm:items-center gap-4 sm:gap-4">
                   <!-- Date Range -->
-                  <div class="col-span-4 flex items-center">
+                  <div class="col-span-4 flex items-center justify-between sm:justify-start">
                     <span class="font-mono text-sm font-bold text-gray-700 tracking-tight">
                       {{ formatDateShort(row.start_date) }} ~ {{ formatDateShort(row.end_date) }}
                     </span>
+
+                    <!-- Rest Week Checkbox (Mobile inline) -->
+                    <label class="flex sm:hidden items-center gap-2 cursor-pointer group">
+                      <div class="relative flex items-center justify-center w-5 h-5">
+                        <input
+                          v-model="row.is_rest_week"
+                          @change="handleRestWeekChange(row)"
+                          type="checkbox"
+                          class="peer w-full h-full m-0 cursor-pointer appearance-none rounded border-2 border-gray-300 checked:bg-indigo-600 checked:border-indigo-600 transition-all"
+                        />
+                        <i class="ph-bold ph-check absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-[10px]"></i>
+                      </div>
+                      <span class="text-sm font-bold text-gray-500">휴식</span>
+                    </label>
                   </div>
 
                   <!-- Duplicate label warning -->
-                  <div v-if="!row.is_rest_week && duplicateLabels.has(labelKey(row))" class="col-span-12 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl order-last">
-                    <i class="ph-fill ph-warning-circle text-red-500"></i>
-                    <span class="text-xs font-bold text-red-600">{{ row.year }}년 {{ row.month }}월 {{ row.week_number }}주차가 다른 주와 중복됩니다.</span>
+                  <div v-if="!row.is_rest_week && duplicateLabels.has(labelKey(row))" class="col-span-12 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-100 rounded-xl order-last mt-2 sm:mt-0">
+                    <i class="ph-fill ph-warning-circle text-red-500 shrink-0"></i>
+                    <span class="text-xs font-bold text-red-600 ">{{ row.year }}년 {{ row.month }}월 {{ row.week_number }}주차가 다른 주와 중복됩니다.</span>
                   </div>
 
-                  <!-- Rest Week Checkbox -->
-                  <div class="col-span-2 flex items-center sm:justify-center">
+                  <!-- Rest Week Checkbox (Desktop) -->
+                  <div class="hidden sm:flex col-span-2 items-center justify-center">
                     <label class="flex items-center gap-2 cursor-pointer group">
                       <div class="relative flex items-center justify-center w-5 h-5">
                         <input
@@ -77,39 +91,46 @@
                         />
                         <i class="ph-bold ph-check absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none text-[10px]"></i>
                       </div>
-                      <span class="text-sm font-bold text-gray-500 sm:hidden">휴식 주간</span>
                     </label>
                   </div>
 
-                  <!-- Year/month stay editable on rest weeks: the dashboard still labels them by month, and straddling weeks need a manual call -->
-                  <div class="col-span-2">
-                    <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">기준 연도</div>
-                    <input v-model.number="row.year" type="number" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all" />
-                  </div>
-                  <div class="col-span-2">
-                    <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 월</div>
-                    <div class="relative">
-                      <input v-model.number="row.month" type="number" min="1" max="12" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all pr-4" />
-                      <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                        <span class="text-xs text-gray-400 font-bold">월</span>
+                  <!-- Inputs grid for mobile -->
+                  <div class="col-span-12 sm:col-span-6 grid grid-cols-3 gap-2 sm:contents">
+                    <!-- Year/month stay editable on rest weeks: the dashboard still labels them by month, and straddling weeks need a manual call -->
+                    <div class="col-span-1 sm:col-span-2 flex flex-col sm:block justify-center">
+                      <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">연도</div>
+                      <input v-model.number="row.year" type="number" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all min-h-[44px]" />
+                    </div>
+
+                    <div class="col-span-1 sm:col-span-2 flex flex-col sm:block justify-center">
+                      <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 월</div>
+                      <div class="relative">
+                        <input v-model.number="row.month" type="number" min="1" max="12" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all pr-4 min-h-[44px]" />
+                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none mt-4 sm:mt-0">
+                          <span class="text-xs text-gray-400 font-bold">월</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <!-- Only the workout week number is withheld on a rest week -->
-                  <div v-if="row.is_rest_week" class="col-span-2 flex items-center justify-center py-2 bg-gray-100 rounded-xl shadow-inner">
-                    <span class="text-xs font-bold text-gray-400 flex items-center gap-1.5">
-                      <i class="ph-fill ph-coffee"></i> 휴식
-                    </span>
-                  </div>
-                  <div v-else class="col-span-2">
-                    <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 주차</div>
-                    <div class="relative">
-                      <input v-model.number="row.week_number" type="number" min="1" max="6"
-                             class="w-full text-center py-2 border rounded-xl outline-none font-black transition-all pr-6 shadow-inner"
-                             :class="duplicateLabels.has(labelKey(row)) ? 'bg-red-50 border-red-300 text-red-600 focus:border-red-500' : 'bg-indigo-50 border-transparent text-indigo-700 focus:border-indigo-500'" />
-                      <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                        <span class="text-[10px] font-black" :class="duplicateLabels.has(labelKey(row)) ? 'text-red-400' : 'text-indigo-400'">주차</span>
+                    <!-- Only the workout week number is withheld on a rest week -->
+                    <div v-if="row.is_rest_week" class="col-span-1 sm:col-span-2 flex flex-col sm:block justify-center">
+                      <div class="sm:hidden text-[10px] font-black text-transparent uppercase mb-1 select-none">&nbsp;</div>
+                      <div class="w-full flex items-center justify-center py-2 bg-gray-100 rounded-xl shadow-inner min-h-[44px]">
+                        <span class="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+                          <i class="ph-fill ph-coffee"></i> 휴식
+                        </span>
+                      </div>
+                    </div>
+
+                    <div v-else class="col-span-1 sm:col-span-2 flex flex-col sm:block justify-center">
+                      <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 주차</div>
+                      <div class="relative">
+                        <input v-model.number="row.week_number" type="number" min="1" max="6"
+                              class="w-full text-center py-2 border rounded-xl outline-none font-black transition-all pr-6 shadow-inner min-h-[44px]"
+                              :class="duplicateLabels.has(labelKey(row)) ? 'bg-red-50 border-red-300 text-red-600 focus:border-red-500' : 'bg-indigo-50 border-transparent text-indigo-700 focus:border-indigo-500'" />
+                        <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none mt-4 sm:mt-0">
+                          <span class="text-[10px] font-black" :class="duplicateLabels.has(labelKey(row)) ? 'text-red-400' : 'text-indigo-400'">주차</span>
+                        </div>
                       </div>
                     </div>
                   </div>
