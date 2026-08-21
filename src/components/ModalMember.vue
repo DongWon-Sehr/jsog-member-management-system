@@ -198,7 +198,7 @@ import { useScrollLock } from '../composables/useScrollLock';
 import { ref, reactive, watch, onMounted, onUnmounted, computed } from 'vue';
 import { useDialog } from '../composables/useDialog';
 import { useStore } from '../composables/useStore';
-import { isRestWeek } from '../composables/weekUtils';
+import { isRestWeek, hasWeekStarted } from '../composables/weekUtils';
 
 const props = defineProps({
   isOpen: Boolean,
@@ -325,8 +325,8 @@ const stats = computed(() => {
     if (!qMap[label]) qMap[label] = { count: 0, successWeeks: 0, totalWeeks: 0 };
     
     qMap[label].count += (Number(r.count) || 0);
-    const isSuccess = Number(r.count) >= 3 || (Number(r.count) >= 1 && (r.super_pass === true || String(r.super_pass).toUpperCase() === 'TRUE'));
-    if (isSuccess) qMap[label].successWeeks++;
+    // Success rate counts real workouts only — a super-pass week is not a success
+    if (Number(r.count) >= 3) qMap[label].successWeeks++;
   });
 
   Object.keys(qMap).forEach(label => {
@@ -334,7 +334,7 @@ const stats = computed(() => {
     const quarter = parseInt(qPart);
     const targetYear = parseInt(year);
     qMap[label].totalWeeks = weeks.value.filter(w =>
-      Number(w.year) === targetYear && Math.ceil(Number(w.month) / 3) === quarter && !isRestWeek(w)
+      Number(w.year) === targetYear && Math.ceil(Number(w.month) / 3) === quarter && !isRestWeek(w) && hasWeekStarted(w)
     ).length;
   });
 

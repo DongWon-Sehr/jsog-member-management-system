@@ -22,6 +22,20 @@ export const isRestWeek = (week) => {
 export const isWorkoutWeek = (week) => !!week && !isRestWeek(week);
 
 /**
+ * True when the week's Monday has arrived — success-rate denominators only count
+ * started weeks so an in-progress quarter isn't diluted by its future weeks
+ * @param {Object} week - A workout_weeks row
+ * @returns {boolean}
+ */
+export const hasWeekStarted = (week) => {
+  if (!week || !week.start_date) return false;
+  const startIso = String(week.start_date).split(' ')[0].split('T')[0];
+  const now = new Date();
+  const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  return startIso <= todayIso;
+};
+
+/**
  * '8월 1주차' (August week 1) / '8월 휴식주간' (August rest week)
  */
 export const formatWeekLabel = (week) => {
