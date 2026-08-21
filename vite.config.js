@@ -24,6 +24,8 @@ export default defineConfig({
   ],
   build: {
     outDir: 'dist',
+    // Bundle runs as a classic <script> under GAS, where the polyfill's import.meta is a SyntaxError
+    modulePreload: false,
     emptyOutDir: true,
     cssCodeSplit: false,
     // terser keeps quoted strings; the default minifier's backtick strings break under GAS's

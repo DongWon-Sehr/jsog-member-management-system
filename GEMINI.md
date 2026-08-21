@@ -2,13 +2,14 @@
 
 ## Core Technical Standards
 - **Build Requirement**: ALWAYS run `npm run build` after any code change. This triggers the `post-build.js` script which extracts Vue templates for GAS compatibility. **NEVER run `clasp push` or deploy the application.** The user will manually review the code and deploy it themselves.
-- **Frontend Architecture**: Vue 3 (Composition API) with Tailwind CSS. Specialized components use **Chart.js** (Analytics) and **html2canvas** (Screenshots). Form inputs are built with native primitives and IMask for specialized validation.
+- **Frontend Architecture**: Vue 3 (Composition API) with Tailwind CSS. Specialized components use **Chart.js** (Analytics) and **snapdom** (Screenshots, loaded via dynamic import). Form inputs are built with native primitives and IMask for specialized validation.
 - **Backend Architecture**: Modular GAS services (Member, Workout, Reward, Log) linked via `Api.js`.
 - **Date Handling**: Use `YYYY-MM-DD` string format for all GAS/Frontend transfers. Use `parseToLocalParts` helper for safe local date manipulation.
 
 ## Specific Business Rules
 - **Ranking (Top 3)**: Use joint-tie logic. If three members are tied for 1st, they fill all top 3 slots. Sort rankings and charts by cumulative count descending.
-- **Workout Success**: Target is ≥3 certifications/week OR ≥1 certification with a Superpass.
+- **Refund Eligibility**: ≥3 certifications/week OR ≥1 certification with a Superpass.
+- **Success Rate** (member modal, reward recommendation): counts only weeks with ≥3 real certifications — Superpass weeks are excluded. Denominator is the quarter's non-rest weeks that have already started.
 - **Security**: Admin access is protected by a 4-digit PIN stored in GAS `PropertiesService`. Validation is server-side.
 
 ## UI/UX Standards

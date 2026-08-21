@@ -1,4 +1,4 @@
-# JSOG Member Management System (v1.1.1)
+# JSOG Member Management System (v1.2.0)
 
 Admin web app and KakaoTalk chatbot backend for **주삼오공**, an online workout-accountability group. Members log workouts through a Kakao chatbot; admins review weekly results, run quarterly rankings and manage reward payouts from a single-page admin console.
 
@@ -27,6 +27,8 @@ src/
 scripts/
   post-build.js        Extracts Vue templates into per-component HTML for GAS
   parse-kakao-chat.js  Turns a KakaoTalk chat export into ChatImportData.js
+  run-e2e.js           Resolves the deployment URL and runs the Playwright smoke suite
+e2e/               Playwright smoke spec, auth state and screenshot output
 docs/              Functional specification and user guide (Korean)
 dist/              Build output — this is what clasp pushes
 ```
@@ -44,7 +46,10 @@ dist/              Build output — this is what clasp pushes
 npm install
 npm run dev     # Vite dev server (frontend only; GAS APIs are unavailable)
 npm run build   # Required before every deploy — see below
+npm run e2e     # Playwright smoke: screenshots every view/modal on the DEPLOYED web app
 ```
+
+`npm run e2e` tests the deployed app, not local source — run `npm run build && npx clasp push` first to see your changes. The deployment URL is resolved automatically via `clasp deployments` (override with `BASE_URL=...`); Google login reuses the session saved in `e2e/.auth.json` (refresh it with `PWDEBUG=1 npm run e2e`). Screenshots land in `e2e/screenshots/`.
 
 `npm run build` must be run after **any** change. Vite bundles the frontend, then `scripts/post-build.js` extracts each Vue component's `<template>` into a standalone HTML file and rewrites `index.html` into a GAS template. Backend `.js` files are copied into `dist/` untouched by `vite-plugin-static-copy`.
 
@@ -199,7 +204,8 @@ rewrite that count later.
 
 ## Business rules
 
-- **Workout success**: 3 or more certifications in a week, or 1 or more combined with a Superpass.
+- **Refund eligibility**: 3 or more certifications in a week, or 1 or more combined with a Superpass.
+- **Success rate** (member modal, reward recommendation): only weeks with 3+ real certifications count — Superpass weeks are excluded. The denominator is the quarter's non-rest weeks that have already started, so an in-progress quarter shows the actual completion rate.
 - **Superpass**: usable once per calendar month (by the week's assigned month), and never with zero certifications. Enforced on both the client and the server.
 - **Rewards**: quarterly, based on cumulative successful weeks and total certifications. Rest weeks are excluded from every denominator.
 - **Rest weeks**: hold no records. Admin entry is blocked, chatbot certification is rejected with an explanation, and they are excluded from rankings, success rates and reward recommendations.

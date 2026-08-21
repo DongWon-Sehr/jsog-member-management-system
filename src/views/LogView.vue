@@ -8,40 +8,43 @@
             <i class="ph-bold ph-terminal-window text-xl"></i>
           </div>
           <h2 class="text-xl font-black text-gray-900 tracking-tight">시스템 로그</h2>
+          <button @click="isHeaderExpanded = !isHeaderExpanded" class="md:hidden p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" :title="isHeaderExpanded ? '메뉴 접기' : '메뉴 펼치기'">
+            <i class="ph-bold" :class="isHeaderExpanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
-        
-        <div class="flex items-center gap-3">
+
+        <div class="flex-wrap items-center gap-2 sm:gap-3" :class="isHeaderExpanded ? 'flex' : 'hidden md:flex'">
           <!-- Search Action -->
-          <div class="relative group">
+          <div class="relative group flex-1 min-w-[140px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
             </div>
-            <input 
+            <input
               v-model="searchQuery"
-              type="text" 
+              type="text"
               placeholder="액션 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-full sm:w-48"
             />
           </div>
 
           <!-- Status Filter -->
-          <select 
+          <select
             v-model="statusFilter"
-            class="px-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-700 shadow-sm transition-all cursor-pointer"
+            class="px-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-700 shadow-sm transition-all cursor-pointer shrink-0"
           >
             <option value="all">전체 상태</option>
             <option value="success">성공 (Success)</option>
             <option value="error">오류 (Error)</option>
           </select>
 
-          <button @click="fetchLogs" :disabled="isLoading" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="로그 새로고침">
+          <button @click="fetchLogs" :disabled="isLoading" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50 shrink-0" title="로그 새로고침">
             <i class="ph-bold ph-arrows-clockwise text-gray-500 text-xl" :class="{ 'animate-spin': isLoading }"></i>
           </button>
         </div>
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100" :class="isHeaderExpanded ? '' : 'hidden md:block'">
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
           <div class="col-span-3 text-center">발생 일시</div>
           <div class="col-span-3 text-center">액션 유형</div>
@@ -84,7 +87,7 @@
           <!-- Details Preview -->
           <div class="md:col-span-5 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">내용</span>
-            <span class="text-sm font-medium text-gray-500 truncate max-w-xs md:max-w-md">{{ log.details || '-' }}</span>
+            <span class="text-sm font-medium text-gray-500 truncate  max-w-xs md:max-w-md">{{ log.details || '-' }}</span>
           </div>
 
           <!-- Arrow -->
@@ -126,7 +129,7 @@
                 </div>
                 <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-inner">
                   <p class="text-[10px] font-black text-gray-400 uppercase mb-1">액션 유형</p>
-                  <p class="text-sm font-black text-indigo-600">{{ detailLog.action }}</p>
+                  <p class="text-sm font-black text-indigo-600 break-all">{{ detailLog.action }}</p>
                 </div>
               </div>
               
@@ -152,6 +155,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { useHeaderCollapse } from '../composables/useHeaderCollapse';
 import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
 const { systemLogs: logs } = useStore();
@@ -159,6 +163,7 @@ const { alert } = useDialog();
 
 const isLoading = ref(false);
 const detailLog = ref(null);
+const { isHeaderExpanded } = useHeaderCollapse('logs');
 const searchQuery = ref('');
 const statusFilter = ref('all');
 

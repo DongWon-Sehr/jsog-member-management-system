@@ -14,11 +14,14 @@
               {{ currentWeekData.year }} · {{ formatMdDate(currentWeekData.start_date) }} ~ {{ formatMdDate(currentWeekData.end_date) }}
             </p>
           </div>
+          <button @click="isHeaderExpanded = !isHeaderExpanded" class="md:hidden p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" :title="isHeaderExpanded ? '메뉴 접기' : '메뉴 펼치기'">
+            <i class="ph-bold" :class="isHeaderExpanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
-        
-        <div class="flex flex-wrap items-center gap-3">
+
+        <div class="flex-wrap items-center gap-2 sm:gap-3" :class="isHeaderExpanded ? 'flex' : 'hidden md:flex'">
           <!-- Search Member -->
-          <div class="relative group">
+          <div class="relative group flex-1 min-w-[140px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
             </div>
@@ -26,7 +29,7 @@
               v-model="searchQuery"
               type="text" 
               placeholder="멤버 이름 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-full sm:w-48"
             />
           </div>
 
@@ -87,7 +90,7 @@
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100" :class="isHeaderExpanded ? '' : 'hidden md:block'">
         <!-- Quick Summary Bar -->
         <div v-if="currentWeekData" class="flex flex-wrap items-center gap-2 mb-4 px-2 text-sm font-black tracking-tight">
           <button
@@ -189,7 +192,7 @@
           <!-- Note -->
           <div class="lg:col-span-3 flex items-center gap-2">
             <span class="lg:hidden text-[10px] font-black text-gray-400 uppercase w-20 shrink-0">메모</span>
-            <span class="text-sm font-medium text-gray-600 truncate">{{ record.note || '-' }}</span>
+            <span class="text-sm font-medium text-gray-600 truncate ">{{ record.note || '-' }}</span>
             <i class="ph-bold ph-caret-right text-gray-300 lg:hidden ml-auto"></i>
           </div>
 
@@ -220,6 +223,7 @@ import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
 import { isRestWeek, formatWeekLabel, formatWeekNumberLabel } from '../composables/weekUtils';
 import { useScreenshot } from '../composables/useScreenshot';
+import { useHeaderCollapse } from '../composables/useHeaderCollapse';
 import ModalWeekPlanner from '../components/ModalWeekPlanner.vue';
 import ModalWorkoutLog from '../components/ModalWorkoutLog.vue';
 import { downloadCsvFile } from '../composables/useCsv';
@@ -229,6 +233,7 @@ const { confirm, alert } = useDialog();
 const isPlannerOpen = ref(false);
 
 const selectedYear = ref(new Date().getFullYear());
+const { isHeaderExpanded } = useHeaderCollapse('workout');
 const searchQuery = ref('');
 const statusFilter = ref('all'); // all, eligible, incomplete
 let isNavigating = false; // suppresses the year watcher during programmatic week navigation
