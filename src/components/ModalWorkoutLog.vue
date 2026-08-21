@@ -184,7 +184,7 @@
                           v-model="log.workout_type"
                           @change="markAsModified(log)"
                           placeholder="종류"
-                          class="w-full bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700 rounded-xl p-2 outline-none focus:border-indigo-500 transition-all sm:bg-transparent sm:border-none sm:text-[11px] sm:rounded sm:p-0.5 sm:focus:ring-1 sm:focus:ring-indigo-200 truncate"
+                          class="w-full bg-gray-50 border border-gray-200 text-xs font-bold text-gray-700 rounded-xl p-2 outline-none focus:border-indigo-500 transition-all sm:bg-transparent sm:border-none sm:text-[11px] sm:rounded sm:p-0.5 sm:focus:ring-1 sm:focus:ring-indigo-200 truncate "
                         />
                       </div>
 

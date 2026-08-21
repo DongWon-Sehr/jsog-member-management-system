@@ -148,9 +148,9 @@
                   <i class="ph-fill ph-sparkle align-middle mr-0.5"></i><span class="align-middle">{{ mth }}월</span>
                 </span>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 shrink-0">
                 <span class="text-lg font-black text-indigo-600">{{ item.count }}</span>
-                <span class="text-xs font-bold text-gray-400 uppercase">회 누적</span>
+                <span class="text-xs font-bold text-gray-400 uppercase whitespace-nowrap">회 누적</span>
               </div>
             </div>
           </div>
@@ -166,7 +166,7 @@
         <!-- Cumulative Quarterly Performance -->
         <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col xl:col-span-2">
           <div class="flex items-center justify-between gap-2 mb-6">
-            <h3 class="text-lg font-black text-gray-800 flex items-center gap-2">
+            <h3 class="text-lg font-black text-gray-800 flex items-center gap-2 break-keep">
               <i class="ph-bold ph-chart-line-up text-indigo-500"></i>
               {{ selectedQuarterLabel }} 멤버별 누적 성적
             </h3>
@@ -207,7 +207,7 @@
 
         <!-- Day of Week Distribution -->
         <div class="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm min-h-[450px] flex flex-col xl:col-span-3">
-          <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2">
+          <h3 class="text-lg font-black text-gray-800 mb-6 flex items-center gap-2 break-keep">
             <i class="ph-bold ph-calendar-check text-indigo-500"></i>
             {{ selectedQuarterLabel }} 요일별 운동 집중도
           </h3>

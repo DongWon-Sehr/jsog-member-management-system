@@ -9,10 +9,13 @@
             <i class="ph-bold ph-users-three text-xl"></i>
           </div>
           <h2 class="text-xl font-black text-gray-900 tracking-tight">회원 관리</h2>
+          <button @click="isHeaderExpanded = !isHeaderExpanded" class="md:hidden p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" :title="isHeaderExpanded ? '메뉴 접기' : '메뉴 펼치기'">
+            <i class="ph-bold" :class="isHeaderExpanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
-        
-        <div class="flex items-center gap-3 sm:gap-4">
-          <div class="relative group">
+
+        <div class="flex-wrap items-center gap-2 sm:gap-4" :class="isHeaderExpanded ? 'flex' : 'hidden md:flex'">
+          <div class="relative group flex-1 min-w-[160px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
             </div>
@@ -20,7 +23,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="멤버 이름 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-full sm:w-48"
             />
           </div>
 
@@ -34,22 +37,22 @@
               />
               <i class="ph-bold ph-check absolute text-white opacity-0 peer-checked:opacity-100 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs pointer-events-none"></i>
             </div>
-            <span class="text-xs font-black text-gray-500 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">비활성 회원 포함</span>
+            <span class="text-xs font-black text-gray-500 group-hover:text-indigo-600 transition-colors uppercase tracking-tight whitespace-nowrap">비활성 회원 포함</span>
           </label>
 
-          <button @click="openAddModal" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95">
+          <button @click="openAddModal" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95 shrink-0">
             <i class="ph-bold ph-plus text-lg"></i>
-            <span class="font-black text-sm">회원 등록</span>
+            <span class="font-black text-sm whitespace-nowrap">회원 등록</span>
           </button>
 
-          <button @click="downloadCsv" :disabled="filteredMembers.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
+          <button @click="downloadCsv" :disabled="filteredMembers.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50 shrink-0" title="CSV 다운로드">
             <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
           </button>
         </div>
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100" :class="isHeaderExpanded ? '' : 'hidden md:block'">
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
           <div class="col-span-2 text-center">이름</div>
           <div class="col-span-3 text-center">이메일</div>
@@ -77,7 +80,7 @@
           <!-- Email -->
           <div class="md:col-span-3 flex items-center md:justify-center gap-2 min-w-0">
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">이메일</span>
-            <span v-if="member.email" class="text-sm font-medium text-gray-500 truncate">{{ member.email }}</span>
+            <span v-if="member.email" class="text-sm font-medium text-gray-500 truncate ">{{ member.email }}</span>
             <span v-else class="text-sm font-medium text-gray-300">미등록</span>
           </div>
 
@@ -85,8 +88,8 @@
             <span class="md:hidden text-[10px] font-black text-gray-400 uppercase w-16 shrink-0">환급 계좌</span>
             <span v-if="member.bank_type || member.bank_account" class="flex items-center gap-2 min-w-0">
               <!-- Fixed width fits the longest bank name so account numbers align across rows -->
-              <span class="w-[68px] shrink-0 px-1.5 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 text-center truncate">{{ member.bank_type || '-' }}</span>
-              <span class="text-sm font-bold text-gray-600 font-mono truncate">{{ member.bank_account || '-' }}</span>
+              <span class="w-[68px] shrink-0 px-1.5 py-0.5 rounded-md bg-gray-50 border border-gray-100 text-[10px] font-black text-gray-500 text-center truncate ">{{ member.bank_type || '-' }}</span>
+              <span class="text-sm font-bold text-gray-600 font-mono truncate ">{{ member.bank_account || '-' }}</span>
             </span>
             <span v-else class="text-sm font-medium text-gray-300">미등록</span>
           </div>
@@ -134,12 +137,14 @@
 import { ref, computed } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { useHeaderCollapse } from '../composables/useHeaderCollapse';
 import ModalMember from '../components/ModalMember.vue';
 import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
 const { members, sortedMembers } = useStore();
 const { alert } = useDialog();
 
+const { isHeaderExpanded } = useHeaderCollapse('members');
 const showDisabled = ref(false);
 const searchQuery = ref('');
 const isModalOpen = ref(false);

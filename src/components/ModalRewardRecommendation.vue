@@ -87,7 +87,7 @@ import { toRef } from 'vue';
 import { useScrollLock } from '../composables/useScrollLock';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
-import { isRestWeek } from '../composables/weekUtils';
+import { isRestWeek, hasWeekStarted } from '../composables/weekUtils';
 
 const props = defineProps({
   isOpen: Boolean
@@ -122,7 +122,7 @@ const calculateRecommendations = () => {
   // Rest weeks are excluded — nobody can score in them, so counting them would deflate success rates
   const quarterWeeks = weeks.value.filter(w => {
     const q = Math.ceil(Number(w.month) / 3);
-    return Number(w.year) === targetYear && q === quarter && !isRestWeek(w);
+    return Number(w.year) === targetYear && q === quarter && !isRestWeek(w) && hasWeekStarted(w);
   });
 
   const totalWeeks = quarterWeeks.length;
@@ -141,10 +141,8 @@ const calculateRecommendations = () => {
     });
 
     const totalCount = records.reduce((sum, r) => sum + (Number(r.count) || 0), 0);
-    // Success criteria: weekly count >= 3 or superpass used with count >= 1
-    const successWeeks = records.filter(r => 
-      Number(r.count) >= 3 || (Number(r.count) >= 1 && (r.super_pass === true || String(r.super_pass).toUpperCase() === 'TRUE'))
-    ).length;
+    // Success rate counts real workouts only (weekly count >= 3) — super-pass weeks are excluded
+    const successWeeks = records.filter(r => Number(r.count) >= 3).length;
 
     return {
       memberId: m.id,

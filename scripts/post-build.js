@@ -78,6 +78,15 @@ async function run() {
         animation: highlight-fade 2s ease-out forwards;
       }
 
+      /* SFC scoped styles are discarded by this build, so utility classes live here */
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
       /* Loading overlay styles must live here: this template drops Vite's CSS bundle, and the
          Tailwind Play CDN boots too late for an overlay shown in the first seconds. */
       .loading-card {
