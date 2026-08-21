@@ -11,9 +11,9 @@
           </div>
 
           <!-- Header -->
-          <div class="px-6 py-5 border-b border-gray-50 flex items-center justify-between bg-indigo-50/30 rounded-t-3xl">
-            <div class="flex items-center gap-4">
-              <h3 class="text-xl font-black text-gray-900 flex items-center gap-2">
+          <div class="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-50 flex items-center justify-between gap-2 bg-indigo-50/30 rounded-t-3xl">
+            <div class="flex flex-wrap items-center gap-2 sm:gap-4 min-w-0">
+              <h3 class="text-lg sm:text-xl font-black text-gray-900 flex items-center gap-2 whitespace-nowrap">
                 <i class="ph-bold ph-calendar-blank text-indigo-600"></i>
                 연간 주차 플래너
               </h3>
@@ -30,10 +30,60 @@
                 </button>
               </div>
             </div>
+
+            <!-- View Toggle -->
+            <button
+              @click="viewMode = viewMode === 'edit' ? 'calendar' : 'edit'"
+              class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all shadow-sm active:scale-95 shrink-0"
+              :title="viewMode === 'edit' ? '달력 뷰로 보기' : '편집 뷰로 돌아가기'"
+            >
+              <i class="ph-bold" :class="viewMode === 'edit' ? 'ph-calendar' : 'ph-pencil-simple'"></i>
+              <span class="hidden sm:inline font-black text-sm whitespace-nowrap">{{ viewMode === 'edit' ? '달력 뷰' : '편집' }}</span>
+            </button>
+          </div>
+
+          <!-- Body / Calendar (read-only) -->
+          <div v-if="viewMode === 'calendar'" class="flex-1 overflow-y-auto bg-gray-50/50 p-4 sm:p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div v-for="cal in calendarMonths" :key="cal.month" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                <h4 class="text-sm font-black text-gray-800 mb-2 flex items-center gap-1.5">
+                  <i class="ph-fill ph-calendar-blank text-indigo-400"></i>{{ selectedYear }}년 {{ cal.month }}월
+                </h4>
+
+                <div class="flex items-center gap-1 mb-1">
+                  <div class="grid grid-cols-7 flex-1">
+                    <span v-for="d in ['월','화','수','목','금','토','일']" :key="d" class="text-center text-[9px] font-black text-gray-300 uppercase">{{ d }}</span>
+                  </div>
+                  <div class="w-16 text-right text-[9px] font-black text-gray-300 uppercase">주차</div>
+                </div>
+
+                <div v-for="week in cal.weeks" :key="week.key"
+                     class="flex items-center gap-1 rounded-lg px-0.5 py-0.5"
+                     :class="week.row?.is_rest_week ? 'bg-gray-50' : ''">
+                  <div class="grid grid-cols-7 flex-1">
+                    <div v-for="day in week.days" :key="day.iso" class="flex items-center justify-center">
+                      <span class="w-6 h-6 flex items-center justify-center text-[11px] font-bold rounded-full"
+                            :class="day.iso === todayIso ? 'bg-indigo-600 text-white' : (day.inMonth ? 'text-gray-700' : 'text-gray-300')">
+                        {{ day.date }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="w-16 flex justify-end">
+                    <span v-if="week.row?.is_rest_week" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-400 text-[9px] font-black whitespace-nowrap">
+                      <i class="ph-fill ph-coffee"></i>휴식
+                    </span>
+                    <span v-else-if="week.row" class="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black whitespace-nowrap"
+                          :class="duplicateLabels.has(labelKey(week.row)) ? 'bg-red-50 text-red-500 border border-red-200' : 'bg-indigo-50 text-indigo-600'">
+                      {{ week.row.month }}-{{ week.row.week_number }}주차
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Body / Matrix -->
-          <div class="flex-1 overflow-y-auto bg-gray-50/50 relative">
+          <div v-else class="flex-1 overflow-y-auto bg-gray-50/50 relative">
             <!-- Table Header (Sticky Wrapper) -->
             <div class="sticky top-0 z-30 bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3">
               <div class="hidden sm:grid grid-cols-12 gap-4 px-4 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-500 uppercase tracking-widest shadow-sm border border-gray-200">
@@ -106,7 +156,7 @@
                       <div class="sm:hidden text-[10px] font-black text-gray-400 uppercase mb-1">지정 월</div>
                       <div class="relative">
                         <input v-model.number="row.month" type="number" min="1" max="12" class="w-full text-center py-2 bg-gray-50 border border-transparent focus:border-indigo-500 rounded-xl outline-none font-bold text-gray-700 transition-all pr-4 min-h-[44px]" />
-                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none mt-4 sm:mt-0">
+                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
                           <span class="text-xs text-gray-400 font-bold">월</span>
                         </div>
                       </div>
@@ -128,7 +178,7 @@
                         <input v-model.number="row.week_number" type="number" min="1" max="6"
                               class="w-full text-center py-2 border rounded-xl outline-none font-black transition-all pr-6 shadow-inner min-h-[44px]"
                               :class="duplicateLabels.has(labelKey(row)) ? 'bg-red-50 border-red-300 text-red-600 focus:border-red-500' : 'bg-indigo-50 border-transparent text-indigo-700 focus:border-indigo-500'" />
-                        <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none mt-4 sm:mt-0">
+                        <div class="absolute inset-y-0 right-2 flex items-center pointer-events-none">
                           <span class="text-[10px] font-black" :class="duplicateLabels.has(labelKey(row)) ? 'text-red-400' : 'text-indigo-400'">주차</span>
                         </div>
                       </div>
@@ -142,12 +192,12 @@
 
           <!-- Footer -->
           <div class="px-6 py-5 border-t border-gray-50 bg-white rounded-b-3xl flex items-center justify-end gap-3 shrink-0">
-            <div v-if="hasBlockingIssue" class="mr-auto flex items-center gap-2 text-red-600">
+            <div v-if="hasBlockingIssue && viewMode === 'edit'" class="mr-auto flex items-center gap-2 text-red-600">
               <i class="ph-fill ph-warning-circle"></i>
               <span class="text-xs font-bold">주차 번호가 중복되거나 비어 있어 저장할 수 없습니다.</span>
             </div>
             <button @click="close" class="px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-black shadow-sm hover:bg-gray-50 transition-all active:scale-95">닫기</button>
-            <button @click="saveBatch" :disabled="isSaving || hasBlockingIssue" class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+            <button v-if="viewMode === 'edit'" @click="saveBatch" :disabled="isSaving || hasBlockingIssue" class="px-8 py-3 bg-indigo-600 text-white rounded-xl font-black shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
               <i v-if="isSaving" class="ph-bold ph-spinner animate-spin"></i>
               {{ isSaving ? '저장 중...' : '일괄 저장하기' }}
             </button>
@@ -178,6 +228,7 @@ const { weeks } = useStore();
 const { alert } = useDialog();
 
 const isSaving = ref(false);
+const viewMode = ref('edit');
 
 const handleEsc = (e) => {
   if (e.key === 'Escape' && props.isOpen && !isSaving.value) close();
@@ -325,8 +376,40 @@ watch(() => selectedYear.value, (newYear) => {
 
 watch(() => props.isOpen, (isOpen) => {
   if (isOpen) {
+    viewMode.value = 'edit';
     generateMatrix(selectedYear.value);
   }
+});
+
+const todayIso = formatDateFull(new Date());
+
+// A straddling week appears in both month cards, labeled with its assigned (possibly overridden) month
+const calendarMonths = computed(() => {
+  const byMonday = new Map(plannerMatrix.value.map(r => [r.start_date, r]));
+  const months = [];
+
+  for (let m = 0; m < 12; m++) {
+    const first = new Date(selectedYear.value, m, 1);
+    const last = new Date(selectedYear.value, m + 1, 0);
+    const start = new Date(first);
+    const dow = first.getDay();
+    start.setDate(first.getDate() - (dow === 0 ? 6 : dow - 1));
+
+    const weekRows = [];
+    for (let cur = new Date(start); cur <= last; cur.setDate(cur.getDate() + 7)) {
+      const days = [];
+      for (let k = 0; k < 7; k++) {
+        const d = new Date(cur);
+        d.setDate(cur.getDate() + k);
+        days.push({ date: d.getDate(), inMonth: d.getMonth() === m, iso: formatDateFull(d) });
+      }
+      const key = formatDateFull(cur);
+      weekRows.push({ key, days, row: byMonday.get(key) || null });
+    }
+    months.push({ month: m + 1, weeks: weekRows });
+  }
+
+  return months;
 });
 
 const close = () => {
