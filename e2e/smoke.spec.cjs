@@ -29,6 +29,7 @@ const VIEWS = [
   {
     name: 'Workout', navItem: '운동 기록', modals: [
       { name: 'WeekPlanner', trigger: f => f.locator('button[title="연간 주차 셋업"]') },
+      { name: 'WeekPlannerCalendar', trigger: f => f.locator('button[title="연간 주차 셋업"]'), after: f => f.locator('button[title="달력 뷰로 보기"]').click() },
       // Click the name corner: the row center holds a super-pass toggle with @click.stop
       { name: 'WorkoutLog', trigger: f => f.locator('#workout-capture-area div.cursor-pointer').first(), clickPosition: { x: 30, y: 25 } }
     ]
@@ -133,6 +134,11 @@ VIEWPORTS.forEach(viewport => {
           if (!(await overlay.count())) {
             console.warn(`[skip] ${viewport.name}-${view.name}-${modal.name}: modal did not open`);
             continue;
+          }
+
+          if (modal.after) {
+            await modal.after(appFrame);
+            await page.waitForTimeout(500);
           }
 
           await captureFullContent(page, appFrame, `e2e/screenshots/${viewport.name}-${view.name}-${modal.name}.png`, baseViewport);

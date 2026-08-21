@@ -11,37 +11,37 @@
           <h2 class="text-xl font-black text-gray-900 tracking-tight">리워드 관리</h2>
         </div>
         
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
           <!-- Search Member -->
-          <div class="relative group">
+          <div class="relative group flex-1 min-w-[160px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
             </div>
-            <input 
+            <input
               v-model="searchQuery"
-              type="text" 
+              type="text"
               placeholder="멤버 이름 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-full sm:w-48"
             />
           </div>
 
-          <button @click="fetchRewards" :disabled="isLoading" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="로그 새로고침">
+          <button @click="fetchRewards" :disabled="isLoading" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50 shrink-0" title="로그 새로고침">
             <i class="ph-bold ph-arrows-clockwise text-gray-500 text-xl" :class="{ 'animate-spin': isLoading }"></i>
           </button>
-          <button @click="isRecommendationOpen = true" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all shadow-sm active:scale-95">
+          <button @click="isRecommendationOpen = true" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-white border border-indigo-200 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-all shadow-sm active:scale-95 shrink-0">
             <i class="ph-bold ph-magic-wand text-lg"></i>
-            <span class="font-black text-sm">추천 받기</span>
+            <span class="font-black text-sm whitespace-nowrap">추천 받기</span>
           </button>
-          <button @click="openAddModal" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95">
+          <button @click="openAddModal" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95 shrink-0">
             <i class="ph-bold ph-plus text-lg"></i>
-            <span class="font-black text-sm">지급 등록</span>
+            <span class="font-black text-sm whitespace-nowrap">지급 등록</span>
           </button>
 
-          <button @click="takeScreenshot" :disabled="rewards.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="스크린샷 저장">
+          <button @click="takeScreenshot" :disabled="rewards.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50 shrink-0" title="스크린샷 저장">
             <i class="ph-bold ph-camera text-gray-500 text-xl"></i>
           </button>
 
-          <button @click="downloadCsv" :disabled="rewards.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
+          <button @click="downloadCsv" :disabled="rewards.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50 shrink-0" title="CSV 다운로드">
             <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
           </button>
         </div>
@@ -50,15 +50,15 @@
       <!-- List Header (Sticky Bottom Part) -->
       <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100">
         <!-- Quick Summary Bar -->
-        <div v-if="rewards.length > 0" class="flex items-center gap-6 mb-4 px-2">
+        <div v-if="rewards.length > 0" class="flex flex-wrap items-center gap-3 sm:gap-6 mb-4 px-2">
           <div class="flex items-center gap-2">
-            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">총 지급 건수</span>
-            <span class="text-sm font-black text-gray-900">{{ rewards.length }}건</span>
+            <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest whitespace-nowrap">총 지급 건수</span>
+            <span class="text-sm font-black text-gray-900 whitespace-nowrap">{{ rewards.length }}건</span>
           </div>
           <div class="h-3 w-px bg-gray-200"></div>
           <div class="flex items-center gap-2">
-            <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">총 지급액</span>
-            <span class="text-sm font-black text-indigo-600">{{ totalRewardAmount.toLocaleString() }}원</span>
+            <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest whitespace-nowrap">총 지급액</span>
+            <span class="text-sm font-black text-indigo-600 whitespace-nowrap">{{ totalRewardAmount.toLocaleString() }}원</span>
           </div>
         </div>
 

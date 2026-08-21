@@ -10,31 +10,31 @@
           <h2 class="text-xl font-black text-gray-900 tracking-tight">시스템 로그</h2>
         </div>
         
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
           <!-- Search Action -->
-          <div class="relative group">
+          <div class="relative group flex-1 min-w-[140px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
             </div>
-            <input 
+            <input
               v-model="searchQuery"
-              type="text" 
+              type="text"
               placeholder="액션 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-full sm:w-48"
             />
           </div>
 
           <!-- Status Filter -->
-          <select 
+          <select
             v-model="statusFilter"
-            class="px-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-700 shadow-sm transition-all cursor-pointer"
+            class="px-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-700 shadow-sm transition-all cursor-pointer shrink-0"
           >
             <option value="all">전체 상태</option>
             <option value="success">성공 (Success)</option>
             <option value="error">오류 (Error)</option>
           </select>
 
-          <button @click="fetchLogs" :disabled="isLoading" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="로그 새로고침">
+          <button @click="fetchLogs" :disabled="isLoading" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50 shrink-0" title="로그 새로고침">
             <i class="ph-bold ph-arrows-clockwise text-gray-500 text-xl" :class="{ 'animate-spin': isLoading }"></i>
           </button>
         </div>
@@ -126,7 +126,7 @@
                 </div>
                 <div class="bg-gray-50 p-4 rounded-2xl border border-gray-100 shadow-inner">
                   <p class="text-[10px] font-black text-gray-400 uppercase mb-1">액션 유형</p>
-                  <p class="text-sm font-black text-indigo-600">{{ detailLog.action }}</p>
+                  <p class="text-sm font-black text-indigo-600 break-all">{{ detailLog.action }}</p>
                 </div>
               </div>
               

@@ -16,9 +16,9 @@
           </div>
         </div>
         
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
           <!-- Search Member -->
-          <div class="relative group">
+          <div class="relative group flex-1 min-w-[140px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
             </div>
@@ -26,7 +26,7 @@
               v-model="searchQuery"
               type="text" 
               placeholder="멤버 이름 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-full sm:w-48"
             />
           </div>
 

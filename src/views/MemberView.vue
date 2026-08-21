@@ -11,8 +11,8 @@
           <h2 class="text-xl font-black text-gray-900 tracking-tight">회원 관리</h2>
         </div>
         
-        <div class="flex items-center gap-3 sm:gap-4">
-          <div class="relative group">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+          <div class="relative group flex-1 min-w-[160px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
             </div>
@@ -20,7 +20,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="멤버 이름 검색"
-              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-32 sm:w-48"
+              class="pl-9 pr-4 py-2 bg-white border border-gray-200 focus:border-indigo-500 rounded-xl outline-none text-sm font-bold text-gray-900 shadow-sm transition-all w-full sm:w-48"
             />
           </div>
 
@@ -34,15 +34,15 @@
               />
               <i class="ph-bold ph-check absolute text-white opacity-0 peer-checked:opacity-100 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs pointer-events-none"></i>
             </div>
-            <span class="text-xs font-black text-gray-500 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">비활성 회원 포함</span>
+            <span class="text-xs font-black text-gray-500 group-hover:text-indigo-600 transition-colors uppercase tracking-tight whitespace-nowrap">비활성 회원 포함</span>
           </label>
 
-          <button @click="openAddModal" class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95">
+          <button @click="openAddModal" class="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 active:scale-95 shrink-0">
             <i class="ph-bold ph-plus text-lg"></i>
-            <span class="font-black text-sm">회원 등록</span>
+            <span class="font-black text-sm whitespace-nowrap">회원 등록</span>
           </button>
 
-          <button @click="downloadCsv" :disabled="filteredMembers.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50" title="CSV 다운로드">
+          <button @click="downloadCsv" :disabled="filteredMembers.length === 0" class="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all shadow-sm active:scale-95 disabled:opacity-50 shrink-0" title="CSV 다운로드">
             <i class="ph-bold ph-download-simple text-gray-500 text-xl"></i>
           </button>
         </div>
