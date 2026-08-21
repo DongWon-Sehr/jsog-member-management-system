@@ -9,9 +9,12 @@
             <i class="ph-bold ph-users-three text-xl"></i>
           </div>
           <h2 class="text-xl font-black text-gray-900 tracking-tight">회원 관리</h2>
+          <button @click="isHeaderExpanded = !isHeaderExpanded" class="md:hidden p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" :title="isHeaderExpanded ? '메뉴 접기' : '메뉴 펼치기'">
+            <i class="ph-bold" :class="isHeaderExpanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
-        
-        <div class="flex flex-wrap items-center gap-2 sm:gap-4">
+
+        <div class="flex-wrap items-center gap-2 sm:gap-4" :class="isHeaderExpanded ? 'flex' : 'hidden md:flex'">
           <div class="relative group flex-1 min-w-[160px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <i class="ph-bold ph-magnifying-glass text-gray-400 group-focus-within:text-indigo-500 transition-colors"></i>
@@ -49,7 +52,7 @@
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100" :class="isHeaderExpanded ? '' : 'hidden md:block'">
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
           <div class="col-span-2 text-center">이름</div>
           <div class="col-span-3 text-center">이메일</div>
@@ -134,12 +137,14 @@
 import { ref, computed } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { useHeaderCollapse } from '../composables/useHeaderCollapse';
 import ModalMember from '../components/ModalMember.vue';
 import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
 const { members, sortedMembers } = useStore();
 const { alert } = useDialog();
 
+const { isHeaderExpanded } = useHeaderCollapse('members');
 const showDisabled = ref(false);
 const searchQuery = ref('');
 const isModalOpen = ref(false);

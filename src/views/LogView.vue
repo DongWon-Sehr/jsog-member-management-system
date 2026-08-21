@@ -8,9 +8,12 @@
             <i class="ph-bold ph-terminal-window text-xl"></i>
           </div>
           <h2 class="text-xl font-black text-gray-900 tracking-tight">시스템 로그</h2>
+          <button @click="isHeaderExpanded = !isHeaderExpanded" class="md:hidden p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" :title="isHeaderExpanded ? '메뉴 접기' : '메뉴 펼치기'">
+            <i class="ph-bold" :class="isHeaderExpanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
-        
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+
+        <div class="flex-wrap items-center gap-2 sm:gap-3" :class="isHeaderExpanded ? 'flex' : 'hidden md:flex'">
           <!-- Search Action -->
           <div class="relative group flex-1 min-w-[140px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -41,7 +44,7 @@
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-6 px-6 pb-3 border-x border-gray-100" :class="isHeaderExpanded ? '' : 'hidden md:block'">
         <div class="hidden md:grid grid-cols-12 gap-4 px-8 py-3 bg-gray-100 rounded-xl text-[11px] font-black text-gray-400 uppercase tracking-widest shadow-sm border border-gray-200">
           <div class="col-span-3 text-center">발생 일시</div>
           <div class="col-span-3 text-center">액션 유형</div>
@@ -152,6 +155,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { useHeaderCollapse } from '../composables/useHeaderCollapse';
 import { downloadCsvFile, todayStamp } from '../composables/useCsv';
 
 const { systemLogs: logs } = useStore();
@@ -159,6 +163,7 @@ const { alert } = useDialog();
 
 const isLoading = ref(false);
 const detailLog = ref(null);
+const { isHeaderExpanded } = useHeaderCollapse('logs');
 const searchQuery = ref('');
 const statusFilter = ref('all');
 

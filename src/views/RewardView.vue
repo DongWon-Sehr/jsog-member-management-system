@@ -9,9 +9,12 @@
             <i class="ph-bold ph-gift text-xl"></i>
           </div>
           <h2 class="text-xl font-black text-gray-900 tracking-tight">리워드 관리</h2>
+          <button @click="isHeaderExpanded = !isHeaderExpanded" class="md:hidden p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all" :title="isHeaderExpanded ? '메뉴 접기' : '메뉴 펼치기'">
+            <i class="ph-bold" :class="isHeaderExpanded ? 'ph-caret-up' : 'ph-caret-down'"></i>
+          </button>
         </div>
-        
-        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+
+        <div class="flex-wrap items-center gap-2 sm:gap-3" :class="isHeaderExpanded ? 'flex' : 'hidden md:flex'">
           <!-- Search Member -->
           <div class="relative group flex-1 min-w-[160px] sm:flex-none">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -48,7 +51,7 @@
       </div>
 
       <!-- List Header (Sticky Bottom Part) -->
-      <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100">
+      <div class="bg-gray-50/95 backdrop-blur-sm pt-4 px-6 pb-3 border-x border-gray-100" :class="isHeaderExpanded ? '' : 'hidden md:block'">
         <!-- Quick Summary Bar -->
         <div v-if="rewards.length > 0" class="flex flex-wrap items-center gap-3 sm:gap-6 mb-4 px-2">
           <div class="flex items-center gap-2">
@@ -150,6 +153,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useStore } from '../composables/useStore';
 import { useDialog } from '../composables/useDialog';
+import { useHeaderCollapse } from '../composables/useHeaderCollapse';
 import ModalReward from '../components/ModalReward.vue';
 import ModalRewardRecommendation from '../components/ModalRewardRecommendation.vue';
 import { downloadCsvFile, todayStamp } from '../composables/useCsv';
@@ -163,6 +167,7 @@ const isProcessing = ref(false);
 const isModalOpen = ref(false);
 const isRecommendationOpen = ref(false);
 const prefillData = ref(null);
+const { isHeaderExpanded } = useHeaderCollapse('rewards');
 const searchQuery = ref('');
 const recentlyAddedIds = ref([]);
 

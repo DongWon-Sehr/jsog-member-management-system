@@ -111,6 +111,14 @@ VIEWPORTS.forEach(viewport => {
 
         await captureFullContent(page, appFrame, `e2e/screenshots/${viewport.name}-${view.name}.png`, baseViewport);
 
+        // Mobile headers ship collapsed; expand to reach the modal trigger buttons
+        const expandBtn = appFrame.locator('button[title="메뉴 펼치기"] >> visible=true');
+        if (await expandBtn.count()) {
+          await expandBtn.click();
+          await page.waitForTimeout(400);
+          await captureFullContent(page, appFrame, `e2e/screenshots/${viewport.name}-${view.name}-Expanded.png`, baseViewport);
+        }
+
         for (const modal of view.modals) {
           let trigger = modal.trigger(appFrame);
           if (modal.fallback && (await trigger.count()) === 0) trigger = modal.fallback(appFrame);
